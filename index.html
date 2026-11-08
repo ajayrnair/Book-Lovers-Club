@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Book Lovers Club</title>
+<style>
+  :root{--bg:#f7f1e3;--card:#fffdf6;--ink:#21302a;--muted:#7e7462;--accent:#17573a;--accent2:#b08a3c;--line:#e2d7bf;--good:#2e7d32}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  header{position:sticky;top:0;background:var(--bg);padding:14px 16px 8px;display:flex;justify-content:space-between;align-items:center;z-index:5}
+  h1{font-size:22px;margin:0;font-family:Georgia,serif}
+  h2{font-size:17px;margin:18px 0 8px;font-family:Georgia,serif}
+  h3{font-size:15px;margin:14px 0 6px}
+  main{padding:0 16px 90px;max-width:560px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin:8px 0}
+  .row{display:flex;gap:10px;align-items:center}
+  .grow{flex:1}
+  input,select,button,textarea{font-size:16px;font-family:inherit}
+  input[type=text],input[type=email],input[type=password],input[type=url],select,textarea{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px;background:#fff;margin:5px 0}
+  button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:11px 16px;cursor:pointer;font-weight:600}
+  button.ghost{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+  button.small{padding:7px 11px;font-size:14px}
+  button:disabled{opacity:.45}
+  .oauth{display:flex;gap:8px;margin:8px 0}
+  .oauth button{flex:1;background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .muted{color:var(--muted);font-size:13px}
+  .err{color:#b3261e;font-size:14px;min-height:18px}
+  .book{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .book:last-child{border-bottom:0}
+  .cover{width:46px;height:68px;object-fit:cover;border-radius:4px;background:#ece0c4;flex:none}
+  .stars{color:var(--accent2);font-size:13px}
+  nav{position:fixed;bottom:0;left:0;right:0;background:#fffdf6;border-top:1px solid var(--line);display:flex;z-index:5}
+  nav button{flex:1;background:none;color:var(--muted);border-radius:0;padding:13px 0;font-size:14px}
+  nav button.on{color:var(--accent)}
+  .chip{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:5px 11px;margin:3px 3px 3px 0;font-size:14px;background:#fff;cursor:pointer}
+  .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .day{width:13.5%;text-align:center;padding:9px 0;border:1px solid var(--line);border-radius:9px;background:#fff;cursor:pointer;font-size:13px}
+  .day.on{background:var(--accent);color:#fff}
+  .day .n{display:block;font-size:11px;color:inherit;opacity:.75}
+  .hide{display:none}
+  a{color:var(--accent)}
+  .badge{font-size:11px;background:#f0e5cb;color:var(--accent);border-radius:6px;padding:2px 6px;margin-left:6px}
+  .voteBar{height:6px;background:#ecdfc0;border-radius:3px;overflow:hidden}
+  .voteBar i{display:block;height:100%;background:var(--accent2)}
+  select.rate{width:auto;padding:5px;margin:0}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:76px;background:#143d29;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:9;max-width:90%}
+</style>
+</head>
+<body>
+<header>
+  <h1>📚 Book Lovers Club</h1>
+  <button id="signOut" class="ghost small hide">Sign out</button>
+</header>
+<main id="app"></main>
+<nav id="tabs" class="hide">
+  <button data-tab="home" class="on">Clubs</button>
+  <button data-tab="add">Add Books</button>
+  <button data-tab="me">Me</button>
+</nav>
+<div id="toast" class="toast hide"></div>
+
+<script>
+const $ = (s, el=document) => el.querySelector(s);
+const app = $('#app');
+let token = localStorage.getItem('blc_token') || '';
+let user = null, myClubs = [], currentClub = null, tab = 'home';
+let addSel = new Map(); // bookKey-from-search index -> data
+let searchResults = [];
+
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.remove('hide'); setTimeout(()=>t.classList.add('hide'), 2600); }
+async function api(action, body={}){
+  const r = await fetch('/api/handler', { method:'POST', headers:{'content-type':'application/json', ...(token?{authorization:'Bearer '+token}:{})}, body: JSON.stringify({action, ...body}) });
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.error || 'Something went wrong');
+  return j;
+}
+function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function ratingsLine(b){
+  const parts=[];
+  const src = (b.google && b.google.count>=10) ? b.google : (b.google || b.hardcover || b.openlibrary);
+  if(b.google) parts.push(`Google ★ ${b.google.rating} (${b.google.count})`);
+  if(b.hardcover && !(b.google && b.google.count > (b.hardcover.count||0)*10)) parts.push(`Hardcover ★ ${b.hardcover.rating} (${b.hardcover.count})`);
+  if(!b.google && !b.hardcover && b.openlibrary) parts.push(`Open Library ★ ${b.openlibrary.rating} (${b.openlibrary.count})`);
+  return parts.length ? `<div class="stars">${parts.join(' · ')}</div>` : '';
+}
+function halfOptions(sel){
+  let o=''; for(let v=0; v<=5; v+=0.5){ o+=`<option value="${v}" ${sel===v?'selected':''}>${v===0?'Rate':v+' ★'}</option>`; } return o;
+}
+
+// ---------- auth ----------
+function viewAuth(msg=''){
+  $('#tabs').classList.add('hide'); $('#signOut').classList.add('hide');
+  app.innerHTML = `
+  <div class="card" id="formIn">
+    <h2 style="margin-top:2px">Sign in</h2>
+    <div class="oauth">
+      <button data-o="google">Google</button><button data-o="facebook">Facebook</button><button data-o="x">X</button>
+    </div>
+    <input type="email" id="inEmail" placeholder="Email" autocomplete="email">
+    <input type="password" id="inPw" placeholder="Password" autocomplete="current-password">
+    <div class="err" id="inErr">${esc(msg)}</div>
+    <button id="signin" style="width:100%">Sign in</button>
+    <div style="text-align:center;margin-top:12px"><a href="#" id="toSignup">Create account</a></div>
+  </div>
+  <div class="card hide" id="formUp">
+    <h2 style="margin-top:2px">Create account</h2>
+    <input type="text" id="upName" placeholder="Your name" autocomplete="name">
+    <input type="email" id="upEmail" placeholder="Email" autocomplete="email">
+    <input type="password" id="upPw" placeholder="Password" autocomplete="new-password">
+    <div class="err" id="upErr"></div>
+    <button id="signup" style="width:100%">Create account</button>
+    <div style="text-align:center;margin-top:12px"><a href="#" id="toSignin">Sign in</a></div>
+  </div>`;
+  app.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>toast('Use email for now'));
+  $('#toSignup').onclick = (e)=>{ e.preventDefault(); $('#formIn').classList.add('hide'); $('#formUp').classList.remove('hide'); };
+  $('#toSignin').onclick = (e)=>{ e.preventDefault(); $('#formUp').classList.add('hide'); $('#formIn').classList.remove('hide'); };
+  $('#signin').onclick = async ()=>{ try{ const j=await api('signin',{email:$('#inEmail').value, password:$('#inPw').value}); afterAuth(j); }catch(e){ $('#inErr').textContent=e.message; } };
+  $('#signup').onclick = async ()=>{ try{ const j=await api('signup',{name:$('#upName').value, email:$('#upEmail').value, password:$('#upPw').value}); afterAuth(j); }catch(e){ $('#upErr').textContent=e.message; } };
+}
+async function afterAuth(j){
+  token = j.token; user = j.user; localStorage.setItem('blc_token', token);
+  const inv = localStorage.getItem('blc_invite');
+  if(inv){ localStorage.removeItem('blc_invite'); try{ const r=await api('acceptInvite',{inviteToken:inv}); toast('You joined '+r.club.name); currentClub=r.club; }catch(e){ toast(e.message); } }
+  boot();
+}
+
+// ---------- shell ----------
+async function boot(){
+  try{ const j = await api('me'); user = j.user; }catch(e){ return viewAuth(); }
+  $('#tabs').classList.remove('hide'); $('#signOut').classList.remove('hide');
+  await refreshClubs();
+  currentClub ? viewClub() : viewHome();
+}
+async function refreshClubs(){ const j = await api('myClubs'); myClubs = j.clubs; }
+$('#signOut').onclick = async ()=>{ try{ await api('signout'); }catch(e){} token=''; user=null; currentClub=null; localStorage.removeItem('blc_token'); viewAuth(); };
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{ tab=b.dataset.tab; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on', x===b)); if(tab==='home'){ currentClub=null; viewHome(); } if(tab==='add') viewAdd(); if(tab==='me') viewMe(); });
+
+// ---------- home ----------
+async function viewHome(){
+  app.innerHTML = `<h2>My clubs</h2><div id="mine"></div>
+  <div class="card"><div class="row"><input type="text" id="newName" placeholder="New club name" class="grow">
+  <select id="newVis" style="width:auto"><option value="public">Public</option><option value="private">Private</option></select>
+  <button id="create">Create</button></div></div>
+  <h2>Find a club</h2>
+  <div class="row"><input type="text" id="q" placeholder="Search clubs" class="grow"><button id="go" class="small">Search</button></div>
+  <div id="found"></div>`;
+  const renderMine = ()=>{ $('#mine').innerHTML = myClubs.length ? myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b>${c.private?'<span class="badge">Private</span>':''}<div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div></div><span>›</span></div>`).join('') : '<div class="muted">No clubs yet</div>';
+    app.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openClub(el.dataset.open)); };
+  renderMine();
+  $('#create').onclick = async ()=>{ try{ const j=await api('createClub',{name:$('#newName').value, private:$('#newVis').value==='private'}); await refreshClubs(); openClub(j.club.id); }catch(e){ toast(e.message); } };
+  const search = async ()=>{ const j=await api('searchClubs',{q:$('#q').value}); $('#found').innerHTML = j.clubs.map(c=>`<div class="card row"><div class="grow"><b>${esc(c.name)}</b><div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div></div>${c.isMember?'<span class="muted">Joined</span>':`<button class="small" data-join="${c.id}">Join</button>`}</div>`).join('') || '<div class="muted">Nothing found</div>';
+    app.querySelectorAll('[data-join]').forEach(b=>b.onclick=async()=>{ await api('joinClub',{clubId:b.dataset.join}); await refreshClubs(); renderMine(); search(); }); };
+  $('#go').onclick = search; search();
+}
+async function openClub(id){ const j=await api('club',{clubId:id}); currentClub=j.club; viewClub(); }
+
+// ---------- club ----------
+function bookRow(b, opts={}){
+  return `<div class="book">
+    ${b.cover?`<img class="cover" src="${esc(b.cover)}" alt="">`:'<div class="cover"></div>'}
+    <div class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>
+    ${ratingsLine(b)}
+    ${b.memberCount?`<div class="muted">Members ★ ${b.memberAverage} (${b.memberCount})</div>`:''}
+    </div>
+    <select class="rate" data-rate="${b.key}">${halfOptions(b.myRating)}</select>
+    ${opts.current?`<button class="small ghost" data-setcurrent="${b.key}">Reading now</button>`:''}
+  </div>`;
+}
+function wireRates(){
+  app.querySelectorAll('[data-rate]').forEach(s=>s.onchange=async()=>{ await api('rate',{bookKey:s.dataset.rate, rating:Number(s.value)}); toast('Saved'); if(currentClub) openClub(currentClub.id); });
+  app.querySelectorAll('[data-setcurrent]').forEach(b=>b.onclick=async()=>{ const j=await api('setCurrent',{clubId:currentClub.id, bookKey:b.dataset.setcurrent}); currentClub=j.club; viewClub(); });
+}
+function viewClub(){
+  const c = currentClub; if(!c) return viewHome();
+  const isAdmin = c.role==='admin';
+  const overlap = {};
+  Object.values(c.availability||{}).forEach(days=>days.forEach(d=>overlap[d]=(overlap[d]||0)+1));
+  const pollHtml = c.poll ? `<div class="card"><h3 style="margin-top:0">Pick the next book${c.poll.runoff?' · Runoff':''}</h3>
+    ${c.poll.options.map(o=>`<div style="margin:8px 0"><div class="row"><div class="grow">${esc(o.book.title)}</div><b>${o.votes}</b><button class="small" data-vote="${o.book.key}">Vote</button></div><div class="voteBar"><i style="width:${c.poll.totalVotes?Math.round(o.votes/c.poll.totalVotes*100):0}%"></i></div></div>`).join('')}
+    ${isAdmin?'<button id="closePoll" class="ghost small">Close poll</button>':''}</div>`
+    : (c.lastResult && c.lastResult.tie ? `<div class="card"><h3 style="margin-top:0">Tie</h3>${isAdmin?'<button id="runoff" class="small">One day runoff</button> '+c.lastResult.tie.map(k=>{const b=c.library.find(x=>x.key===k); return b?`<button class="small ghost" data-pick="${k}">Pick ${esc(b.title)}</button>`:'';}).join(' '):'<div class="muted">The admin picks the winner</div>'}</div>` : '');
+  app.innerHTML = `
+  <button class="ghost small" id="back">‹ Clubs</button>
+  <h2>${esc(c.name)}${c.private?'<span class="badge">Private</span>':''}</h2>
+  ${c.current?`<div class="card"><div class="muted">Reading now</div>${bookRow(c.current)}
+    ${c.currentRatings.map(r=>`<div class="row" style="padding:3px 0"><span class="grow">${esc(r.name)}</span><span>${r.rating===null?'—':'★ '+r.rating}</span></div>`).join('')}</div>`
+    :'<div class="card muted">No book picked yet</div>'}
+  ${pollHtml}
+  <div class="card"><div class="row"><h3 class="grow" style="margin:0">Library</h3><button class="small" id="addBtn">Add books</button></div>
+  ${c.library.length? c.library.map(b=>bookRow(b,{current:isAdmin})).join('') : '<div class="muted">No books yet</div>'}</div>
+  <div class="card"><h3 style="margin-top:0">Next meeting</h3>
+    <div class="muted">Meets every ${c.meetingFrequencyWeeks} week${c.meetingFrequencyWeeks>1?'s':''}${c.meeting.date?' · '+c.meeting.date:''}</div>
+    <div class="row" style="margin:8px 0">${c.week.map(d=>{const dt=new Date(d+'T12:00:00'); const mine=(c.availability[user.id]||[]).includes(d); return `<div class="day ${mine?'on':''}" data-day="${d}"><span class="n">${'Sun Mon Tue Wed Thu Fri Sat'.split(' ')[dt.getDay()]}</span>${dt.getDate()}${overlap[d]?`<span class="n">${overlap[d]} ✓</span>`:''}</div>`;}).join('')}</div>
+    ${c.meeting.type==='online'
+      ? (c.meeting.link?`<a href="${esc(c.meeting.link)}" target="_blank">Join online</a>`:'<div class="muted">Online</div>')
+      : `<div class="muted">📍 ${esc(c.meeting.address||'')}</div>`}
+    ${isAdmin?`<div class="row" style="margin-top:8px"><select id="freq">${[1,2,3,4,5,6,7,8].map(w=>`<option value="${w}" ${c.meetingFrequencyWeeks===w?'selected':''}>Every ${w} week${w>1?'s':''}</option>`).join('')}</select>
+    <label class="muted"><input type="checkbox" id="autoPoll" ${c.autoPoll?'checked':''} style="width:auto"> Auto poll</label></div>
+    <div class="row"><select id="mtype"><option value="online" ${c.meeting.type==='online'?'selected':''}>Online</option><option value="inperson" ${c.meeting.type==='inperson'?'selected':''}>In person</option></select>
+    <input type="text" id="mlink" placeholder="Meeting link" value="${esc(c.meeting.link||'')}" class="grow"></div>
+    <input type="text" id="maddr" placeholder="Address" value="${esc(c.meeting.address||'')}">
+    <button id="saveMeet" class="small">Save</button> <button id="startPoll" class="small ghost">Start poll</button>
+    <div class="row" style="margin-top:8px"><input type="date" id="pickDate" class="grow"><button id="pickBtn" class="small">Pick date</button></div>`:''}
+  </div>
+  <div class="card"><h3 style="margin-top:0">Members</h3>
+  ${c.members.map(m=>`<div class="row" style="padding:4px 0"><span class="grow">${esc(m.name)}${m.role==='admin'?'<span class="badge">Admin</span>':''}</span>${isAdmin&&m.role!=='admin'?`<button class="small ghost" data-admin="${m.userId}">Make admin</button>`:''}</div>`).join('')}
+  ${isAdmin?`<button id="allAdmin" class="ghost small">Make everyone an admin</button>
+  <div class="row" style="margin-top:10px"><input type="email" id="invEmail" placeholder="Email to invite" class="grow"><button id="invBtn" class="small">Invite</button></div>
+  <div id="invOut"></div>`:''}
+  <div style="margin-top:10px"><button id="leave" class="ghost small">Leave club</button></div></div>`;
+  $('#back').onclick = ()=>{ currentClub=null; viewHome(); };
+  $('#addBtn').onclick = ()=>{ tab='add'; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on', x.dataset.tab==='add')); viewAdd(c.id); };
+  wireRates();
+  app.querySelectorAll('[data-vote]').forEach(b=>b.onclick=async()=>{ const j=await api('vote',{clubId:c.id, bookKey:b.dataset.vote}); currentClub=j.club; viewClub(); });
+  if($('#closePoll')) $('#closePoll').onclick=async()=>{ const j=await api('closePoll',{clubId:c.id}); currentClub=j.club; await refreshClubs(); viewClub(); };
+  if($('#runoff')) $('#runoff').onclick=async()=>{ const j=await api('runoff',{clubId:c.id}); currentClub=j.club; viewClub(); };
+  app.querySelectorAll('[data-pick]').forEach(b=>b.onclick=async()=>{ const j=await api('adminPick',{clubId:c.id, bookKey:b.dataset.pick}); currentClub=j.club; viewClub(); });
+  app.querySelectorAll('[data-day]').forEach(d=>d.onclick=async()=>{ const mine=new Set((currentClub.availability[user.id]||[])); const day=d.dataset.day; mine.has(day)?mine.delete(day):mine.add(day); const j=await api('availability',{clubId:c.id, days:[...mine]}); currentClub=j.club; viewClub(); });
+  if(isAdmin){
+    $('#saveMeet').onclick=async()=>{ const j=await api('clubSettings',{clubId:c.id, meetingFrequencyWeeks:Number($('#freq').value), autoPoll:$('#autoPoll').checked, meeting:{type:$('#mtype').value, link:$('#mlink').value, address:$('#maddr').value}}); currentClub=j.club; toast('Saved'); viewClub(); };
+    $('#startPoll').onclick=async()=>{ try{ const j=await api('startPoll',{clubId:c.id}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
+    $('#pickBtn').onclick=async()=>{ try{ const j=await api('pickDate',{clubId:c.id, date:$('#pickDate').value}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
+    app.querySelectorAll('[data-admin]').forEach(b=>b.onclick=async()=>{ const j=await api('makeAdmin',{clubId:c.id, userId:b.dataset.admin}); currentClub=j.club; viewClub(); });
+    $('#allAdmin').onclick=async()=>{ const j=await api('makeAllAdmins',{clubId:c.id}); currentClub=j.club; viewClub(); };
+    $('#invBtn').onclick=async()=>{ try{ const j=await api('createInvite',{clubId:c.id, email:$('#invEmail').value}); const link=location.origin+'/?invite='+j.inviteToken; $('#invOut').innerHTML=`<div class="muted" style="margin-top:6px">Send this link to ${esc(j.email)} (works once):</div><input type="text" readonly value="${link}" onclick="this.select()">`; }catch(e){ toast(e.message); } };
+  }
+  $('#leave').onclick=async()=>{ await api('leaveClub',{clubId:c.id}); await refreshClubs(); currentClub=null; viewHome(); };
+}
+
+// ---------- add books ----------
+function viewAdd(preClub){
+  const chosen = new Set(preClub?[preClub]: myClubs.map(c=>c.id));
+  app.innerHTML = `<h2>Add books</h2>
+  <div class="card"><h3 style="margin-top:0">To</h3><div id="clubPick">${myClubs.map(c=>`<span class="chip ${chosen.has(c.id)?'on':''}" data-club="${c.id}">${esc(c.name)}</span>`).join('')||'<span class="muted">Join or create a club first</span>'}</div></div>
+  <div class="card"><h3 style="margin-top:0">Search</h3>
+    <div class="row"><input type="text" id="sq" placeholder="Title or author" class="grow"><button id="sgo" class="small">Search</button></div>
+    <div id="sres"></div>
+    <button id="addSel" class="hide" style="width:100%;margin-top:8px">Add selected</button></div>
+  <div class="card"><h3 style="margin-top:0">Paste a link</h3>
+    <input type="url" id="link" placeholder="Amazon, Goodreads, Google Books or Open Library link">
+    <button id="linkGo" style="width:100%">Add from link</button><div class="err" id="lerr"></div></div>`;
+  const clubs = ()=>[...app.querySelectorAll('#clubPick .chip.on')].map(x=>x.dataset.club);
+  app.querySelectorAll('#clubPick .chip').forEach(ch=>ch.onclick=()=>ch.classList.toggle('on'));
+  const render = ()=>{ $('#sres').innerHTML = searchResults.map((b,i)=>`<label class="book"><input type="checkbox" data-i="${i}" ${addSel.has(i)?'checked':''} style="width:auto">
+    ${b.cover?`<img class="cover" src="${esc(b.cover)}">`:'<div class="cover"></div>'}
+    <span class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>${ratingsLine(b)}</span></label>`).join('');
+    $('#addSel').classList.toggle('hide', !addSel.size);
+    app.querySelectorAll('#sres [data-i]').forEach(cb=>cb.onchange=()=>{ cb.checked?addSel.set(Number(cb.dataset.i), searchResults[Number(cb.dataset.i)]):addSel.delete(Number(cb.dataset.i)); $('#addSel').classList.toggle('hide', !addSel.size); $('#addSel').textContent='Add selected ('+addSel.size+')'; }); };
+  $('#sgo').onclick = async ()=>{ try{ $('#sres').innerHTML='<div class="muted">Searching…</div>'; const j=await api('searchBooks',{q:$('#sq').value}); searchResults=j.results; addSel.clear(); render(); if(!searchResults.length) $('#sres').innerHTML='<div class="muted">Nothing found</div>'; }catch(e){ toast(e.message); } };
+  $('#addSel').onclick = async ()=>{ try{ await api('addBooks',{clubIds:clubs(), books:[...addSel.values()]}); toast('Added'); addSel.clear(); await refreshClubs(); if(currentClub) openClub(currentClub.id); else viewHome(); }catch(e){ toast(e.message); } };
+  $('#linkGo').onclick = async ()=>{ try{ $('#lerr').textContent=''; const j=await api('addByLink',{url:$('#link').value, clubIds:clubs()}); toast('Added: '+j.book.title); await refreshClubs(); if(currentClub) openClub(currentClub.id); else viewHome(); }catch(e){ $('#lerr').textContent=e.message; } };
+}
+
+// ---------- me ----------
+function viewMe(){
+  app.innerHTML = `<div class="card"><h3 style="margin-top:0">${esc(user.name)}</h3><div class="muted">${esc(user.email)}</div></div>
+  <h2>My clubs</h2>${myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b></div><span>›</span></div>`).join('')||'<div class="muted">No clubs yet</div>'}`;
+  app.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openClub(el.dataset.open));
+}
+
+// invite deep link
+const inv = new URLSearchParams(location.search).get('invite');
+if(inv){ localStorage.setItem('blc_invite', inv); history.replaceState({}, '', location.pathname); }
+if(token) boot(); else viewAuth();
+</script>
+</body>
+</html>
