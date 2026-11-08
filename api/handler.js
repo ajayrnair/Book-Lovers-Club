@@ -317,7 +317,7 @@ async function googleAuth(req, res, u) {
 
 // ---------- main ----------
 module.exports = async (req, res) => {
-  if (req.method === 'GET') {
+  if (req.method === 'GET' || req.method === 'HEAD') {
     let gu = null;
     try { gu = new URL(req.url, 'https://' + (req.headers.host || 'booklovers-lemon.vercel.app')); } catch (e) { }
     if (gu && (gu.pathname.endsWith('/auth/google') || (gu.searchParams.has('code') && gu.searchParams.has('state')))) {
