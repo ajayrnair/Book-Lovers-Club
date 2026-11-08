@@ -25,6 +25,13 @@ async function readDB() {
     } catch (e) { /* fall through to fresh db */ }
   }
   if (!db) db = { users: [], sessions: {}, books: {}, clubs: [], invites: [], ratings: {} };
+  (db.clubs || []).forEach((club) => {
+    club.finished = club.finished || {};
+    club.rsvps = club.rsvps || {};
+    club.availability = club.availability || {};
+    club.library = club.library || [];
+    club.meeting = { type: 'online', link: '', address: '', date: '', ...(club.meeting || {}) };
+  });
   cache = db; cacheAt = Date.now();
   return db;
 }
@@ -68,13 +75,21 @@ function ensureAdmin(db, club) {
     first.role = 'admin';
   }
 }
+function capClose(club, iso) {
+  let t = new Date(iso).getTime();
+  if (club.meeting && club.meeting.date) {
+    const md = new Date(club.meeting.date + 'T23:59:59').getTime();
+    if (!isNaN(md) && md > Date.now()) t = Math.min(t, md);
+  }
+  return new Date(t).toISOString();
+}
 function maybeAutoPoll(db, club) {
   if (!club.autoPoll || club.poll || !club.cycleEnd || club.library.length < 2) return;
   const opens = new Date(club.cycleEnd).getTime() - 7 * 864e5;
   if (Date.now() >= opens) {
     club.poll = {
       id: uid(), options: [...club.library], votes: {}, runoff: false,
-      closesAt: club.cycleEnd, createdAt: nowISO(), auto: true,
+      closesAt: capClose(club, club.cycleEnd), createdAt: nowISO(), auto: true,
     };
   }
 }
@@ -95,6 +110,9 @@ function publicClub(db, club, userId) {
     autoPoll: club.autoPoll, meeting: club.meeting,
     week: meetingWeek(club),
     availability: club.availability,
+    finishedBy: club.current ? club.members.filter((m) => (club.finished[m.userId] || []).includes(club.current)).map((m) => m.userId) : [],
+    myFinished: club.current ? (club.finished[userId] || []).includes(club.current) : false,
+    rsvps: club.rsvps || {},
     poll: club.poll ? pollView(db, club) : null,
     lastResult: club.lastResult || null,
   };
@@ -510,6 +528,7 @@ module.exports = async (req, res) => {
         if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
         const chosen = new Date(body.date + 'T12:00:00');
         if (chosen.getTime() - Date.now() < 7 * 864e5) return send(400, { error: 'The date has to be picked at least a week before it happens' });
+        if (club.meeting.date !== body.date) club.rsvps = {};
         club.meeting.date = body.date;
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
@@ -520,7 +539,7 @@ module.exports = async (req, res) => {
         const mem = club.members.find((m) => m.userId === me.id);
         if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
         if (club.library.length < 2) return send(400, { error: 'Add at least two books first' });
-        club.poll = { id: uid(), options: [...club.library], votes: {}, runoff: false, closesAt: new Date(Date.now() + 2 * 864e5).toISOString(), createdAt: nowISO(), auto: false };
+        club.poll = { id: uid(), options: [...club.library], votes: {}, runoff: false, closesAt: capClose(club, new Date(Date.now() + 7 * 864e5).toISOString()), createdAt: nowISO(), auto: false };
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
@@ -574,6 +593,62 @@ module.exports = async (req, res) => {
         club.cycleEnd = new Date(Date.now() + (club.meetingFrequencyWeeks * 7 + 7) * 864e5).toISOString();
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
+      }
+      case 'removeAdmin': {
+        const club = db.clubs.find((c) => c.id === body.clubId);
+        if (!club) return send(404, { error: 'Club not found' });
+        const mem = club.members.find((m) => m.userId === me.id);
+        if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
+        const target = club.members.find((m) => m.userId === body.userId);
+        if (target) { target.role = 'member'; ensureAdmin(db, club); }
+        await writeDB(db);
+        return send(200, { club: publicClub(db, club, me.id) });
+      }
+      case 'toggleFinished': {
+        const club = db.clubs.find((c) => c.id === body.clubId);
+        if (!club || !club.members.some((m) => m.userId === me.id)) return send(403, { error: 'Members only' });
+        const key = body.bookKey || club.current;
+        if (!key) return send(400, { error: 'No book picked yet' });
+        const arr = new Set(club.finished[me.id] || []);
+        if (arr.has(key)) arr.delete(key); else arr.add(key);
+        club.finished[me.id] = [...arr];
+        await writeDB(db);
+        return send(200, { club: publicClub(db, club, me.id) });
+      }
+      case 'rsvp': {
+        const club = db.clubs.find((c) => c.id === body.clubId);
+        if (!club || !club.members.some((m) => m.userId === me.id)) return send(403, { error: 'Members only' });
+        if (body.status === 'going' || body.status === 'notgoing') club.rsvps[me.id] = body.status;
+        else delete club.rsvps[me.id];
+        await writeDB(db);
+        return send(200, { club: publicClub(db, club, me.id) });
+      }
+      case 'deleteClub': {
+        const club = db.clubs.find((c) => c.id === body.clubId);
+        if (!club) return send(404, { error: 'Club not found' });
+        const mem = club.members.find((m) => m.userId === me.id);
+        if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
+        db.clubs = db.clubs.filter((c) => c.id !== club.id);
+        db.invites = db.invites.filter((i) => i.clubId !== club.id);
+        await writeDB(db);
+        return send(200, { ok: true });
+      }
+      case 'deleteAccount': {
+        for (const club of db.clubs) {
+          club.members = club.members.filter((m) => m.userId !== me.id);
+          delete club.availability[me.id];
+          delete club.rsvps[me.id];
+          delete club.finished[me.id];
+          if (club.poll) delete club.poll.votes[me.id];
+          ensureAdmin(db, club);
+        }
+        db.clubs = db.clubs.filter((c) => c.members.length > 0);
+        Object.keys(db.ratings).forEach((k) => { if (k.startsWith(me.id + '|')) delete db.ratings[k]; });
+        Object.keys(db.sessions).forEach((t) => { if (db.sessions[t] === me.id) delete db.sessions[t]; });
+        db.invites = db.invites.filter((i) => i.email !== me.email && i.createdBy !== me.id);
+        db.users = db.users.filter((u) => u.id !== me.id);
+        await writeDB(db);
+        return send(200, { ok: true });
       }
       default: return send(400, { error: 'Unknown action' });
     }
