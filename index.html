@@ -204,7 +204,7 @@ function bookRow(b, opts={}){
 }
 function wireRates(rerender){
   app.querySelectorAll('[data-rate]').forEach(s=>s.onchange=async()=>{ await api('rate',{bookKey:s.dataset.rate, rating:Number(s.value)}); toast('Saved'); if(rerender){ await reloadClub(); rerender(); } });
-  app.querySelectorAll('[data-setcurrent]').forEach(b=>b.onclick=async()=>{ const j=await api('setCurrent',{clubId:currentClub.id, bookKey:b.dataset.setcurrent}); currentClub=j.club; viewClub(); });
+  app.querySelectorAll('[data-setcurrent]').forEach(b=>b.onclick=async()=>{ const go=()=>api('setCurrent',{clubId:currentClub.id, bookKey:b.dataset.setcurrent}); try{ const j=await go(); currentClub=j.club; viewClub(); }catch(e1){ await new Promise(r=>setTimeout(r,900)); try{ const j=await go(); currentClub=j.club; viewClub(); }catch(e2){ toast(e2.message); } } });
 }
 function pollSection(c){
   const isAdmin = c.role==='admin';
@@ -215,13 +215,13 @@ function pollSection(c){
   if(c.lastResult && c.lastResult.tie){
     return `<div class="row setrow" id="pollRow" style="${wrap}"><span style="color:var(--accent)">${icon('chart',20)}</span><b class="grow">Poll tied</b><span class="muted">›</span></div>`;
   }
-  if(!isAdmin) return '';
   if(c.library.length===0) return `<div style="${wrap}"><button class="small ic" id="addBooksBtn">${icon('plus',16)} Add books to library</button></div>`;
   if(c.library.length===1){
     const only = c.library[0];
     if(c.current && c.current.key===only.key) return '';
     return `<div style="${wrap}"><div class="muted">Only one book in the library</div><button class="small" style="margin-top:6px" data-setcurrent="${only.key}">Pick ${esc(only.title)}</button></div>`;
   }
+  if(!isAdmin) return '';
   return `<div style="${wrap}"><button id="startPoll" class="small ic">${icon('chart',16)} Start a poll</button></div>`;
 }
 function currentSection(c){
@@ -261,7 +261,7 @@ function meetingSection(c){
   if(c.meeting.type==='online'){
     h += c.meeting.link ? `<div style="margin-top:8px"><a href="${esc(c.meeting.link)}" target="_blank">Join online</a></div>` : '<div class="muted" style="margin-top:8px">Online</div>';
   } else {
-    h += `<div class="muted" style="margin-top:8px">📍 ${esc(c.meeting.address||'')}</div>`;
+    h += c.meeting.address ? `<div class="muted" style="margin-top:8px">📍 ${esc(c.meeting.address)}</div>` : '<div class="muted" style="margin-top:8px">In person</div>';
   }
   if(isAdmin){
     h += `<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px">
@@ -310,7 +310,8 @@ function viewClub(){
     $('#saveMeet').onclick=async()=>{ const j=await api('clubSettings',{clubId:c.id, meeting:{type:$('#mtype').value, link:$('#mlink').value, address:$('#maddr').value}}); currentClub=j.club; toast('Saved'); viewClub(); };
     $('#mtype').onchange=()=>{ const online=$('#mtype').value==='online'; $('#mlink').classList.toggle('hide', !online); $('#maddr').classList.toggle('hide', online); };
     const pd=$('#pickDate');
-    pd.onclick=()=>{ try{ if(pd.showPicker) pd.showPicker(); }catch(e){} };
+    const pdf=pd.closest('.datefield');
+    if(pdf) pdf.onclick=()=>{ try{ pd.focus(); if(pd.showPicker) pd.showPicker(); }catch(e){} };
     pd.onchange=async()=>{ if(!pd.value) return; try{ const j=await api('pickDate',{clubId:c.id, date:pd.value}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
   }
   $('#leave').onclick=async()=>{ await api('leaveClub',{clubId:c.id}); await refreshClubs(); currentClub=null; viewHome(); };
@@ -331,11 +332,12 @@ function viewLibrary(){
 
 // ---------- poll page ----------
 function pollDefaultEnd(c){
+  const week = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
   if(c.meeting && c.meeting.date){
     const d = new Date(c.meeting.date + 'T12:00:00');
-    if(!isNaN(d.getTime())){ d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); }
+    if(!isNaN(d.getTime())){ d.setDate(d.getDate() - 1); const ds = d.toISOString().slice(0, 10); return ds < week ? ds : week; }
   }
-  return new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+  return week;
 }
 function viewPoll(){
   const c = currentClub; if(!c) return viewHome();
@@ -365,7 +367,7 @@ function viewPoll(){
   if($('#closePoll')) $('#closePoll').onclick=async()=>{ const j=await api('closePoll',{clubId:c.id}); currentClub=j.club; await refreshClubs(); viewClub(); };
   if($('#runoff')) $('#runoff').onclick=async()=>{ const j=await api('runoff',{clubId:c.id}); currentClub=j.club; viewPoll(); };
   const pe = $('#pollEnd');
-  if(pe) pe.onclick=()=>{ try{ if(pe.showPicker) pe.showPicker(); }catch(e){} };
+  if(pe){ const pef = pe.closest('.datefield'); if(pef) pef.onclick=()=>{ try{ pe.focus(); if(pe.showPicker) pe.showPicker(); }catch(e){} }; }
   if($('#doStartPoll')) $('#doStartPoll').onclick=async()=>{ try{ const j=await api('startPoll',{clubId:c.id, endDate:$('#pollEnd').value}); currentClub=j.club; viewPoll(); }catch(e){ toast(e.message); } };
 }
 

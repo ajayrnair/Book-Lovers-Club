@@ -84,14 +84,44 @@ function capClose(club, iso) {
   return new Date(t).toISOString();
 }
 function defaultClose(club) {
+  const weekCap = Date.now() + 7 * 864e5;
   if (club.meeting && club.meeting.date) {
     const d = new Date(club.meeting.date + 'T12:00:00');
     if (!isNaN(d.getTime())) {
       d.setDate(d.getDate() - 1);
-      return new Date(d.toISOString().slice(0, 10) + 'T23:59:59').toISOString();
+      const t = new Date(d.toISOString().slice(0, 10) + 'T23:59:59').getTime();
+      return new Date(Math.min(t, weekCap)).toISOString();
     }
   }
-  return new Date(Date.now() + 7 * 864e5).toISOString();
+  return new Date(weekCap).toISOString();
+}
+function settlePoll(db, club) {
+  const p = club.poll;
+  if (!p) return;
+  const counts = {}; p.options.forEach((k) => (counts[k] = 0));
+  Object.values(p.votes).forEach((k) => { if (counts[k] !== undefined) counts[k]++; });
+  const max = Math.max(...Object.values(counts));
+  const top = Object.keys(counts).filter((k) => counts[k] === max);
+  if (top.length === 1 && max > 0) {
+    club.current = top[0];
+    club.lastResult = { winner: top[0], tie: null, at: nowISO() };
+    club.poll = null;
+    club.pendingTie = null;
+    club.cycleEnd = new Date(Date.now() + (club.meetingFrequencyWeeks * 7 + 7) * 864e5).toISOString();
+  } else {
+    club.lastResult = { winner: null, tie: top, at: nowISO() };
+    club.poll = null; club.pendingTie = top;
+  }
+}
+function expirePolls(db) {
+  let dirty = false;
+  (db.clubs || []).forEach((club) => {
+    if (club.poll && club.poll.closesAt && Date.now() > new Date(club.poll.closesAt).getTime()) {
+      settlePoll(db, club);
+      dirty = true;
+    }
+  });
+  return dirty;
 }
 function maybeAutoPoll(db, club) {
   if (!club.autoPoll || club.poll || !club.cycleEnd || club.library.length < 2) return;
@@ -362,6 +392,7 @@ module.exports = async (req, res) => {
   const action = body.action || '';
   const needAuth = !['signup', 'signin'].includes(action);
   if (needAuth && !me) return send(401, { error: 'Sign in first' });
+  if (me && expirePolls(db)) await writeDB(db);
 
   try {
     switch (action) {
@@ -556,7 +587,7 @@ module.exports = async (req, res) => {
         let closesAt = defaultClose(club);
         if (body.endDate && /^\d{4}-\d{2}-\d{2}$/.test(body.endDate)) {
           const t = new Date(body.endDate + 'T23:59:59').getTime();
-          if (!isNaN(t) && t > Date.now()) closesAt = new Date(t).toISOString();
+          if (!isNaN(t) && t > Date.now()) closesAt = new Date(Math.min(t, new Date(closesAt).getTime())).toISOString();
         }
         club.poll = { id: uid(), options: [...club.library], votes: {}, runoff: false, closesAt, createdAt: nowISO(), auto: false };
         await writeDB(db);
@@ -576,20 +607,7 @@ module.exports = async (req, res) => {
         if (!club || !club.poll) return send(404, { error: 'No poll running' });
         const mem = club.members.find((m) => m.userId === me.id);
         if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
-        const p = club.poll;
-        const counts = {}; p.options.forEach((k) => (counts[k] = 0));
-        Object.values(p.votes).forEach((k) => { if (counts[k] !== undefined) counts[k]++; });
-        const max = Math.max(...Object.values(counts));
-        const top = Object.keys(counts).filter((k) => counts[k] === max);
-        if (top.length === 1 && max > 0) {
-          club.current = top[0];
-          club.lastResult = { winner: top[0], tie: null, at: nowISO() };
-          club.poll = null;
-          club.cycleEnd = new Date(Date.now() + (club.meetingFrequencyWeeks * 7 + 7) * 864e5).toISOString();
-        } else {
-          club.lastResult = { winner: null, tie: top, at: nowISO() };
-          club.poll = null; club.pendingTie = top;
-        }
+        settlePoll(db, club);
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
@@ -598,7 +616,7 @@ module.exports = async (req, res) => {
         if (!club || !club.pendingTie) return send(400, { error: 'No tie to run off' });
         const mem = club.members.find((m) => m.userId === me.id);
         if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
-        club.poll = { id: uid(), options: club.pendingTie, votes: {}, runoff: true, closesAt: new Date(Date.now() + 864e5).toISOString(), createdAt: nowISO(), auto: false };
+        club.poll = { id: uid(), options: club.pendingTie, votes: {}, runoff: true, closesAt: new Date(Math.min(Date.now() + 864e5, new Date(defaultClose(club)).getTime())).toISOString(), createdAt: nowISO(), auto: false };
         club.pendingTie = null; club.lastResult = null;
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
