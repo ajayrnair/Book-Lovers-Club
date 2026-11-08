@@ -530,6 +530,9 @@ module.exports = async (req, res) => {
         if (chosen.getTime() - Date.now() < 7 * 864e5) return send(400, { error: 'The date has to be picked at least a week before it happens' });
         if (club.meeting.date !== body.date) club.rsvps = {};
         club.meeting.date = body.date;
+        club.members.forEach((m) => {
+          if (!club.rsvps[m.userId] && ((club.availability || {})[m.userId] || []).includes(body.date)) club.rsvps[m.userId] = 'going';
+        });
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
