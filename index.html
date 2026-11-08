@@ -64,6 +64,9 @@
 const $ = (s, el=document) => el.querySelector(s);
 const app = $('#app');
 let token = localStorage.getItem('blc_token') || '';
+if(location.hash.startsWith('#t=')){ token = location.hash.slice(3); localStorage.setItem('blc_token', token); history.replaceState(null, '', '/'); }
+const authMsg = new URLSearchParams(location.search).get('auth') === 'failed' ? 'Google sign in did not work' : '';
+if(authMsg) history.replaceState(null, '', '/');
 let user = null, myClubs = [], currentClub = null, tab = 'home';
 let addSel = new Map(); // bookKey-from-search index -> data
 let searchResults = [];
@@ -113,6 +116,7 @@ function viewAuth(msg=''){
     <div style="text-align:center;margin-top:12px"><a href="#" id="toSignin">Sign in</a></div>
   </div>`;
   app.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>toast('Use email for now'));
+  app.querySelector('[data-o="google"]').onclick = ()=>{ location.href = '/api/auth/google'; };
   $('#toSignup').onclick = (e)=>{ e.preventDefault(); $('#formIn').classList.add('hide'); $('#formUp').classList.remove('hide'); };
   $('#toSignin').onclick = (e)=>{ e.preventDefault(); $('#formUp').classList.add('hide'); $('#formIn').classList.remove('hide'); };
   $('#signin').onclick = async ()=>{ try{ const j=await api('signin',{email:$('#inEmail').value, password:$('#inPw').value}); afterAuth(j); }catch(e){ $('#inErr').textContent=e.message; } };
@@ -127,7 +131,7 @@ async function afterAuth(j){
 
 // ---------- shell ----------
 async function boot(){
-  try{ const j = await api('me'); user = j.user; }catch(e){ return viewAuth(); }
+  try{ const j = await api('me'); user = j.user; }catch(e){ return viewAuth(authMsg); }
   $('#tabs').classList.remove('hide'); $('#signOut').classList.remove('hide');
   await refreshClubs();
   currentClub ? viewClub() : viewHome();

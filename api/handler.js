@@ -52,6 +52,7 @@ function hashPw(pw, salt) {
   return salt + ':' + crypto.scryptSync(pw, salt, 32).toString('hex');
 }
 function checkPw(pw, stored) {
+  if (!stored) return false;
   const [salt, h] = stored.split(':');
   return crypto.timingSafeEqual(Buffer.from(h, 'hex'), crypto.scryptSync(pw, salt, 32));
 }
@@ -250,8 +251,79 @@ function storeBook(db, data) {
   return key;
 }
 
+// ---------- Google sign-in ----------
+const GOOGLE_REDIRECT_URI = 'https://booklovers-lemon.vercel.app/api/auth/google';
+function parseCookies(req) {
+  const out = {};
+  (req.headers.cookie || '').split(';').forEach((part) => {
+    const i = part.indexOf('=');
+    if (i > 0) out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+  });
+  return out;
+}
+function redirectTo(res, loc, cookie) {
+  res.statusCode = 302;
+  res.setHeader('location', loc);
+  if (cookie) res.setHeader('set-cookie', cookie);
+  res.end();
+}
+async function googleAuth(req, res, u) {
+  const clientId = process.env.GOOGLE_CLIENT_ID || '';
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET || '';
+  const code = u.searchParams.get('code');
+  if (!code) {
+    const state = crypto.randomBytes(16).toString('hex');
+    const auth = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    auth.searchParams.set('client_id', clientId);
+    auth.searchParams.set('redirect_uri', GOOGLE_REDIRECT_URI);
+    auth.searchParams.set('response_type', 'code');
+    auth.searchParams.set('scope', 'openid email profile');
+    auth.searchParams.set('state', state);
+    auth.searchParams.set('access_type', 'online');
+    auth.searchParams.set('prompt', 'select_account');
+    return redirectTo(res, auth.toString(), `gstate=${state}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`);
+  }
+  const fail = () => redirectTo(res, '/?auth=failed', 'gstate=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0');
+  try {
+    const cookies = parseCookies(req);
+    const state = u.searchParams.get('state');
+    if (!state || !cookies.gstate || state !== cookies.gstate) return fail();
+    const tr = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: GOOGLE_REDIRECT_URI, grant_type: 'authorization_code' }).toString(),
+    });
+    if (!tr.ok) return fail();
+    const tj = await tr.json();
+    if (!tj.access_token) return fail();
+    const ur = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { authorization: `Bearer ${tj.access_token}` } });
+    if (!ur.ok) return fail();
+    const profile = await ur.json();
+    const email = (profile.email || '').toLowerCase();
+    const verified = profile.email_verified === true || profile.email_verified === 'true';
+    if (!email || !verified) return fail();
+    const db = await readDB();
+    let gu = db.users.find((x) => x.email === email);
+    if (!gu) {
+      gu = { id: uid(), name: profile.name || email.split('@')[0], email, pass: null, createdAt: nowISO() };
+      db.users.push(gu);
+    }
+    const t = uid() + uid();
+    db.sessions[t] = gu.id;
+    await writeDB(db);
+    return redirectTo(res, '/#t=' + t, 'gstate=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0');
+  } catch (e) { return fail(); }
+}
+
 // ---------- main ----------
 module.exports = async (req, res) => {
+  if (req.method === 'GET') {
+    let gu = null;
+    try { gu = new URL(req.url, 'https://' + (req.headers.host || 'booklovers-lemon.vercel.app')); } catch (e) { }
+    if (gu && (gu.pathname.endsWith('/auth/google') || (gu.searchParams.has('code') && gu.searchParams.has('state')))) {
+      return googleAuth(req, res, gu);
+    }
+  }
   res.setHeader('content-type', 'application/json');
   const send = (code, obj) => { res.statusCode = code; res.end(JSON.stringify(obj)); };
   let body = {};
