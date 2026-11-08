@@ -83,13 +83,23 @@ function capClose(club, iso) {
   }
   return new Date(t).toISOString();
 }
+function defaultClose(club) {
+  if (club.meeting && club.meeting.date) {
+    const d = new Date(club.meeting.date + 'T12:00:00');
+    if (!isNaN(d.getTime())) {
+      d.setDate(d.getDate() - 1);
+      return new Date(d.toISOString().slice(0, 10) + 'T23:59:59').toISOString();
+    }
+  }
+  return new Date(Date.now() + 7 * 864e5).toISOString();
+}
 function maybeAutoPoll(db, club) {
   if (!club.autoPoll || club.poll || !club.cycleEnd || club.library.length < 2) return;
   const opens = new Date(club.cycleEnd).getTime() - 7 * 864e5;
   if (Date.now() >= opens) {
     club.poll = {
       id: uid(), options: [...club.library], votes: {}, runoff: false,
-      closesAt: capClose(club, club.cycleEnd), createdAt: nowISO(), auto: true,
+      closesAt: defaultClose(club), createdAt: nowISO(), auto: true,
     };
   }
 }
@@ -110,8 +120,8 @@ function publicClub(db, club, userId) {
     autoPoll: club.autoPoll, meeting: club.meeting,
     week: meetingWeek(club),
     availability: club.availability,
-    finishedBy: club.current ? club.members.filter((m) => (club.finished[m.userId] || []).includes(club.current)).map((m) => m.userId) : [],
-    myFinished: club.current ? (club.finished[userId] || []).includes(club.current) : false,
+    finishedBy: club.current ? club.members.filter((m) => ((club.finished || {})[m.userId] || []).includes(club.current)).map((m) => m.userId) : [],
+    myFinished: club.current ? ((club.finished || {})[userId] || []).includes(club.current) : false,
     rsvps: club.rsvps || {},
     poll: club.poll ? pollView(db, club) : null,
     lastResult: club.lastResult || null,
@@ -391,7 +401,7 @@ module.exports = async (req, res) => {
           library: [], current: null, meetingFrequencyWeeks: 2,
           cycleEnd: new Date(Date.now() + (2 * 7 + 7) * 864e5).toISOString(),
           autoPoll: false, meeting: { type: 'online', link: '', address: '', date: '' },
-          availability: {}, poll: null, lastResult: null,
+          availability: {}, finished: {}, rsvps: {}, poll: null, lastResult: null,
         };
         db.clubs.push(club); await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
@@ -517,6 +527,7 @@ module.exports = async (req, res) => {
       case 'availability': {
         const club = db.clubs.find((c) => c.id === body.clubId);
         if (!club || !club.members.some((m) => m.userId === me.id)) return send(403, { error: 'Members only' });
+        club.availability = club.availability || {};
         club.availability[me.id] = body.days || [];
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
@@ -542,7 +553,12 @@ module.exports = async (req, res) => {
         const mem = club.members.find((m) => m.userId === me.id);
         if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
         if (club.library.length < 2) return send(400, { error: 'Add at least two books first' });
-        club.poll = { id: uid(), options: [...club.library], votes: {}, runoff: false, closesAt: capClose(club, new Date(Date.now() + 7 * 864e5).toISOString()), createdAt: nowISO(), auto: false };
+        let closesAt = defaultClose(club);
+        if (body.endDate && /^\d{4}-\d{2}-\d{2}$/.test(body.endDate)) {
+          const t = new Date(body.endDate + 'T23:59:59').getTime();
+          if (!isNaN(t) && t > Date.now()) closesAt = new Date(t).toISOString();
+        }
+        club.poll = { id: uid(), options: [...club.library], votes: {}, runoff: false, closesAt, createdAt: nowISO(), auto: false };
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
@@ -612,6 +628,7 @@ module.exports = async (req, res) => {
         if (!club || !club.members.some((m) => m.userId === me.id)) return send(403, { error: 'Members only' });
         const key = body.bookKey || club.current;
         if (!key) return send(400, { error: 'No book picked yet' });
+        club.finished = club.finished || {};
         const arr = new Set(club.finished[me.id] || []);
         if (arr.has(key)) arr.delete(key); else arr.add(key);
         club.finished[me.id] = [...arr];
@@ -621,6 +638,7 @@ module.exports = async (req, res) => {
       case 'rsvp': {
         const club = db.clubs.find((c) => c.id === body.clubId);
         if (!club || !club.members.some((m) => m.userId === me.id)) return send(403, { error: 'Members only' });
+        club.rsvps = club.rsvps || {};
         if (body.status === 'going' || body.status === 'notgoing') club.rsvps[me.id] = body.status;
         else delete club.rsvps[me.id];
         await writeDB(db);
@@ -639,9 +657,9 @@ module.exports = async (req, res) => {
       case 'deleteAccount': {
         for (const club of db.clubs) {
           club.members = club.members.filter((m) => m.userId !== me.id);
-          delete club.availability[me.id];
-          delete club.rsvps[me.id];
-          delete club.finished[me.id];
+          if (club.availability) delete club.availability[me.id];
+          if (club.rsvps) delete club.rsvps[me.id];
+          if (club.finished) delete club.finished[me.id];
           if (club.poll) delete club.poll.votes[me.id];
           ensureAdmin(db, club);
         }

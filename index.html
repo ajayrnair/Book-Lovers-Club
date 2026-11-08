@@ -54,6 +54,10 @@
   .overlay{position:fixed;inset:0;background:rgba(74,20,40,.45);display:flex;align-items:center;justify-content:center;z-index:20}
   .sheet{background:#fff;border-radius:16px;padding:16px;width:340px;max-width:88%;max-height:80vh;overflow:auto}
   .setrow{cursor:pointer}
+  .datefield{position:relative}
+  .datefield input[type=date]{margin:0;padding-right:40px;cursor:pointer}
+  .datefield input[type=date]::-webkit-calendar-picker-indicator{opacity:0}
+  .datefield .cal{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--accent);display:flex;pointer-events:none}
 </style>
 </head>
 <body>
@@ -88,6 +92,7 @@ const ICONS = {
   book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
   plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
   check: '<polyline points="20 6 9 17 4 12"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
   chev: '<polyline points="9 18 15 12 9 6"/>'
 };
 function icon(n, s=20){ return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`; }
@@ -203,23 +208,21 @@ function wireRates(rerender){
 }
 function pollSection(c){
   const isAdmin = c.role==='admin';
+  const wrap = 'border-top:1px solid var(--line);margin-top:10px;padding-top:10px';
   if(c.poll){
-    return `<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px"><h3 style="margin-top:0">Pick the next book${c.poll.runoff?' · Runoff':''}</h3>
-    ${c.poll.options.map(o=>`<div style="margin:8px 0"><div class="row"><div class="grow">${esc(o.book.title)}</div><b>${o.votes}</b><button class="small" data-vote="${o.book.key}">Vote</button></div><div class="voteBar"><i style="width:${c.poll.totalVotes?Math.round(o.votes/c.poll.totalVotes*100):0}%"></i></div></div>`).join('')}
-    <div class="muted">Closes ${new Date(c.poll.closesAt).toLocaleDateString(undefined,{month:'short', day:'numeric'})}</div>
-    ${isAdmin?'<button id="closePoll" class="ghost small" style="margin-top:6px">Close poll</button>':''}</div>`;
+    return `<div class="row setrow" id="pollRow" style="${wrap}"><span style="color:var(--accent)">${icon('chart',20)}</span><b class="grow">Pick the next book${c.poll.runoff?' · Runoff':''}</b><span class="muted">Closes ${new Date(c.poll.closesAt).toLocaleDateString(undefined,{month:'short', day:'numeric'})}</span><span class="muted">›</span></div>`;
   }
   if(c.lastResult && c.lastResult.tie){
-    return `<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px"><h3 style="margin-top:0">Tie</h3>${isAdmin?'<button id="runoff" class="small">One day runoff</button> '+c.lastResult.tie.map(k=>{const b=c.library.find(x=>x.key===k); return b?`<button class="small ghost" data-pick="${k}">Pick ${esc(b.title)}</button>`:'';}).join(' '):'<div class="muted">The admin picks the winner</div>'}</div>`;
+    return `<div class="row setrow" id="pollRow" style="${wrap}"><span style="color:var(--accent)">${icon('chart',20)}</span><b class="grow">Poll tied</b><span class="muted">›</span></div>`;
   }
   if(!isAdmin) return '';
-  if(c.library.length===0) return `<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px" class="muted">No books yet</div>`;
+  if(c.library.length===0) return `<div style="${wrap}"><button class="small ic" id="addBooksBtn">${icon('plus',16)} Add books to library</button></div>`;
   if(c.library.length===1){
     const only = c.library[0];
     if(c.current && c.current.key===only.key) return '';
-    return `<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px"><div class="muted">Only one book in the library</div><button class="small" style="margin-top:6px" data-setcurrent="${only.key}">Pick ${esc(only.title)}</button></div>`;
+    return `<div style="${wrap}"><div class="muted">Only one book in the library</div><button class="small" style="margin-top:6px" data-setcurrent="${only.key}">Pick ${esc(only.title)}</button></div>`;
   }
-  return `<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px"><button id="startPoll" class="small ic">${icon('chart',16)} Start poll</button></div>`;
+  return `<div style="${wrap}"><button id="startPoll" class="small ic">${icon('chart',16)} Start a poll</button></div>`;
 }
 function currentSection(c){
   let h = `<div class="card"><h3 style="margin-top:0">Current book</h3>`;
@@ -252,6 +255,7 @@ function meetingSection(c){
     <button class="small ${myR==='notgoing'?'':'ghost'}" data-rsvp="notgoing">Not going</button>
     <span class="muted grow" id="goingCount" style="text-align:right;cursor:pointer">${going.length} going ›</span></div>`;
   } else {
+    h += '<div class="muted" style="margin-top:8px">Pick the days you are available</div>';
     h += `<div class="row" style="margin:8px 0">${c.week.map(d=>{const dt=new Date(d+'T12:00:00'); const mine=(c.availability[user.id]||[]).includes(d); return `<div class="day ${mine?'on':''}" data-day="${d}"><span class="n">${'Sun Mon Tue Wed Thu Fri Sat'.split(' ')[dt.getDay()]}</span>${dt.getDate()}${overlap[d]?`<span class="n">${overlap[d]} ✓</span>`:''}</div>`;}).join('')}</div>`;
   }
   if(c.meeting.type==='online'){
@@ -261,7 +265,7 @@ function meetingSection(c){
   }
   if(isAdmin){
     h += `<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px">
-    <div class="row"><input type="date" id="pickDate" class="grow" value="${esc(c.meeting.date||'')}"><button id="pickBtn" class="small">Pick date</button></div>
+    <div class="datefield"><input type="date" id="pickDate" value="${esc(c.meeting.date||'')}"><span class="cal">${icon('calendar',18)}</span></div>
     <div class="row" style="margin-top:6px"><select id="mtype" style="width:auto"><option value="online" ${c.meeting.type==='online'?'selected':''}>Online</option><option value="inperson" ${c.meeting.type==='inperson'?'selected':''}>In person</option></select>
     <button id="saveMeet" class="small">Save</button></div>
     <input type="url" id="mlink" placeholder="Meeting link" value="${esc(c.meeting.link||'')}" class="${c.meeting.type==='online'?'':'hide'}">
@@ -294,11 +298,9 @@ function viewClub(){
   if(isAdmin) $('#gear').onclick = ()=>viewSettings();
   $('#libRow').onclick = ()=>viewLibrary();
   wireRates(()=>viewClub());
-  app.querySelectorAll('[data-vote]').forEach(b=>b.onclick=async()=>{ const j=await api('vote',{clubId:c.id, bookKey:b.dataset.vote}); currentClub=j.club; viewClub(); });
-  app.querySelectorAll('[data-pick]').forEach(b=>b.onclick=async()=>{ const j=await api('adminPick',{clubId:c.id, bookKey:b.dataset.pick}); currentClub=j.club; viewClub(); });
-  if($('#closePoll')) $('#closePoll').onclick=async()=>{ const j=await api('closePoll',{clubId:c.id}); currentClub=j.club; await refreshClubs(); viewClub(); };
-  if($('#runoff')) $('#runoff').onclick=async()=>{ const j=await api('runoff',{clubId:c.id}); currentClub=j.club; viewClub(); };
-  if($('#startPoll')) $('#startPoll').onclick=async()=>{ try{ const j=await api('startPoll',{clubId:c.id}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
+  if($('#pollRow')) $('#pollRow').onclick=()=>viewPoll();
+  if($('#startPoll')) $('#startPoll').onclick=()=>viewPoll();
+  if($('#addBooksBtn')) $('#addBooksBtn').onclick=()=>viewLibrary();
   if($('#finBtn')) $('#finBtn').onclick=async()=>{ const j=await api('toggleFinished',{clubId:c.id}); currentClub=j.club; viewClub(); };
   if($('#rateSummary')) $('#rateSummary').onclick=()=>{ $('#rateList').classList.toggle('hide'); };
   app.querySelectorAll('[data-rsvp]').forEach(b=>b.onclick=async()=>{ const cur=(currentClub.rsvps||{})[user.id]; const j=await api('rsvp',{clubId:c.id, status: cur===b.dataset.rsvp ? '' : b.dataset.rsvp}); currentClub=j.club; viewClub(); });
@@ -307,7 +309,9 @@ function viewClub(){
   if(isAdmin){
     $('#saveMeet').onclick=async()=>{ const j=await api('clubSettings',{clubId:c.id, meeting:{type:$('#mtype').value, link:$('#mlink').value, address:$('#maddr').value}}); currentClub=j.club; toast('Saved'); viewClub(); };
     $('#mtype').onchange=()=>{ const online=$('#mtype').value==='online'; $('#mlink').classList.toggle('hide', !online); $('#maddr').classList.toggle('hide', online); };
-    $('#pickBtn').onclick=async()=>{ try{ const j=await api('pickDate',{clubId:c.id, date:$('#pickDate').value}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
+    const pd=$('#pickDate');
+    pd.onclick=()=>{ try{ if(pd.showPicker) pd.showPicker(); }catch(e){} };
+    pd.onchange=async()=>{ if(!pd.value) return; try{ const j=await api('pickDate',{clubId:c.id, date:pd.value}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
   }
   $('#leave').onclick=async()=>{ await api('leaveClub',{clubId:c.id}); await refreshClubs(); currentClub=null; viewHome(); };
 }
@@ -323,6 +327,46 @@ function viewLibrary(){
   $('#back').onclick = ()=>viewClub();
   $('#addBtn').onclick = ()=>{ addReturn='library'; setTab('add'); viewAdd(c.id); };
   wireRates(()=>viewLibrary());
+}
+
+// ---------- poll page ----------
+function pollDefaultEnd(c){
+  if(c.meeting && c.meeting.date){
+    const d = new Date(c.meeting.date + 'T12:00:00');
+    if(!isNaN(d.getTime())){ d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); }
+  }
+  return new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+}
+function viewPoll(){
+  const c = currentClub; if(!c) return viewHome();
+  const isAdmin = c.role==='admin';
+  let body = '';
+  if(c.poll){
+    body = `<h3 style="margin-top:0">Pick the next book${c.poll.runoff?' · Runoff':''}</h3>
+    ${c.poll.options.map(o=>`<div style="margin:8px 0"><div class="row"><div class="grow">${esc(o.book.title)}</div><b>${o.votes}</b><button class="small" data-vote="${o.book.key}">Vote</button></div><div class="voteBar"><i style="width:${c.poll.totalVotes?Math.round(o.votes/c.poll.totalVotes*100):0}%"></i></div></div>`).join('')}
+    <div class="muted">Closes ${new Date(c.poll.closesAt).toLocaleDateString(undefined,{month:'short', day:'numeric'})}</div>
+    ${isAdmin?'<button id="closePoll" class="ghost small" style="margin-top:6px">Close poll</button>':''}`;
+  } else if(c.lastResult && c.lastResult.tie){
+    body = `<h3 style="margin-top:0">Tie</h3>${isAdmin?'<button id="runoff" class="small">One day runoff</button> '+c.lastResult.tie.map(k=>{const b=c.library.find(x=>x.key===k); return b?`<button class="small ghost" data-pick="${k}">Pick ${esc(b.title)}</button>`:'';}).join(' '):'<div class="muted">The admin picks the winner</div>'}`;
+  } else if(isAdmin && c.library.length>=2){
+    body = `<h3 style="margin-top:0">Start a poll</h3>
+    <div class="muted" style="margin:6px 0 4px">End date</div>
+    <div class="datefield"><input type="date" id="pollEnd" value="${pollDefaultEnd(c)}"><span class="cal">${icon('calendar',18)}</span></div>
+    <button id="doStartPoll" class="ic" style="margin-top:10px;width:100%;justify-content:center">${icon('chart',16)} Start poll</button>`;
+  } else {
+    body = '<div class="muted">No poll running</div>';
+  }
+  app.innerHTML = `
+  <button class="ghost small" id="back">‹ ${esc(c.name)}</button>
+  <div class="card" style="margin-top:8px">${body}</div>`;
+  $('#back').onclick = ()=>viewClub();
+  app.querySelectorAll('[data-vote]').forEach(b=>b.onclick=async()=>{ const j=await api('vote',{clubId:c.id, bookKey:b.dataset.vote}); currentClub=j.club; viewPoll(); });
+  app.querySelectorAll('[data-pick]').forEach(b=>b.onclick=async()=>{ const j=await api('adminPick',{clubId:c.id, bookKey:b.dataset.pick}); currentClub=j.club; viewClub(); });
+  if($('#closePoll')) $('#closePoll').onclick=async()=>{ const j=await api('closePoll',{clubId:c.id}); currentClub=j.club; await refreshClubs(); viewClub(); };
+  if($('#runoff')) $('#runoff').onclick=async()=>{ const j=await api('runoff',{clubId:c.id}); currentClub=j.club; viewPoll(); };
+  const pe = $('#pollEnd');
+  if(pe) pe.onclick=()=>{ try{ if(pe.showPicker) pe.showPicker(); }catch(e){} };
+  if($('#doStartPoll')) $('#doStartPoll').onclick=async()=>{ try{ const j=await api('startPoll',{clubId:c.id, endDate:$('#pollEnd').value}); currentClub=j.club; viewPoll(); }catch(e){ toast(e.message); } };
 }
 
 // ---------- club settings ----------
