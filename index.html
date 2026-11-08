@@ -54,8 +54,9 @@
   .overlay{position:fixed;inset:0;background:rgba(74,20,40,.45);display:flex;align-items:center;justify-content:center;z-index:20}
   .sheet{background:#fff;border-radius:16px;padding:16px;width:340px;max-width:88%;max-height:80vh;overflow:auto}
   .setrow{cursor:pointer}
-  .datefield{position:relative}
-  .datefield input[type=date]{margin:0;padding-right:40px;cursor:pointer}
+  .datefield{position:relative;width:100%;min-width:0}
+  .datefield input[type=date]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;height:48px;margin:0;padding:0 40px 0 11px;line-height:46px;cursor:pointer}
+  .datefield input[type=date]::-webkit-date-and-time-value{margin:0;text-align:left}
   .datefield input[type=date]::-webkit-calendar-picker-indicator{opacity:0}
   .datefield .cal{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--accent);display:flex;pointer-events:none}
 </style>
