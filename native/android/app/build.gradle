@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.ajayrnair.booklovers"
+    namespace "com.ajayrnair.readingpeeps"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.ajayrnair.booklovers"
+        applicationId "com.ajayrnair.readingpeeps"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
