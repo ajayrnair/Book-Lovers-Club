@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <rect width="120" height="120" rx="26" fill="#3d1436"/>
+  <g>
+    <circle cx="20" cy="46" r="8" fill="#ff7e5f"/>
+    <path d="M11.5 98 L11.5 59 Q11.5 52 18.5 52 L21.5 52 Q28.5 52 28.5 59 L28.5 98 L20 89 Z" fill="#ff7e5f"/>
+    <circle cx="40" cy="34" r="8" fill="#f95d6a"/>
+    <path d="M31.5 98 L31.5 47 Q31.5 40 38.5 40 L41.5 40 Q48.5 40 48.5 47 L48.5 98 L40 89 Z" fill="#f95d6a"/>
+    <circle cx="60" cy="24" r="8" fill="#8b5cf6"/>
+    <path d="M51.5 98 L51.5 37 Q51.5 30 58.5 30 L61.5 30 Q68.5 30 68.5 37 L68.5 98 L60 89 Z" fill="#8b5cf6"/>
+    <circle cx="80" cy="36" r="8" fill="#17a398"/>
+    <path d="M71.5 98 L71.5 49 Q71.5 42 78.5 42 L81.5 42 Q88.5 42 88.5 49 L88.5 98 L80 89 Z" fill="#17a398"/>
+    <circle cx="100" cy="48" r="8" fill="#1b8fa8"/>
+    <path d="M91.5 98 L91.5 61 Q91.5 54 98.5 54 L101.5 54 Q108.5 54 108.5 61 L108.5 98 L100 89 Z" fill="#1b8fa8"/>
+  </g>
+</svg>
