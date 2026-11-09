@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reading Peeps c</title>
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<meta name="theme-color" content="#171019">
+<style>
+  :root{--bg:#171019;--plum:#2e0e28;--card:#2a1826;--ink:#f7e8d8;--muted:#c39bb0;--accent:#c93a54;--accent2:#8b5cf6;--teal:#17a398;--line:#4a2c40;--good:#2e7d32;--danger:#cf2233;--cream:#fff3e2;--r-lg:20px;--r-md:14px}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.42;-webkit-font-smoothing:antialiased}
+  header{position:sticky;top:0;background:rgba(23,16,25,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;z-index:10;color:var(--cream)}
+  header::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,#ff7e5f,#f95d6a,#8b5cf6,#17a398,#1b8fa8)}
+  h1{font-size:19px;font-weight:700;letter-spacing:-.01em;margin:0;display:flex;align-items:center}
+  h2{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:24px 0 10px;color:#ffe9d2}
+  .card h2,.sheet h2{color:var(--ink)}
+  h3{font-size:19px;font-weight:700;letter-spacing:-.01em;margin:16px 0 8px}
+  main{padding:2px 16px 112px;max-width:640px;margin:0 auto}
+  .card{background:var(--card);border-radius:var(--r-lg);padding:16px;margin:12px 0;box-shadow:0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
+  .card.a-coral{box-shadow:inset 0 3px 0 #ff7e5f,0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
+  .card.a-violet{box-shadow:inset 0 3px 0 #8b5cf6,0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
+  .card.a-teal{box-shadow:inset 0 3px 0 #17a398,0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
+  #mine .card:nth-child(3n+1),#found .card:nth-child(3n+1){box-shadow:inset 3px 0 0 #ff7e5f,0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
+  #mine .card:nth-child(3n+2),#found .card:nth-child(3n+2){box-shadow:inset 3px 0 0 #8b5cf6,0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
+  #mine .card:nth-child(3n),#found .card:nth-child(3n){box-shadow:inset 3px 0 0 #17a398,0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
+  #mine>.muted,#found>.muted{color:#d9a8c2}
+  .row{display:flex;gap:12px;align-items:center}
+  .grow{flex:1}
+  input,select,button,textarea{font-size:17px;font-family:inherit}
+  input[type=text],input[type=email],input[type=password],input[type=url],input[type=date],select,textarea{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#241423;margin:6px 0;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:2px solid rgba(201,58,84,.5);outline-offset:0;border-color:transparent}
+  button{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:12px 18px;min-height:48px;cursor:pointer;font-weight:600;font-size:16px;transition:transform .08s ease}
+  button:active{transform:scale(.98)}
+  button.ghost{background:var(--card);color:var(--accent);border:1px solid var(--accent)}
+  button.small{padding:8px 14px;min-height:40px;font-size:15px;border-radius:10px}
+  button:disabled{opacity:.45}
+  button.danger{background:var(--danger);color:#fff}
+  button.ghost.danger{background:var(--card);color:#ff9d8a;border-color:#ff9d8a}
+  button.ic{display:inline-flex;align-items:center;gap:6px}
+  button.iconbtn{background:none;border:0;color:#ff8a66;padding:6px;min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+  .ordiv{display:flex;align-items:center;gap:10px;margin:16px 0 12px;color:var(--muted);font-size:13px}
+  .ordiv:before,.ordiv:after{content:'';flex:1;border-top:1px solid var(--line)}
+  button.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:52px;background:#fff;color:#1f1f1f;border:1px solid #dadce0;font-family:Roboto,Arial,sans-serif;font-weight:500}
+  button.gbtn svg{flex:none;display:block}
+  .muted{color:var(--muted);font-size:14px}
+  .err{color:#ff9d8a;font-size:14px;min-height:18px}
+  .book{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .book:last-child{border-bottom:0}
+  .cover{width:50px;height:74px;object-fit:cover;border-radius:6px;background:#3a2233;flex:none}
+  .stars{color:var(--accent2);font-size:13px}
+  nav{position:fixed;bottom:0;left:0;right:0;background:rgba(23,16,25,.95);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid rgba(255,255,255,.09);display:flex;z-index:10;padding-bottom:env(safe-area-inset-bottom)}
+  nav button{flex:1;background:none;color:#d9a8c2;border-radius:0;padding:8px 0 7px;min-height:52px;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:2px}
+  nav button.on{color:#ff8a66}
+  .chip{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;padding:9px 14px;min-height:40px;margin:3px 3px 3px 0;font-size:15px;background:#241423;color:var(--ink);cursor:pointer}
+  .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .day{flex:1;text-align:center;padding:9px 0;min-height:54px;border:1px solid var(--line);border-radius:12px;background:#241423;cursor:pointer;font-size:15px}
+  .day.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .day .n{display:block;font-size:11px;color:inherit;opacity:.75}
+  .hide{display:none}
+  a{color:var(--accent)}
+  .badge{font-size:11px;font-weight:700;background:#4a2c40;color:#ff9d8a;border-radius:999px;padding:3px 8px;margin-left:6px;vertical-align:2px}
+  .voteBar{height:6px;background:#4a2c40;border-radius:3px;overflow:hidden}
+  .voteBar i{display:block;height:100%;background:var(--accent2)}
+  select.rate{width:auto;padding:8px 10px;margin:0;border:1px solid var(--line);border-radius:10px;background:#241423;font-size:15px;color:var(--ink)}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));background:#5b2144;color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:500;z-index:30;max-width:90%;box-shadow:0 8px 24px rgba(20,4,16,.35)}
+  .overlay{position:fixed;inset:0;background:rgba(30,6,24,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+  .sheet{background:var(--card);border-radius:20px 20px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));width:100%;max-height:86vh;overflow:auto;animation:slideup .22s ease-out}
+  @media(min-width:640px){.overlay{align-items:center}.sheet{width:380px;max-width:92%;border-radius:20px;padding:20px}}
+  @keyframes slideup{from{transform:translateY(26px);opacity:.5}to{transform:none;opacity:1}}
+  .setrow{cursor:pointer}
+  .setrow:active{background:rgba(201,58,84,.05)}
+  .datefield{position:relative}
+  .datefield input[type=date]{margin:0;padding-right:44px;cursor:pointer;min-height:48px}
+  .datefield input[type=date]::-webkit-calendar-picker-indicator{opacity:0;position:absolute;right:0;top:0;width:44px;height:100%;cursor:pointer}
+  .datefield .cal{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:var(--accent);display:flex;pointer-events:none}
+  .a-violet button{background:#8b5cf6}
+  .a-violet button.ghost{background:var(--card);color:#8b5cf6;border-color:#8b5cf6}
+  .a-violet button.danger{background:var(--danger);color:#fff}
+  .a-violet .day.on{background:#8b5cf6;border-color:#8b5cf6}
+  .a-violet .datefield .cal{color:#8b5cf6}
+  .brand{text-align:center;padding:30px 0 4px;color:var(--cream)}
+  .brand img{width:78px;height:78px;border-radius:19px;box-shadow:0 10px 28px rgba(20,4,16,.35)}
+  .brand .bname{font-size:27px;font-weight:800;letter-spacing:-.02em;margin-top:12px;color:#ffe9d2}
+  :focus-visible{outline:2px solid #ff8a66;outline-offset:2px}
+</style>
+</head>
+<body>
+<header>
+  <h1><img src="/icon.svg" alt="" width="30" height="30" style="border-radius:7px;vertical-align:-7px;margin-right:8px">Reading Peeps</h1>
+  <button id="signOut" class="ghost small hide">Sign out</button>
+</header>
+<main id="app"></main>
+<nav id="tabs" class="hide">
+  <button data-tab="home" class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>Clubs</span></button>
+  <button data-tab="add"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>Add Books</span></button>
+  <button data-tab="me"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Me</span></button>
+</nav>
+<div id="toast" class="toast hide"></div>
+<div id="modal"></div>
+
+<script>
+const $ = (s, el=document) => el.querySelector(s);
+const app = $('#app');
+let token = localStorage.getItem('blc_token') || '';
+if(location.hash.startsWith('#t=')){ token = location.hash.slice(3); localStorage.setItem('blc_token', token); history.replaceState(null, '', '/'); }
+const authMsg = new URLSearchParams(location.search).get('auth') === 'failed' ? 'Google sign in did not work' : '';
+if(authMsg) history.replaceState(null, '', '/');
+let user = null, myClubs = [], currentClub = null, tab = 'home';
+let addSel = new Map(); // bookKey-from-search index -> data
+let searchResults = [];
+let addReturn = null; // 'library' when Add Books was opened from a club library page
+
+const ICONS = {
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  chart: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+  book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+  plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  chev: '<polyline points="9 18 15 12 9 6"/>'
+};
+function icon(n, s=20){ return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`; }
+function showModal(html){ $('#modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet">${html}</div></div>`; $('#ovl').onclick = (e)=>{ if(e.target.id==='ovl') closeModal(); }; }
+function closeModal(){ $('#modal').innerHTML=''; }
+
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.remove('hide'); setTimeout(()=>t.classList.add('hide'), 2600); }
+async function api(action, body={}){
+  const r = await fetch('/api/handler', { method:'POST', headers:{'content-type':'application/json', ...(token?{authorization:'Bearer '+token}:{})}, body: JSON.stringify({action, ...body}) });
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.error || 'Something went wrong');
+  return j;
+}
+function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtDate(ds){ if(!ds) return ''; const d=new Date(ds+'T12:00:00'); return d.toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'}); }
+function ratingsLine(b){
+  const parts=[];
+  if(b.google) parts.push(`Google ★ ${b.google.rating} (${b.google.count})`);
+  if(b.hardcover && !(b.google && b.google.count > (b.hardcover.count||0)*10)) parts.push(`Hardcover ★ ${b.hardcover.rating} (${b.hardcover.count})`);
+  if(!b.google && !b.hardcover && b.openlibrary) parts.push(`Open Library ★ ${b.openlibrary.rating} (${b.openlibrary.count})`);
+  return parts.length ? `<div class="stars">${parts.join(' · ')}</div>` : '';
+}
+function halfOptions(sel){
+  let o=''; for(let v=0; v<=5; v+=0.5){ o+=`<option value="${v}" ${sel===v?'selected':''}>${v===0?'Rate':v+' ★'}</option>`; } return o;
+}
+
+// ---------- auth ----------
+function viewAuth(msg=''){
+  $('#tabs').classList.add('hide'); $('#signOut').classList.add('hide');
+  const gLogo = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-.95.66-2.23 1.08-4.07 1.08-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.21c-.25-.66-.38-1.4-.38-2.21s.14-1.55.38-2.21V6.7H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.3l3.98-3.09z"/><path fill="#EA4335" d="M12 4.83c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.21 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.7l3.98 3.09C6.22 6.94 8.87 4.83 12 4.83z"/></svg>';
+  app.innerHTML = `
+  <div class="brand"><img src="/icon.svg" alt=""><div class="bname">Reading Peeps</div></div>
+  <div class="card" id="formIn">
+    <h2 style="margin-top:2px">Sign in</h2>
+    <input type="email" id="inEmail" placeholder="Email" autocomplete="email">
+    <input type="password" id="inPw" placeholder="Password" autocomplete="current-password">
+    <div class="err" id="inErr">${esc(msg)}</div>
+    <button id="signin" style="width:100%">Sign in</button>
+    <div class="ordiv">or</div>
+    <button class="gbtn" data-g>${gLogo}<span>Sign in with Google</span></button>
+    <div style="text-align:center;margin-top:12px"><a href="#" id="toSignup">Create account</a></div>
+  </div>
+  <div class="card hide" id="formUp">
+    <h2 style="margin-top:2px">Create account</h2>
+    <input type="text" id="upName" placeholder="Your name" autocomplete="name">
+    <input type="email" id="upEmail" placeholder="Email" autocomplete="email">
+    <input type="password" id="upPw" placeholder="Password" autocomplete="new-password">
+    <div class="err" id="upErr"></div>
+    <button id="signup" style="width:100%">Create account</button>
+    <div style="text-align:center;margin-top:12px"><a href="#" id="toSignin">Sign in</a></div>
+  </div>`;
+  app.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{ location.href = '/api/auth/google'; });
+  $('#toSignup').onclick = (e)=>{ e.preventDefault(); $('#formIn').classList.add('hide'); $('#formUp').classList.remove('hide'); };
+  $('#toSignin').onclick = (e)=>{ e.preventDefault(); $('#formUp').classList.add('hide'); $('#formIn').classList.remove('hide'); };
+  $('#signin').onclick = async ()=>{ try{ const j=await api('signin',{email:$('#inEmail').value, password:$('#inPw').value}); afterAuth(j); }catch(e){ $('#inErr').textContent=e.message; } };
+  $('#signup').onclick = async ()=>{ try{ const j=await api('signup',{name:$('#upName').value, email:$('#upEmail').value, password:$('#upPw').value}); afterAuth(j); }catch(e){ $('#upErr').textContent=e.message; } };
+}
+async function afterAuth(j){
+  token = j.token; user = j.user; localStorage.setItem('blc_token', token);
+  const inv = localStorage.getItem('blc_invite');
+  if(inv){ localStorage.removeItem('blc_invite'); try{ const r=await api('acceptInvite',{inviteToken:inv}); toast('You joined '+r.club.name); currentClub=r.club; }catch(e){ toast(e.message); } }
+  boot();
+}
+
+// ---------- shell ----------
+async function boot(){
+  try{ const j = await api('me'); user = j.user; }catch(e){ return viewAuth(authMsg); }
+  $('#tabs').classList.remove('hide'); $('#signOut').classList.remove('hide');
+  await refreshClubs();
+  currentClub ? viewClub() : viewHome();
+}
+async function refreshClubs(){ const j = await api('myClubs'); myClubs = j.clubs; }
+$('#signOut').onclick = async ()=>{ try{ await api('signout'); }catch(e){} token=''; user=null; currentClub=null; localStorage.removeItem('blc_token'); viewAuth(); };
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{ tab=b.dataset.tab; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on', x===b)); if(tab==='home'){ currentClub=null; viewHome(); } if(tab==='add'){ addReturn=null; viewAdd(); } if(tab==='me') viewMe(); });
+function setTab(t){ tab=t; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on', x.dataset.tab===t)); }
+
+// ---------- home ----------
+async function viewHome(){
+  app.innerHTML = `<h2>My clubs</h2><div id="mine"></div>
+  <div class="card"><input type="text" id="newName" placeholder="New club name"><div class="row" style="margin-top:8px">
+  <select id="newVis" class="grow" style="margin:0"><option value="private" selected>Private</option><option value="public">Public</option></select>
+  <button id="create">Create</button></div></div>
+  <h2>Find a club</h2>
+  <div class="row"><input type="text" id="q" placeholder="Search clubs" class="grow"><button id="go" class="small">Search</button></div>
+  <div id="found"></div>`;
+  const renderMine = ()=>{ $('#mine').innerHTML = myClubs.length ? myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b>${c.private?'<span class="badge">Private</span>':''}<div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div></div><span>›</span></div>`).join('') : '<div class="muted">No clubs yet</div>';
+    app.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openClub(el.dataset.open)); };
+  renderMine();
+  $('#create').onclick = async ()=>{ try{ const j=await api('createClub',{name:$('#newName').value, private:$('#newVis').value==='private'}); await refreshClubs(); openClub(j.club.id); }catch(e){ toast(e.message); } };
+  const search = async ()=>{ const j=await api('searchClubs',{q:$('#q').value}); $('#found').innerHTML = j.clubs.map(c=>`<div class="card row"><div class="grow"><b>${esc(c.name)}</b><div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div></div>${c.isMember?'<span class="muted">Joined</span>':`<button class="small" data-join="${c.id}">Join</button>`}</div>`).join('') || '<div class="muted">Nothing found</div>';
+    app.querySelectorAll('[data-join]').forEach(b=>b.onclick=async()=>{ await api('joinClub',{clubId:b.dataset.join}); await refreshClubs(); renderMine(); search(); }); };
+  $('#go').onclick = search; search();
+}
+async function openClub(id){ const j=await api('club',{clubId:id}); currentClub=j.club; viewClub(); }
+async function reloadClub(){ if(!currentClub) return; const j=await api('club',{clubId:currentClub.id}); currentClub=j.club; }
+
+// ---------- club ----------
+function bookRow(b, opts={}){
+  return `<div class="book">
+    ${b.cover?`<img class="cover" src="${esc(b.cover)}" alt="">`:'<div class="cover"></div>'}
+    <div class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>
+    ${ratingsLine(b)}
+    ${b.memberCount?`<div class="muted">Members ★ ${b.memberAverage} (${b.memberCount})</div>`:''}
+    </div>
+    <select class="rate" data-rate="${b.key}">${halfOptions(b.myRating)}</select>
+    ${opts.current?`<button class="small ghost" data-setcurrent="${b.key}">Reading now</button>`:''}
+  </div>`;
+}
+function wireRates(rerender){
+  app.querySelectorAll('[data-rate]').forEach(s=>s.onchange=async()=>{ await api('rate',{bookKey:s.dataset.rate, rating:Number(s.value)}); toast('Saved'); if(rerender){ await reloadClub(); rerender(); } });
+  app.querySelectorAll('[data-setcurrent]').forEach(b=>b.onclick=async()=>{ const go=()=>api('setCurrent',{clubId:currentClub.id, bookKey:b.dataset.setcurrent}); try{ const j=await go(); currentClub=j.club; viewClub(); }catch(e1){ await new Promise(r=>setTimeout(r,900)); try{ const j=await go(); currentClub=j.club; viewClub(); }catch(e2){ toast(e2.message); } } });
+}
+function pollSection(c){
+  const isAdmin = c.role==='admin';
+  const wrap = 'border-top:1px solid var(--line);margin-top:10px;padding-top:10px';
+  if(c.poll){
+    return `<div class="row setrow" id="pollRow" style="${wrap}"><span style="color:#8b5cf6">${icon('chart',20)}</span><b class="grow">Pick the next book${c.poll.runoff?' · Runoff':''}</b><span class="muted">Closes ${new Date(c.poll.closesAt).toLocaleDateString(undefined,{month:'short', day:'numeric'})}</span><span class="muted">›</span></div>`;
+  }
+  if(c.lastResult && c.lastResult.tie){
+    return `<div class="row setrow" id="pollRow" style="${wrap}"><span style="color:#8b5cf6">${icon('chart',20)}</span><b class="grow">Poll tied</b><span class="muted">›</span></div>`;
+  }
+  if(c.library.length===0) return `<div style="${wrap}"><button class="small ic" id="addBooksBtn">${icon('plus',16)} Add books to library</button></div>`;
+  if(c.library.length===1){
+    const only = c.library[0];
+    if(c.current && c.current.key===only.key) return '';
+    return `<div style="${wrap}"><div class="muted">Only one book in the library</div><button class="small" style="margin-top:6px" data-setcurrent="${only.key}">Pick ${esc(only.title)}</button></div>`;
+  }
+  if(!isAdmin) return '';
+  return `<div style="${wrap}"><button id="startPoll" class="small ic">${icon('chart',16)} Start a poll</button></div>`;
+}
+function currentSection(c){
+  let h = `<div class="card a-coral"><h3 style="margin-top:0">Current book</h3>`;
+  if(c.current){
+    const fin = c.finishedBy || [];
+    const rated = c.currentRatings.filter(r=>r.rating!==null&&r.rating!==undefined);
+    const avg = rated.length ? Math.round(rated.reduce((a,r)=>a+r.rating,0)/rated.length*10)/10 : null;
+    h += bookRow(c.current);
+    h += `<div class="row" style="margin-top:8px"><button class="small ic ${c.myFinished?'':'ghost'}" id="finBtn">${c.myFinished?icon('check',16)+' Finished':'I finished reading'}</button>
+      <span class="muted">${fin.length} of ${c.members.length} finished</span></div>
+      <div class="row" id="rateSummary" style="margin-top:8px;cursor:pointer"><span class="grow muted">${rated.length?`Average ★ ${avg} (${rated.length} rating${rated.length>1?'s':''})`:'No ratings yet'}</span><span class="muted">Ratings ›</span></div>
+      <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div class="row" style="padding:3px 0"><span class="grow">${esc(r.name)}</span><span>${r.rating===null||r.rating===undefined?'—':'★ '+r.rating}</span></div>`).join('')}</div>`;
+  } else {
+    h += '<div class="muted">No book picked yet</div>';
+  }
+  h += pollSection(c);
+  return h + '</div>';
+}
+function meetingSection(c){
+  const isAdmin = c.role==='admin';
+  const overlap = {};
+  Object.values(c.availability||{}).forEach(days=>days.forEach(d=>overlap[d]=(overlap[d]||0)+1));
+  let h = `<div class="card a-violet"><h3 style="margin-top:0">Group meeting</h3>
+  <div class="muted">Meets every ${c.meetingFrequencyWeeks} week${c.meetingFrequencyWeeks>1?'s':''}</div>`;
+  if(c.meeting.date){
+    const going = c.members.filter(m=>(c.rsvps||{})[m.userId]==='going');
+    const myR = (c.rsvps||{})[user.id];
+    h += `<div style="margin:8px 0"><b>${fmtDate(c.meeting.date)}</b></div>
+    <div class="row"><button class="small ${myR==='going'?'':'ghost'}" data-rsvp="going">Going</button>
+    <button class="small ${myR==='notgoing'?'':'ghost'}" data-rsvp="notgoing">Not going</button>
+    <span class="muted grow" id="goingCount" style="text-align:right;cursor:pointer">${going.length} going ›</span></div>`;
+  } else {
+    h += '<div class="muted" style="margin-top:8px">Pick the days you are available</div>';
+    h += `<div class="row" style="margin:8px 0">${c.week.map(d=>{const dt=new Date(d+'T12:00:00'); const mine=(c.availability[user.id]||[]).includes(d); return `<div class="day ${mine?'on':''}" data-day="${d}"><span class="n">${'Sun Mon Tue Wed Thu Fri Sat'.split(' ')[dt.getDay()]}</span>${dt.getDate()}${overlap[d]?`<span class="n">${overlap[d]} ✓</span>`:''}</div>`;}).join('')}</div>`;
+  }
+  if(c.meeting.type==='online'){
+    h += c.meeting.link ? `<div style="margin-top:8px"><a href="${esc(c.meeting.link)}" target="_blank">Join online</a></div>` : '<div class="muted" style="margin-top:8px">Online</div>';
+  } else {
+    h += c.meeting.address ? `<div class="muted" style="margin-top:8px">📍 ${esc(c.meeting.address)}</div>` : '<div class="muted" style="margin-top:8px">In person</div>';
+  }
+  if(isAdmin){
+    h += `<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px">
+    <div class="datefield"><input type="date" id="pickDate" value="${esc(c.meeting.date||'')}"><span class="cal">${icon('calendar',18)}</span></div>
+    <div class="row" style="margin-top:6px"><select id="mtype" style="width:auto"><option value="online" ${c.meeting.type==='online'?'selected':''}>Online</option><option value="inperson" ${c.meeting.type==='inperson'?'selected':''}>In person</option></select>
+    <button id="saveMeet" class="small">Save</button></div>
+    <input type="url" id="mlink" placeholder="Meeting link" value="${esc(c.meeting.link||'')}" class="${c.meeting.type==='online'?'':'hide'}">
+    <input type="text" id="maddr" placeholder="Address" value="${esc(c.meeting.address||'')}" class="${c.meeting.type==='inperson'?'':'hide'}">
+    </div>`;
+  }
+  return h + '</div>';
+}
+function rsvpPopup(c){
+  const g = c.members.filter(m=>(c.rsvps||{})[m.userId]==='going');
+  const ng = c.members.filter(m=>(c.rsvps||{})[m.userId]==='notgoing');
+  const names = (arr)=>arr.length ? arr.map(m=>`<div style="padding:2px 0">${esc(m.name)}</div>`).join('') : '<div class="muted">None yet</div>';
+  showModal(`<h3 style="margin-top:0">${fmtDate(c.meeting.date)}</h3>
+  <div class="muted">Going (${g.length})</div>${names(g)}
+  <div class="muted" style="margin-top:10px">Not going (${ng.length})</div>${names(ng)}
+  <button class="ghost small" id="mClose" style="margin-top:14px;width:100%">Close</button>`);
+  $('#mClose').onclick = closeModal;
+}
+function viewClub(){
+  const c = currentClub; if(!c) return viewHome();
+  const isAdmin = c.role==='admin';
+  app.innerHTML = `
+  <div class="row"><button class="ghost small" id="back">‹ Clubs</button><span class="grow"></span>${isAdmin?`<button class="iconbtn" id="gear" aria-label="Settings">${icon('gear',22)}</button>`:''}</div>
+  <h2>${esc(c.name)}${c.private?'<span class="badge">Private</span>':''}</h2>
+  ${currentSection(c)}
+  ${meetingSection(c)}
+  <div class="card row setrow a-teal" id="libRow"><span style="color:#17a398">${icon('book',20)}</span><b class="grow">Library</b><span class="muted">${c.library.length} book${c.library.length===1?'':'s'}</span><span class="muted">›</span></div>
+  <div style="margin-top:10px"><button id="leave" class="ghost small">Leave club</button></div>`;
+  $('#back').onclick = ()=>{ currentClub=null; viewHome(); };
+  if(isAdmin) $('#gear').onclick = ()=>viewSettings();
+  $('#libRow').onclick = ()=>viewLibrary();
+  wireRates(()=>viewClub());
+  if($('#pollRow')) $('#pollRow').onclick=()=>viewPoll();
+  if($('#startPoll')) $('#startPoll').onclick=()=>viewPoll();
+  if($('#addBooksBtn')) $('#addBooksBtn').onclick=()=>viewLibrary();
+  if($('#finBtn')) $('#finBtn').onclick=async()=>{ const j=await api('toggleFinished',{clubId:c.id}); currentClub=j.club; viewClub(); };
+  if($('#rateSummary')) $('#rateSummary').onclick=()=>{ $('#rateList').classList.toggle('hide'); };
+  app.querySelectorAll('[data-rsvp]').forEach(b=>b.onclick=async()=>{ const cur=(currentClub.rsvps||{})[user.id]; const j=await api('rsvp',{clubId:c.id, status: cur===b.dataset.rsvp ? '' : b.dataset.rsvp}); currentClub=j.club; viewClub(); });
+  if($('#goingCount')) $('#goingCount').onclick=()=>rsvpPopup(currentClub);
+  app.querySelectorAll('[data-day]').forEach(d=>d.onclick=async()=>{ const mine=new Set((currentClub.availability[user.id]||[])); const day=d.dataset.day; mine.has(day)?mine.delete(day):mine.add(day); const j=await api('availability',{clubId:c.id, days:[...mine]}); currentClub=j.club; viewClub(); });
+  if(isAdmin){
+    $('#saveMeet').onclick=async()=>{ const j=await api('clubSettings',{clubId:c.id, meeting:{type:$('#mtype').value, link:$('#mlink').value, address:$('#maddr').value}}); currentClub=j.club; toast('Saved'); viewClub(); };
+    $('#mtype').onchange=()=>{ const online=$('#mtype').value==='online'; $('#mlink').classList.toggle('hide', !online); $('#maddr').classList.toggle('hide', online); };
+    const pd=$('#pickDate');
+    const pdf=pd.closest('.datefield');
+    if(pdf) pdf.onclick=()=>{ try{ pd.focus(); if(pd.showPicker) pd.showPicker(); }catch(e){} };
+    pd.onchange=async()=>{ if(!pd.value) return; try{ const j=await api('pickDate',{clubId:c.id, date:pd.value}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
+  }
+  $('#leave').onclick=async()=>{ await api('leaveClub',{clubId:c.id}); await refreshClubs(); currentClub=null; viewHome(); };
+}
+
+// ---------- library page ----------
+function viewLibrary(){
+  const c = currentClub; if(!c) return viewHome();
+  const isAdmin = c.role==='admin';
+  app.innerHTML = `
+  <button class="ghost small" id="back">‹ ${esc(c.name)}</button>
+  <div class="row"><h2 class="grow">Library</h2><button class="small ic" id="addBtn">${icon('plus',16)} Add books</button></div>
+  <div class="card">${c.library.length? c.library.map(b=>bookRow(b,{current:isAdmin})).join('') : '<div class="muted">No books yet</div>'}</div>`;
+  $('#back').onclick = ()=>viewClub();
+  $('#addBtn').onclick = ()=>{ addReturn='library'; setTab('add'); viewAdd(c.id); };
+  wireRates(()=>viewLibrary());
+}
+
+// ---------- poll page ----------
+function pollDefaultEnd(c){
+  const week = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+  if(c.meeting && c.meeting.date){
+    const d = new Date(c.meeting.date + 'T12:00:00');
+    if(!isNaN(d.getTime())){ d.setDate(d.getDate() - 1); const ds = d.toISOString().slice(0, 10); return ds < week ? ds : week; }
+  }
+  return week;
+}
+function viewPoll(){
+  const c = currentClub; if(!c) return viewHome();
+  const isAdmin = c.role==='admin';
+  let body = '';
+  if(c.poll){
+    body = `<h3 style="margin-top:0">Pick the next book${c.poll.runoff?' · Runoff':''}</h3>
+    ${c.poll.options.map(o=>`<div style="margin:8px 0"><div class="row"><div class="grow">${esc(o.book.title)}</div><b>${o.votes}</b><button class="small" data-vote="${o.book.key}">Vote</button></div><div class="voteBar"><i style="width:${c.poll.totalVotes?Math.round(o.votes/c.poll.totalVotes*100):0}%"></i></div></div>`).join('')}
+    <div class="muted">Closes ${new Date(c.poll.closesAt).toLocaleDateString(undefined,{month:'short', day:'numeric'})}</div>
+    ${isAdmin?'<button id="closePoll" class="ghost small" style="margin-top:6px">Close poll</button>':''}`;
+  } else if(c.lastResult && c.lastResult.tie){
+    body = `<h3 style="margin-top:0">Tie</h3>${isAdmin?'<button id="runoff" class="small">One day runoff</button> '+c.lastResult.tie.map(k=>{const b=c.library.find(x=>x.key===k); return b?`<button class="small ghost" data-pick="${k}">Pick ${esc(b.title)}</button>`:'';}).join(' '):'<div class="muted">The admin picks the winner</div>'}`;
+  } else if(isAdmin && c.library.length>=2){
+    body = `<h3 style="margin-top:0">Start a poll</h3>
+    <div class="muted" style="margin:6px 0 4px">End date</div>
+    <div class="datefield"><input type="date" id="pollEnd" value="${pollDefaultEnd(c)}"><span class="cal">${icon('calendar',18)}</span></div>
+    <button id="doStartPoll" class="ic" style="margin-top:10px;width:100%;justify-content:center">${icon('chart',16)} Start poll</button>`;
+  } else {
+    body = '<div class="muted">No poll running</div>';
+  }
+  app.innerHTML = `
+  <button class="ghost small" id="back">‹ ${esc(c.name)}</button>
+  <div class="card" style="margin-top:8px">${body}</div>`;
+  $('#back').onclick = ()=>viewClub();
+  app.querySelectorAll('[data-vote]').forEach(b=>b.onclick=async()=>{ const j=await api('vote',{clubId:c.id, bookKey:b.dataset.vote}); currentClub=j.club; viewPoll(); });
+  app.querySelectorAll('[data-pick]').forEach(b=>b.onclick=async()=>{ const j=await api('adminPick',{clubId:c.id, bookKey:b.dataset.pick}); currentClub=j.club; viewClub(); });
+  if($('#closePoll')) $('#closePoll').onclick=async()=>{ const j=await api('closePoll',{clubId:c.id}); currentClub=j.club; await refreshClubs(); viewClub(); };
+  if($('#runoff')) $('#runoff').onclick=async()=>{ const j=await api('runoff',{clubId:c.id}); currentClub=j.club; viewPoll(); };
+  const pe = $('#pollEnd');
+  if(pe){ const pef = pe.closest('.datefield'); if(pef) pef.onclick=()=>{ try{ pe.focus(); if(pe.showPicker) pe.showPicker(); }catch(e){} }; }
+  if($('#doStartPoll')) $('#doStartPoll').onclick=async()=>{ try{ const j=await api('startPoll',{clubId:c.id, endDate:$('#pollEnd').value}); currentClub=j.club; viewPoll(); }catch(e){ toast(e.message); } };
+}
+
+// ---------- club settings ----------
+function viewSettings(){
+  const c = currentClub; if(!c || c.role!=='admin') return viewClub();
+  app.innerHTML = `
+  <button class="ghost small" id="back">‹ ${esc(c.name)}</button>
+  <h2>Settings</h2>
+  <div class="card row setrow" id="setMembers"><b class="grow">Members</b><span class="muted">${c.members.length}</span><span class="muted">›</span></div>
+  <div class="card row setrow" id="setFreq"><b class="grow">Frequency</b><span class="muted">›</span></div>
+  <div class="card row setrow" id="setDelete"><b class="grow" style="color:var(--danger)">Delete club</b><span class="muted">›</span></div>`;
+  $('#back').onclick = ()=>viewClub();
+  $('#setMembers').onclick = ()=>viewMembersPage();
+  $('#setFreq').onclick = ()=>viewFrequencyPage();
+  $('#setDelete').onclick = ()=>viewDeleteClubPage();
+}
+function viewMembersPage(){
+  const c = currentClub; if(!c || c.role!=='admin') return viewClub();
+  const admins = c.members.filter(m=>m.role==='admin').length;
+  app.innerHTML = `
+  <button class="ghost small" id="back">‹ Settings</button>
+  <h2>Members</h2>
+  <div class="card">
+  ${c.members.map(m=>`<div class="row" style="padding:4px 0"><span class="grow">${esc(m.name)}${m.role==='admin'?'<span class="badge">Admin</span>':''}</span>${m.role==='admin'
+    ? (admins>1?`<button class="small ghost" data-demote="${m.userId}">Remove admin</button>`:'')
+    : `<button class="small ghost" data-promote="${m.userId}">Make admin</button>`}</div>`).join('')}
+  </div>
+  <div class="card"><h3 style="margin-top:0">Invite</h3>
+  <div class="row"><input type="email" id="invEmail" placeholder="Email to invite" class="grow"><button id="invBtn" class="small">Invite</button></div>
+  <div id="invOut"></div></div>`;
+  $('#back').onclick = ()=>viewSettings();
+  app.querySelectorAll('[data-promote]').forEach(b=>b.onclick=async()=>{ const j=await api('makeAdmin',{clubId:c.id, userId:b.dataset.promote}); currentClub=j.club; viewMembersPage(); });
+  app.querySelectorAll('[data-demote]').forEach(b=>b.onclick=async()=>{ const j=await api('removeAdmin',{clubId:c.id, userId:b.dataset.demote}); currentClub=j.club; if(currentClub.role!=='admin') return viewClub(); viewMembersPage(); });
+  $('#invBtn').onclick=async()=>{ try{ const j=await api('createInvite',{clubId:c.id, email:$('#invEmail').value}); const link=location.origin+'/?invite='+j.inviteToken; $('#invOut').innerHTML=`<div class="muted" style="margin-top:6px">Send this link to ${esc(j.email)} (works once):</div><input type="text" readonly value="${link}" onclick="this.select()">`; }catch(e){ toast(e.message); } };
+}
+function viewFrequencyPage(){
+  const c = currentClub; if(!c || c.role!=='admin') return viewClub();
+  app.innerHTML = `
+  <button class="ghost small" id="back">‹ Settings</button>
+  <h2>Frequency</h2>
+  <div class="card">
+  <select id="freq">${[1,2,3,4,5,6,7,8].map(w=>`<option value="${w}" ${c.meetingFrequencyWeeks===w?'selected':''}>Every ${w} week${w>1?'s':''}</option>`).join('')}</select>
+  <label class="row" style="margin-top:8px"><input type="checkbox" id="autoPoll" ${c.autoPoll?'checked':''} style="width:auto"><span>Auto poll</span></label>
+  <button id="saveFreq" class="small" style="margin-top:10px">Save</button>
+  </div>`;
+  $('#back').onclick = ()=>viewSettings();
+  $('#saveFreq').onclick=async()=>{ const j=await api('clubSettings',{clubId:c.id, meetingFrequencyWeeks:Number($('#freq').value), autoPoll:$('#autoPoll').checked}); currentClub=j.club; toast('Saved'); viewFrequencyPage(); };
+}
+function viewDeleteClubPage(){
+  const c = currentClub; if(!c || c.role!=='admin') return viewClub();
+  app.innerHTML = `
+  <button class="ghost small" id="back">‹ Settings</button>
+  <h2>Delete club</h2>
+  <div class="card"><div style="margin-bottom:10px"><b>${esc(c.name)}</b></div>
+  <div id="delBox"><button id="delBtn" class="danger small">Delete club</button></div></div>`;
+  $('#back').onclick = ()=>viewSettings();
+  $('#delBtn').onclick = ()=>{
+    $('#delBox').innerHTML = `<div class="muted" style="margin-bottom:8px">Delete ${esc(c.name)} for everyone?</div>
+    <div class="row"><button id="delYes" class="danger small">Delete</button><button id="delNo" class="ghost small">Cancel</button></div>`;
+    $('#delNo').onclick = ()=>viewDeleteClubPage();
+    $('#delYes').onclick = async ()=>{ try{ await api('deleteClub',{clubId:c.id}); await refreshClubs(); currentClub=null; toast('Club deleted'); viewHome(); }catch(e){ toast(e.message); } };
+  };
+}
+
+// ---------- add books ----------
+function viewAdd(preClub){
+  const chosen = new Set(preClub?[preClub]: myClubs.map(c=>c.id));
+  app.innerHTML = `<h2>Add books</h2>
+  <div class="card"><h3 style="margin-top:0">To</h3><div id="clubPick">${myClubs.map(c=>`<span class="chip ${chosen.has(c.id)?'on':''}" data-club="${c.id}">${esc(c.name)}</span>`).join('')||'<span class="muted">Join or create a club first</span>'}</div></div>
+  <div class="card"><h3 style="margin-top:0">Search</h3>
+    <div class="row"><input type="text" id="sq" placeholder="Title or author" class="grow"><button id="sgo" class="small">Search</button></div>
+    <div id="sres"></div>
+    <button id="addSel" class="hide" style="width:100%;margin-top:8px">Add selected</button></div>
+  <div class="card"><h3 style="margin-top:0">Paste a link</h3>
+    <input type="url" id="link" placeholder="Amazon, Goodreads, Google Books or Open Library link">
+    <button id="linkGo" style="width:100%">Add from link</button><div class="err" id="lerr"></div></div>`;
+  const clubs = ()=>[...app.querySelectorAll('#clubPick .chip.on')].map(x=>x.dataset.club);
+  app.querySelectorAll('#clubPick .chip').forEach(ch=>ch.onclick=()=>ch.classList.toggle('on'));
+  const render = ()=>{ $('#sres').innerHTML = searchResults.map((b,i)=>`<label class="book"><input type="checkbox" data-i="${i}" ${addSel.has(i)?'checked':''} style="width:auto">
+    ${b.cover?`<img class="cover" src="${esc(b.cover)}">`:'<div class="cover"></div>'}
+    <span class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>${ratingsLine(b)}</span></label>`).join('');
+    $('#addSel').classList.toggle('hide', !addSel.size);
+    app.querySelectorAll('#sres [data-i]').forEach(cb=>cb.onchange=()=>{ cb.checked?addSel.set(Number(cb.dataset.i), searchResults[Number(cb.dataset.i)]):addSel.delete(Number(cb.dataset.i)); $('#addSel').classList.toggle('hide', !addSel.size); $('#addSel').textContent='Add selected ('+addSel.size+')'; }); };
+  const afterAdd = async ()=>{ await refreshClubs(); if(addReturn==='library' && currentClub){ await reloadClub(); viewLibrary(); } else if(currentClub) openClub(currentClub.id); else viewHome(); };
+  $('#sgo').onclick = async ()=>{ try{ $('#sres').innerHTML='<div class="muted">Searching…</div>'; const j=await api('searchBooks',{q:$('#sq').value}); searchResults=j.results; addSel.clear(); render(); if(!searchResults.length) $('#sres').innerHTML='<div class="muted">Nothing found</div>'; }catch(e){ toast(e.message); } };
+  $('#addSel').onclick = async ()=>{ try{ await api('addBooks',{clubIds:clubs(), books:[...addSel.values()]}); toast('Added'); addSel.clear(); afterAdd(); }catch(e){ toast(e.message); } };
+  $('#linkGo').onclick = async ()=>{ try{ $('#lerr').textContent=''; const j=await api('addByLink',{url:$('#link').value, clubIds:clubs()}); toast('Added: '+j.book.title); afterAdd(); }catch(e){ $('#lerr').textContent=e.message; } };
+}
+
+// ---------- me ----------
+function viewMe(){
+  app.innerHTML = `<div class="card"><h3 style="margin-top:0">${esc(user.name)}</h3><div class="muted">${esc(user.email)}</div></div>
+  <h2>My clubs</h2>${myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b></div><span>›</span></div>`).join('')||'<div class="muted">No clubs yet</div>'}
+  <div class="card"><div id="delAcctBox"><button id="delAcct" class="ghost small danger">Delete account</button></div></div>`;
+  app.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openClub(el.dataset.open));
+  $('#delAcct').onclick = ()=>{
+    $('#delAcctBox').innerHTML = `<div class="muted" style="margin-bottom:8px">Delete your account and all your data?</div>
+    <div class="row"><button id="delAcctYes" class="danger small">Delete account</button><button id="delAcctNo" class="ghost small">Cancel</button></div>`;
+    $('#delAcctNo').onclick = ()=>viewMe();
+    $('#delAcctYes').onclick = async ()=>{ try{ await api('deleteAccount'); token=''; user=null; currentClub=null; myClubs=[]; localStorage.removeItem('blc_token'); viewAuth(); }catch(e){ toast(e.message); } };
+  };
+}
+
+// invite deep link
+const inv = new URLSearchParams(location.search).get('invite');
+if(inv){ localStorage.setItem('blc_invite', inv); history.replaceState({}, '', location.pathname); }
+if(token) boot(); else viewAuth();
+</script>
+</body>
+</html>
