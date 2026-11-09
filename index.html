@@ -83,7 +83,7 @@ if(location.hash.startsWith('#t=')){ token = location.hash.slice(3); localStorag
 const authMsg = new URLSearchParams(location.search).get('auth') === 'failed' ? 'Google sign in did not work' : '';
 if(authMsg) history.replaceState(null, '', '/');
 let user = null, myClubs = [], currentClub = null, tab = 'home';
-let addSel = new Map(); // bookKey-from-search index -> data
+let addedBooks = new Map(); // search book id -> Set of clubIds it was added to this session
 let searchResults = [];
 let addReturn = null; // 'library' when Add Books was opened from a club library page
 
@@ -442,20 +442,20 @@ function viewAdd(preClub){
   <div class="card"><h3 style="margin-top:0">Search</h3>
     <div class="row"><input type="text" id="sq" placeholder="Title or author" class="grow"><button id="sgo" class="small">Search</button></div>
     <div id="sres"></div>
-    <button id="addSel" class="hide" style="width:100%;margin-top:8px">Add selected</button></div>
+    <div class="err" id="serr"></div></div>
   <div class="card"><h3 style="margin-top:0">Paste a link</h3>
     <input type="url" id="link" placeholder="Amazon, Goodreads, Google Books or Open Library link">
     <button id="linkGo" style="width:100%">Add from link</button><div class="err" id="lerr"></div></div>`;
   const clubs = ()=>[...app.querySelectorAll('#clubPick .chip.on')].map(x=>x.dataset.club);
-  app.querySelectorAll('#clubPick .chip').forEach(ch=>ch.onclick=()=>ch.classList.toggle('on'));
-  const render = ()=>{ $('#sres').innerHTML = searchResults.map((b,i)=>`<label class="book"><input type="checkbox" data-i="${i}" ${addSel.has(i)?'checked':''} style="width:auto">
+  const bid = (b)=> b.isbn ? 'isbn:'+b.isbn : 'ta:'+(b.title||'').toLowerCase().trim()+'|'+(b.author||'').toLowerCase().trim();
+  const render = ()=>{ const sel = clubs(); $('#sres').innerHTML = searchResults.map((b,i)=>{ const got = addedBooks.get(bid(b)); const done = sel.length>0 && !!got && sel.every(cid=>got.has(cid)); return `<div class="book">
     ${b.cover?`<img class="cover" src="${esc(b.cover)}">`:'<div class="cover"></div>'}
-    <span class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>${ratingsLine(b)}</span></label>`).join('');
-    $('#addSel').classList.toggle('hide', !addSel.size);
-    app.querySelectorAll('#sres [data-i]').forEach(cb=>cb.onchange=()=>{ cb.checked?addSel.set(Number(cb.dataset.i), searchResults[Number(cb.dataset.i)]):addSel.delete(Number(cb.dataset.i)); $('#addSel').classList.toggle('hide', !addSel.size); $('#addSel').textContent='Add selected ('+addSel.size+')'; }); };
+    <span class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>${ratingsLine(b)}</span>
+    ${done?`<button class="small ic" style="align-self:center;flex:none" disabled>${icon('check',16)} Added</button>`:`<button class="small ic" style="align-self:center;flex:none" data-add="${i}">${icon('plus',16)} Add</button>`}</div>`; }).join('');
+    app.querySelectorAll('#sres [data-add]').forEach(btn=>btn.onclick=async()=>{ const target = clubs(); if(!target.length){ $('#serr').textContent='Pick a club first'; return; } $('#serr').textContent=''; const b = searchResults[Number(btn.dataset.add)]; btn.disabled = true; try{ await api('addBooks',{clubIds:target, books:[b]}); const s = addedBooks.get(bid(b)) || new Set(); target.forEach(cid=>s.add(cid)); addedBooks.set(bid(b), s); btn.innerHTML = icon('check',16)+' Added'; toast('Added'); }catch(e){ btn.disabled = false; toast(e.message); } }); };
+  app.querySelectorAll('#clubPick .chip').forEach(ch=>ch.onclick=()=>{ ch.classList.toggle('on'); if(searchResults.length) render(); });
   const afterAdd = async ()=>{ await refreshClubs(); if(addReturn==='library' && currentClub){ await reloadClub(); viewLibrary(); } else if(currentClub) openClub(currentClub.id); else viewHome(); };
-  $('#sgo').onclick = async ()=>{ try{ $('#sres').innerHTML='<div class="muted">Searching…</div>'; const j=await api('searchBooks',{q:$('#sq').value}); searchResults=j.results; addSel.clear(); render(); if(!searchResults.length) $('#sres').innerHTML='<div class="muted">Nothing found</div>'; }catch(e){ toast(e.message); } };
-  $('#addSel').onclick = async ()=>{ try{ await api('addBooks',{clubIds:clubs(), books:[...addSel.values()]}); toast('Added'); addSel.clear(); afterAdd(); }catch(e){ toast(e.message); } };
+  $('#sgo').onclick = async ()=>{ try{ $('#sres').innerHTML='<div class="muted">Searching…</div>'; $('#serr').textContent=''; const j=await api('searchBooks',{q:$('#sq').value}); searchResults=j.results; render(); if(!searchResults.length) $('#sres').innerHTML='<div class="muted">Nothing found</div>'; }catch(e){ toast(e.message); } };
   $('#linkGo').onclick = async ()=>{ try{ $('#lerr').textContent=''; const j=await api('addByLink',{url:$('#link').value, clubIds:clubs()}); toast('Added: '+j.book.title); afterAdd(); }catch(e){ $('#lerr').textContent=e.message; } };
 }
 
