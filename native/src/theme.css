@@ -1,0 +1,96 @@
+/* Reading Peeps — iOS system styling with the icon palette: plum, coral, violet, teal. */
+:root {
+  --ion-color-primary: #c93a54;
+  --ion-color-primary-rgb: 201, 58, 84;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #b13349;
+  --ion-color-primary-tint: #d15068;
+
+  --blc-rose-soft: rgba(201, 58, 84, 0.1);
+  --ion-background-color: #fff9f1;
+  --ion-text-color: #3a1b2e;
+  --ion-toolbar-background: #2e0e28;
+  --ion-toolbar-color: #fff3e2;
+  --ion-tab-bar-background: #2e0e28;
+  --ion-tab-bar-color: #d9a8c2;
+  --ion-tab-bar-color-selected: #ff8a66;
+}
+
+.page-host { position: absolute; inset: 0; }
+.page-body { padding-bottom: 24px; }
+
+/* Grouped-section label, iOS style */
+.section-label {
+  margin: 22px 16px 6px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ion-color-medium);
+}
+
+/* Book rows */
+.book-row { display: flex; gap: 12px; padding: 10px 16px; align-items: flex-start; }
+.book-cover {
+  width: 46px; height: 68px; flex: none; object-fit: cover;
+  border-radius: 5px; background: var(--ion-color-light);
+}
+.book-cover-ph {
+  width: 46px; height: 68px; flex: none; border-radius: 5px;
+  background: var(--blc-rose-soft); display: flex; align-items: center; justify-content: center;
+  color: var(--ion-color-primary); font-size: 20px;
+}
+.book-title { font-size: 16px; font-weight: 600; line-height: 1.25; }
+.book-sub { font-size: 13px; color: var(--ion-color-medium); margin-top: 2px; }
+.ext-ratings { font-size: 12.5px; color: var(--ion-color-primary); margin-top: 3px; }
+.book-ctl { display: flex; gap: 8px; align-items: center; padding: 2px 16px 12px 74px; flex-wrap: wrap; }
+
+/* Stars */
+.stars { letter-spacing: 1px; font-size: 14px; }
+.star { color: var(--ion-color-light-shade, #d7d8da); }
+.star.on { color: var(--ion-color-primary); }
+.star.half {
+  background: linear-gradient(90deg, var(--ion-color-primary) 50%, var(--ion-color-light-shade, #d7d8da) 50%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.stars-num { font-size: 13px; color: var(--ion-color-medium); }
+.stars-none { font-size: 13px; color: var(--ion-color-medium); }
+
+/* Rating chips (half-step picker) */
+.rating-chips { display: flex; flex-wrap: wrap; gap: 2px; }
+.rating-chips .rchip { --background: var(--ion-color-light); --color: var(--ion-color-dark); margin: 2px; }
+.rating-chips .rchip.sel { --background: var(--ion-color-primary); --color: #fff; }
+
+/* Vote bars */
+.vote-bar { height: 6px; border-radius: 3px; background: var(--ion-color-light); overflow: hidden; margin-top: 6px; }
+.vote-bar i { display: block; height: 100%; background: var(--ion-color-primary); }
+
+/* Google button: white, official G mark — matches the web app's standard button */
+.gbtn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 12px; border-radius: 12px; cursor: pointer;
+  background: #fff; color: #1f1f1f; border: 1px solid #dadce0;
+  font-size: 16px; font-weight: 500; font-family: inherit;
+}
+.gbtn:active { background: #f8f9fa; }
+.or-div {
+  display: flex; align-items: center; gap: 12px; margin: 18px 0 14px;
+  color: var(--ion-color-medium); font-size: 13px;
+}
+.or-div::before, .or-div::after { content: ''; flex: 1; height: 1px; background: var(--ion-color-light-shade, #d7d8da); }
+
+/* Availability day chips */
+.day-grid { display: flex; gap: 6px; padding: 4px 16px 12px; flex-wrap: wrap; }
+.day-chip {
+  flex: 1 1 0; min-width: 40px; text-align: center; padding: 8px 0;
+  border: 1px solid var(--ion-color-light-shade, #d7d8da); border-radius: 10px;
+  background: var(--ion-background-color, #fff); cursor: pointer; font-size: 13px;
+}
+.day-chip .n { display: block; font-size: 11px; color: var(--ion-color-medium); margin-top: 1px; }
+.day-chip.on { background: var(--ion-color-primary); border-color: var(--ion-color-primary); color: #fff; }
+.day-chip.on .n { color: rgba(255, 255, 255, 0.8); }
+.day-chip .cnt { display: block; font-size: 10px; color: var(--ion-color-medium); margin-top: 2px; }
+.day-chip.on .cnt { color: rgba(255, 255, 255, 0.8); }
+
+.empty-note { padding: 28px 32px; text-align: center; color: var(--ion-color-medium); font-size: 15px; }
+.cover-lg { width: 64px; height: 95px; border-radius: 6px; object-fit: cover; background: var(--ion-color-light); flex: none; }
