@@ -59,6 +59,8 @@
   .datefield input[type=date]::-webkit-date-and-time-value{margin:0;text-align:left}
   .datefield input[type=date]::-webkit-calendar-picker-indicator{opacity:0}
   .datefield .cal{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--accent);display:flex;pointer-events:none}
+  .bookctl{display:flex;gap:8px;margin-top:8px}
+  .bookctl .rate,.bookctl button{height:38px}
 </style>
 </head>
 <body>
@@ -193,14 +195,18 @@ async function reloadClub(){ if(!currentClub) return; const j=await api('club',{
 
 // ---------- club ----------
 function bookRow(b, opts={}){
-  return `<div class="book">
+  return `<div class="book" style="display:block">
+    <div style="display:flex;gap:10px">
     ${b.cover?`<img class="cover" src="${esc(b.cover)}" alt="">`:'<div class="cover"></div>'}
     <div class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>
     ${ratingsLine(b)}
     ${b.memberCount?`<div class="muted">Members ★ ${b.memberAverage} (${b.memberCount})</div>`:''}
     </div>
+    </div>
+    <div class="bookctl">
     <select class="rate" data-rate="${b.key}">${halfOptions(b.myRating)}</select>
     ${opts.current?`<button class="small ghost" data-setcurrent="${b.key}">Reading now</button>`:''}
+    </div>
   </div>`;
 }
 function wireRates(rerender){
