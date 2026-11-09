@@ -17,6 +17,17 @@
   h3{font-size:15px;margin:14px 0 6px}
   main{padding:0 16px 90px;max-width:560px;margin:0 auto}
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin:8px 0}
+  .card.a-coral{box-shadow:inset 0 3px 0 #ff7e5f}
+  .card.a-violet{box-shadow:inset 0 3px 0 #8b5cf6}
+  .card.a-teal{box-shadow:inset 0 3px 0 #17a398}
+  header::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,#ff7e5f,#f95d6a,#8b5cf6,#17a398,#1b8fa8)}
+  #mine .card:nth-child(3n+1),#found .card:nth-child(3n+1){box-shadow:inset 3px 0 0 #ff7e5f}
+  #mine .card:nth-child(3n+2),#found .card:nth-child(3n+2){box-shadow:inset 3px 0 0 #8b5cf6}
+  #mine .card:nth-child(3n),#found .card:nth-child(3n){box-shadow:inset 3px 0 0 #17a398}
+  .a-violet button{background:#8b5cf6}
+  .a-violet button.ghost{background:var(--card);color:#8b5cf6;border-color:#8b5cf6}
+  .a-violet .day.on{background:#8b5cf6;border-color:#8b5cf6}
+  .a-violet .datefield .cal{color:#8b5cf6}
   .row{display:flex;gap:10px;align-items:center}
   .grow{flex:1}
   input,select,button,textarea{font-size:16px;font-family:inherit}
@@ -211,10 +222,10 @@ function pollSection(c){
   const isAdmin = c.role==='admin';
   const wrap = 'border-top:1px solid var(--line);margin-top:10px;padding-top:10px';
   if(c.poll){
-    return `<div class="row setrow" id="pollRow" style="${wrap}"><span style="color:var(--accent)">${icon('chart',20)}</span><b class="grow">Pick the next book${c.poll.runoff?' · Runoff':''}</b><span class="muted">Closes ${new Date(c.poll.closesAt).toLocaleDateString(undefined,{month:'short', day:'numeric'})}</span><span class="muted">›</span></div>`;
+    return `<div class="row setrow" id="pollRow" style="${wrap}"><span style="color:#8b5cf6">${icon('chart',20)}</span><b class="grow">Pick the next book${c.poll.runoff?' · Runoff':''}</b><span class="muted">Closes ${new Date(c.poll.closesAt).toLocaleDateString(undefined,{month:'short', day:'numeric'})}</span><span class="muted">›</span></div>`;
   }
   if(c.lastResult && c.lastResult.tie){
-    return `<div class="row setrow" id="pollRow" style="${wrap}"><span style="color:var(--accent)">${icon('chart',20)}</span><b class="grow">Poll tied</b><span class="muted">›</span></div>`;
+    return `<div class="row setrow" id="pollRow" style="${wrap}"><span style="color:#8b5cf6">${icon('chart',20)}</span><b class="grow">Poll tied</b><span class="muted">›</span></div>`;
   }
   if(c.library.length===0) return `<div style="${wrap}"><button class="small ic" id="addBooksBtn">${icon('plus',16)} Add books to library</button></div>`;
   if(c.library.length===1){
@@ -226,7 +237,7 @@ function pollSection(c){
   return `<div style="${wrap}"><button id="startPoll" class="small ic">${icon('chart',16)} Start a poll</button></div>`;
 }
 function currentSection(c){
-  let h = `<div class="card"><h3 style="margin-top:0">Current book</h3>`;
+  let h = `<div class="card a-coral"><h3 style="margin-top:0">Current book</h3>`;
   if(c.current){
     const fin = c.finishedBy || [];
     const rated = c.currentRatings.filter(r=>r.rating!==null&&r.rating!==undefined);
@@ -246,7 +257,7 @@ function meetingSection(c){
   const isAdmin = c.role==='admin';
   const overlap = {};
   Object.values(c.availability||{}).forEach(days=>days.forEach(d=>overlap[d]=(overlap[d]||0)+1));
-  let h = `<div class="card"><h3 style="margin-top:0">Group meeting</h3>
+  let h = `<div class="card a-violet"><h3 style="margin-top:0">Group meeting</h3>
   <div class="muted">Meets every ${c.meetingFrequencyWeeks} week${c.meetingFrequencyWeeks>1?'s':''}</div>`;
   if(c.meeting.date){
     const going = c.members.filter(m=>(c.rsvps||{})[m.userId]==='going');
@@ -293,7 +304,7 @@ function viewClub(){
   <h2>${esc(c.name)}${c.private?'<span class="badge">Private</span>':''}</h2>
   ${currentSection(c)}
   ${meetingSection(c)}
-  <div class="card row setrow" id="libRow"><span style="color:var(--accent)">${icon('book',20)}</span><b class="grow">Library</b><span class="muted">${c.library.length} book${c.library.length===1?'':'s'}</span><span class="muted">›</span></div>
+  <div class="card row setrow a-teal" id="libRow"><span style="color:#17a398">${icon('book',20)}</span><b class="grow">Library</b><span class="muted">${c.library.length} book${c.library.length===1?'':'s'}</span><span class="muted">›</span></div>
   <div style="margin-top:10px"><button id="leave" class="ghost small">Leave club</button></div>`;
   $('#back').onclick = ()=>{ currentClub=null; viewHome(); };
   if(isAdmin) $('#gear').onclick = ()=>viewSettings();
