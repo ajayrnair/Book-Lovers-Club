@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Reading Peeps</title>
+</head>
+<body>
+  <ion-app>
+    <div id="view"></div>
+    <ion-footer id="tabbar-wrap" class="ion-no-border" style="display:none">
+      <ion-tab-bar id="tabbar">
+        <ion-tab-button data-tab="clubs">
+          <ion-icon name="book-outline"></ion-icon>
+          <ion-label>Clubs</ion-label>
+        </ion-tab-button>
+        <ion-tab-button data-tab="add">
+          <ion-icon name="add-circle-outline"></ion-icon>
+          <ion-label>Add Books</ion-label>
+        </ion-tab-button>
+        <ion-tab-button data-tab="me">
+          <ion-icon name="person-circle-outline"></ion-icon>
+          <ion-label>Me</ion-label>
+        </ion-tab-button>
+      </ion-tab-bar>
+    </ion-footer>
+  </ion-app>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
