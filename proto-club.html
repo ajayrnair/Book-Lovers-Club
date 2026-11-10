@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reading Peeps</title>
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<meta name="theme-color" content="#3d1436">
+<style>
+  :root{--bg:#3d1436;--plum:#2e0e28;--card:#fff9f1;--ink:#2b1421;--muted:#8d6a7a;--accent:#c93a54;--accent2:#8b5cf6;--teal:#17a398;--line:#ecd9c6;--good:#2e7d32;--danger:#cf2233;--cream:#fff3e2}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.42;-webkit-font-smoothing:antialiased}
+  header{position:sticky;top:0;background:rgba(46,14,40,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;z-index:10;color:var(--cream)}
+  header::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,#ff7e5f,#f95d6a,#8b5cf6,#17a398,#1b8fa8)}
+  h1{font-size:17px;font-weight:700;letter-spacing:-.01em;margin:0;display:flex;align-items:center}
+  .concept{font-size:10.5px;font-weight:700;color:#2e0e28;background:#ffb59f;border-radius:999px;padding:3px 9px;white-space:nowrap}
+  h2{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:24px 0 10px;color:#ffe9d2}
+  .card h2,.sheet h2{color:var(--ink)}
+  h3{font-size:19px;font-weight:700;letter-spacing:-.01em;margin:16px 0 8px}
+  main{padding:2px 16px 112px;max-width:640px;margin:0 auto}
+  .card{background:var(--card);border-radius:20px;padding:16px;margin:12px 0;box-shadow:0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
+  .row{display:flex;gap:12px;align-items:center}
+  .grow{flex:1}
+  input,select,button,textarea{font-size:17px;font-family:inherit}
+  input[type=text],input[type=email],input[type=password],input[type=url],input[type=date],input[type=number],select,textarea{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:6px 0;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:2px solid rgba(201,58,84,.5);outline-offset:0;border-color:transparent}
+  button{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:12px 18px;min-height:48px;cursor:pointer;font-weight:600;font-size:16px;transition:transform .08s ease}
+  button:active{transform:scale(.98)}
+  button.ghost{background:var(--card);color:var(--accent);border:1px solid var(--accent)}
+  button.small{padding:8px 14px;min-height:40px;font-size:15px;border-radius:10px}
+  button:disabled{opacity:.45}
+  button.danger{background:var(--danger);color:#fff}
+  button.ghost.danger{background:var(--card);color:var(--danger);border-color:var(--danger)}
+  button.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:52px;background:#fff;color:#1f1f1f;border:1px solid #dadce0;font-family:Roboto,Arial,sans-serif;font-weight:500}
+  button.gbtn svg{flex:none;display:block}
+  .muted{color:var(--muted);font-size:14px}
+  .err{color:#b3261e;font-size:14px;min-height:18px}
+  .book{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .book:last-child{border-bottom:0}
+  .cover{width:50px;height:74px;object-fit:cover;border-radius:6px;background:#f3e2d3;flex:none}
+  .cover.big{width:64px;height:95px;border-radius:8px}
+  .cover.hero{width:104px;height:154px;border-radius:9px;box-shadow:0 10px 24px rgba(20,4,16,.25)}
+  .stars{color:var(--accent2);font-size:13px}
+  .chip{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;padding:9px 14px;min-height:40px;margin:3px 3px 3px 0;font-size:15px;background:#fff;cursor:pointer;color:var(--ink)}
+  .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .day{flex:1;text-align:center;padding:9px 0;min-height:54px;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;font-size:15px;color:var(--ink)}
+  .day.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .day .n{display:block;font-size:11px;color:inherit;opacity:.75}
+  .day.best{border-color:var(--teal);box-shadow:0 0 0 2px rgba(23,163,152,.4)}
+  .hide{display:none}
+  a{color:var(--accent)}
+  .badge{font-size:11px;font-weight:700;background:#fde8d8;color:var(--accent);border-radius:999px;padding:3px 8px;margin-left:6px;vertical-align:2px}
+  .badge.fin{background:#dff3ec;color:#157347}
+  select.rate{width:auto;padding:8px 10px;margin:0;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:15px;color:var(--ink)}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(40px + env(safe-area-inset-bottom));background:#5b2144;color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:500;z-index:30;max-width:90%;box-shadow:0 8px 24px rgba(20,4,16,.35)}
+  .overlay{position:fixed;inset:0;background:rgba(30,6,24,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+  .sheet{background:var(--card);border-radius:20px 20px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));width:100%;max-height:86vh;overflow:auto;animation:slideup .22s ease-out}
+  @media(min-width:640px){.overlay{align-items:center}.sheet{width:380px;max-width:92%;border-radius:20px;padding:20px}}
+  @keyframes slideup{from{transform:translateY(26px);opacity:.5}to{transform:none;opacity:1}}
+  .datefield{position:relative}
+  .datefield input[type=date]{margin:0;padding-right:44px;cursor:pointer;min-height:48px}
+  .datefield input[type=date]::-webkit-calendar-picker-indicator{opacity:0;position:absolute;right:0;top:0;width:44px;height:100%;cursor:pointer}
+  .datefield .cal{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:var(--accent);display:flex;pointer-events:none}
+  .brand{text-align:center;padding:30px 0 4px;color:var(--cream)}
+  .brand img{width:78px;height:78px;border-radius:19px;box-shadow:0 10px 28px rgba(20,4,16,.35)}
+  .brand .bname{font-size:27px;font-weight:800;letter-spacing:-.02em;margin-top:12px;color:#ffe9d2}
+  .clubtag{font-size:12px;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.04em}
+  :focus-visible{outline:2px solid #ff8a66;outline-offset:2px}
+  /* ---- club screen ---- */
+  .topbtns{display:flex;gap:4px;align-items:center}
+  button.iconbtn{background:none;border:0;color:#ffb59f;padding:8px;min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border-radius:12px}
+  button.iconbtn:active{background:rgba(255,255,255,.12)}
+  .decknav{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
+  .decknav button{background:rgba(255,233,210,.16);color:#ffe9d2;min-height:44px;padding:8px 16px;font-size:15px}
+  .decknav button:disabled{opacity:.35}
+  .deckdots{display:flex;gap:6px;justify-content:center;margin-top:12px}
+  .deckdots i{width:8px;height:8px;border-radius:50%;background:rgba(255,233,210,.3);display:block}
+  .deckdots i.on{background:#ff8a66}
+  .clubcard{background:var(--card);border-radius:22px;padding:20px;box-shadow:0 2px 4px rgba(20,4,16,.25),0 18px 40px rgba(20,4,16,.3);margin-top:10px;position:relative}
+  .avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#ff7e5f,#8b5cf6);color:#fff;font-weight:700;font-size:14px;display:inline-flex;align-items:center;justify-content:center;flex:none;position:relative}
+  .avatar.sm{width:30px;height:30px;font-size:11px}
+  .avatar.me{box-shadow:0 0 0 2.5px var(--accent)}
+  .avatar .finb{position:absolute;right:-3px;bottom:-3px;width:16px;height:16px;border-radius:50%;background:var(--teal);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;border:2px solid var(--card)}
+  .avatarstack{display:flex}
+  .avatarstack .avatar{margin-left:-9px;border:2px solid var(--card)}
+  .avatarstack .avatar:first-child{margin-left:0}
+  .sheethead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .tappable{cursor:pointer}
+  /* header strip + overflow menu */
+  .clubhead{display:flex;align-items:center;gap:10px}
+  .clubhead .cname{font-size:19px;font-weight:800;letter-spacing:-.01em}
+  button.dots{background:none;border:0;color:var(--muted);min-width:44px;min-height:44px;font-size:22px;line-height:1;border-radius:12px;cursor:pointer;padding:4px}
+  .menu{position:absolute;top:52px;right:14px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 34px rgba(20,4,16,.28);z-index:15;min-width:210px;padding:6px}
+  .menu button{display:flex;width:100%;background:none;color:var(--ink);text-align:left;padding:12px 12px;min-height:46px;font-size:16px;font-weight:500;border-radius:9px}
+  .menu button:active{background:#fdeeea}
+  /* hero */
+  .hero{display:flex;gap:16px;margin-top:14px}
+  .hero .htitle{font-size:25px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+  .agg{font-weight:700;font-size:16.5px;margin-top:12px}
+  .clubbar{height:5px;background:#f3ddc8;border-radius:3px;overflow:hidden;margin-top:7px}
+  .clubbar i{display:block;height:100%;background:linear-gradient(90deg,#8b5cf6,#17a398)}
+  /* you row: the bar IS the control */
+  .yourow{border-top:1px solid var(--line);margin-top:16px;padding-top:14px;background:#fff7f2;border-radius:14px;padding:14px 12px 12px}
+  .pbar{position:relative;height:16px;background:#f3ddc8;border-radius:8px;margin-top:10px;touch-action:none;cursor:pointer}
+  .pbar i{position:absolute;left:0;top:0;bottom:0;border-radius:8px;background:linear-gradient(90deg,#8b5cf6,#c93a54)}
+  .pbar b{position:absolute;top:50%;width:24px;height:24px;border-radius:50%;background:#fff;border:4px solid var(--accent);transform:translate(-50%,-50%);box-shadow:0 2px 6px rgba(20,4,16,.25)}
+  .pbar.static{cursor:default;height:9px}
+  .pbar.static i{background:linear-gradient(90deg,#8b5cf6,#17a398)}
+  .stepbtn{min-width:46px;min-height:46px;padding:0;font-size:21px;border-radius:12px}
+  .numin{width:76px;text-align:center;padding:10px 6px;margin:0;-moz-appearance:textfield;appearance:textfield}
+  .numin::-webkit-outer-spin-button,.numin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .quiet{background:none;border:0;color:var(--accent);font-size:15px;font-weight:600;min-height:44px;padding:6px 10px;cursor:pointer}
+  /* member rows */
+  .memlist{margin-top:6px}
+  .mrow{display:flex;gap:11px;align-items:center;padding:10px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+  .mrow:last-child{border-bottom:0}
+  .mrow .minfo{flex:1;min-width:0}
+  .mrow .mname{font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .minibar{height:6px;background:#f3ddc8;border-radius:3px;overflow:hidden;margin-top:5px}
+  .minibar i{display:block;height:100%;background:linear-gradient(90deg,#8b5cf6,#17a398)}
+  .minibar.full i{background:var(--teal)}
+  .expandlink{display:block;width:100%;text-align:center;background:none;border:0;color:var(--accent);font-weight:700;font-size:15.5px;padding:12px 0 4px;min-height:44px;cursor:pointer}
+  /* meeting card */
+  .meetcard{background:var(--card);border-radius:20px;padding:16px;margin-top:14px;box-shadow:0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
+  .meetwhen{font-size:21px;font-weight:800;letter-spacing:-.01em}
+  .meetwhere{display:flex;align-items:center;gap:8px;margin-top:7px;font-size:16px}
+  .meetwhere a{font-weight:600;text-decoration:none}
+  .seg{display:flex;background:#f3ddc8;border-radius:12px;padding:3px;margin-top:13px}
+  .seg button{flex:1;background:none;color:var(--muted);min-height:42px;padding:8px 2px;font-size:15px;font-weight:600;border-radius:9px}
+  .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(20,4,16,.18)}
+  a.btnfill{display:flex;align-items:center;justify-content:center;background:var(--accent);color:#fff;border-radius:12px;padding:12px 18px;min-height:48px;font-weight:600;font-size:16px;text-decoration:none;margin-top:12px}
+  a.btnline{display:flex;align-items:center;justify-content:center;background:var(--card);color:var(--accent);border:1px solid var(--accent);border-radius:12px;padding:12px 18px;min-height:48px;font-weight:600;font-size:16px;text-decoration:none;margin-top:12px}
+  /* quiet list rows */
+  .lrows{background:var(--card);border-radius:20px;margin-top:14px;box-shadow:0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14);overflow:hidden}
+  .lrow{display:flex;gap:12px;align-items:center;padding:15px 16px;cursor:pointer;border-bottom:1px solid var(--line)}
+  .lrow:last-child{border-bottom:0}
+  .lrow .lic{color:var(--accent);display:flex;flex:none}
+  .lrow .chev{color:var(--muted);font-size:20px;flex:none}
+  /* pushed pages */
+  .pagehead{display:flex;align-items:center;gap:6px;margin-top:12px;color:var(--cream)}
+  button.backbtn{background:none;border:0;color:#ffb59f;min-width:44px;min-height:44px;font-size:24px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border-radius:12px;padding:4px}
+  .pagetitle{font-size:21px;font-weight:800;color:#ffe9d2;letter-spacing:-.01em}
+  .pickrow{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+  .pickrow:last-child{border-bottom:0}
+  .vcand{padding:13px 0;border-bottom:1px solid var(--line)}
+  .vcand:last-child{border-bottom:0}
+  .vbar{height:6px;background:#f3ddc8;border-radius:3px;overflow:hidden;margin-top:7px}
+  .vbar i{display:block;height:100%;background:var(--accent2)}
+  .confirmbox{background:#fdf0f0;border:1px solid #f0c4c4;border-radius:12px;padding:12px;margin-top:10px}
+</style>
+</head>
+<body>
+<header><h1><img src="/icon.svg" alt="" style="width:26px;height:26px;border-radius:7px;margin-right:8px">Reading&nbsp;Peeps</h1><span class="concept">Club · Status first</span><span class="topbtns" id="topnav"><button class="iconbtn" id="navExplore" aria-label="Explore"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></button><button class="iconbtn" id="navMe" aria-label="Me"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button></span></header>
+<main id="app"></main>
+<div id="modal"></div>
+<div class="toast hide" id="toast"></div>
+<script>
+
+const $ = (s, el=document) => el.querySelector(s);
+const app = $('#app');
+let token = localStorage.getItem('blc_token') || '';
+if(location.hash.startsWith('#t=')){ token = location.hash.slice(3); localStorage.setItem('blc_token', token); history.replaceState(null, '', location.pathname); }
+let user = null, myClubs = [], currentClub = null;
+let details = {};
+let deckIdx = 0;
+let view = 'home';           // home | explore | add | me | book | member | meeting | vote | library | settings
+let viewMemberId = null;
+let membersExpanded = false;
+let menuOpen = false;
+let addFrom = 'home';
+let searchResults = [];
+
+const ICONS = {
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+  vote: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  lib: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+  compass: '<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>',
+  user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  pin: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+  video: '<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>',
+  share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>',
+  mail: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>'
+};
+function icon(n, s=21){ return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`; }
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.remove('hide'); setTimeout(()=>t.classList.add('hide'), 2600); }
+/* Sheets exist ONLY for the edit-meeting and invite forms (scoped form budget). */
+function showSheet(html){ $('#modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet">${html}</div></div>`; $('#ovl').onclick = (e)=>{ if(e.target.id==='ovl') closeSheet(); }; }
+function closeSheet(){ $('#modal').innerHTML=''; }
+function sheetHead(title){
+  return `<div class="sheethead"><b style="font-size:20px">${title}</b><button class="ghost small" data-close aria-label="Close">${icon('x',16)}</button></div>`;
+}
+async function api(action, body={}){
+  const r = await fetch('/api/handler', { method:'POST', headers:{'content-type':'application/json', ...(token?{authorization:'Bearer '+token}:{})}, body: JSON.stringify({action, ...body}) });
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.error || 'Something went wrong');
+  return j;
+}
+// The test backend is one JSON document whose reads can lag a write; retry
+// idempotent writes up to 3 times, 900ms apart (existing app convention).
+async function call3(fn){ let err; for(let i=0;i<3;i++){ try{ return await fn(); }catch(e){ err=e; if(i<2) await new Promise(r=>setTimeout(r,900)); } } throw err; }
+function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtDate(ds){ if(!ds) return ''; const d=new Date(ds+'T12:00:00'); return d.toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'}); }
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function ratingsLine(b){
+  const parts=[];
+  if(b.google) parts.push(`Google ★ ${b.google.rating} (${b.google.count})`);
+  if(b.hardcover && !(b.google && b.google.count > (b.hardcover.count||0)*10)) parts.push(`Hardcover ★ ${b.hardcover.rating} (${b.hardcover.count})`);
+  if(!b.google && !b.hardcover && b.openlibrary) parts.push(`Open Library ★ ${b.openlibrary.rating} (${b.openlibrary.count})`);
+  return parts.length ? `<div class="stars">${parts.join(' · ')}</div>` : '';
+}
+function halfOptions(sel){ let o=''; for(let v=0; v<=5; v+=0.5){ o+=`<option value="${v}" ${sel===v?'selected':''}>${v===0?'Rate':v+' ★'}</option>`; } return o; }
+function pollDefaultEnd(c){
+  const week = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+  if(c.meeting && c.meeting.date){ const d = new Date(c.meeting.date + 'T12:00:00'); if(!isNaN(d.getTime())){ d.setDate(d.getDate() - 1); const ds = d.toISOString().slice(0, 10); return ds < week ? ds : week; } }
+  return week;
+}
+async function refreshClubs(){ const j = await api('myClubs'); myClubs = j.clubs; }
+async function loadDetails(){ details = {}; await Promise.all(myClubs.map(async c=>{ try{ const j = await api('club',{clubId:c.id}); details[c.id]=j.club; }catch(e){} })); }
+async function reloadClub(id){ const j = await api('club',{clubId:id}); details[id]=j.club; if(currentClub && currentClub.id===id) currentClub=j.club; return j.club; }
+function initials(name){ return (name||'?').split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+function avatarHtml(m, c, cls=''){ const fin = c && c.current && (c.finishedBy||[]).includes(m.userId); return `<span class="avatar ${m.userId===user.id?'me':''} ${cls}">${esc(initials(m.name))}${fin?'<span class="finb">✓</span>':''}</span>`; }
+function coverHtml(b, cls){ return b && b.cover ? `<img class="${cls||'cover'}" src="${esc(b.cover)}" alt="">` : `<div class="${cls||'cover'}"></div>`; }
+
+// ---------- reading progress (local overlay; the API has no progress yet) ----------
+// Key: userId|clubId|bookKey -> {percent, page, totalPages, prev, updatedAt}
+// API truth maps on top of it: finished (finishedBy / myFinished) = 100%.
+// Reaching 100% in the overlay does NOT finish the book by itself; the
+// explicit "Mark as Finished" action performs the API toggle (spec 5.3).
+let progStore = {};
+try{ progStore = JSON.parse(localStorage.getItem('rp_progress_v1') || '{}'); }catch(e){ progStore = {}; }
+function progSaveStore(){ try{ localStorage.setItem('rp_progress_v1', JSON.stringify(progStore)); }catch(e){} }
+function progKey(c){ return user.id + '|' + c.id + '|' + (c.current ? c.current.key : ''); }
+function myProgress(c){
+  if(!c.current) return null;
+  if(c.myFinished) return { percent: 100, finished: true };
+  const o = progStore[progKey(c)];
+  if(o && typeof o.percent === 'number') return { percent: o.percent, page: o.page || null, totalPages: o.totalPages || null, finished: false };
+  return null;
+}
+function memberProgress(c, m){
+  if(!c.current) return null;
+  if((c.finishedBy||[]).includes(m.userId)){
+    const rt = (c.currentRatings||[]).find(r=>r.userId===m.userId);
+    return { percent: 100, finished: true, rating: rt ? rt.rating : null };
+  }
+  if(m.userId === user.id){
+    const o = progStore[progKey(c)];
+    if(o && typeof o.percent === 'number') return { percent: o.percent, page: o.page || null, totalPages: o.totalPages || null, finished: false };
+  }
+  return null; // never fabricated: no data = "Not set"
+}
+function progLabel(p){
+  if(!p) return 'Not set';
+  if(p.finished) return 'Finished';
+  if(p.page && p.totalPages) return `p. ${p.page} of ${p.totalPages} · ${p.percent}%`;
+  if(p.totalPages) return `p. ${Math.round(p.percent/100*p.totalPages)} of ${p.totalPages} · ${p.percent}%`;
+  return p.percent + '%';
+}
+function progShort(p){
+  if(!p) return 'Not set';
+  if(p.finished) return 'Finished';
+  if(p.page && p.totalPages) return `p. ${p.page} · ${p.percent}%`;
+  if(p.totalPages) return `p. ${Math.round(p.percent/100*p.totalPages)} · ${p.percent}%`;
+  return p.percent + '%';
+}
+// Save my progress to the overlay. Dropping below 100% while the API says
+// finished un-finishes via toggleFinished; reaching 100% alone never does.
+async function saveMyProgress(c, percent, page, totalPages){
+  percent = Math.max(0, Math.min(100, Math.round(percent)));
+  const key = progKey(c);
+  const old = progStore[key] || {};
+  const prev = percent < 100 ? percent : (typeof old.prev === 'number' ? old.prev : 99);
+  progStore[key] = { percent, page: page || null, totalPages: totalPages || null, prev, updatedAt: new Date().toISOString() };
+  progSaveStore();
+  if(c.myFinished && percent < 100){
+    // The write response carries the fresh club; a follow-up read can lag
+    // behind it on this backend, so trust the response, not a re-read.
+    try{ const j = await call3(() => api('toggleFinished', { clubId: c.id })); details[c.id] = j.club; currentClub = j.club; }
+    catch(e){ toast(e.message); }
+  }
+}
+async function markFinished(c){
+  const key = progKey(c);
+  const old = progStore[key] || {};
+  progStore[key] = { percent: 100, page: old.page || null, totalPages: old.totalPages || null, prev: typeof old.prev === 'number' ? old.prev : 99, updatedAt: new Date().toISOString() };
+  progSaveStore();
+  try{ const j = await call3(() => api('toggleFinished', { clubId: c.id })); details[c.id] = j.club; currentClub = j.club; }
+  catch(e){ toast(e.message); }
+}
+async function undoFinished(c){
+  const key = progKey(c);
+  const old = progStore[key] || {};
+  const back = typeof old.prev === 'number' ? old.prev : 99;
+  const total = old.totalPages || null;
+  progStore[key] = { percent: back, page: total ? Math.round(back/100*total) : (old.page || null), totalPages: total, prev: back, updatedAt: new Date().toISOString() };
+  progSaveStore();
+  if(c.myFinished){
+    try{ const j = await call3(() => api('toggleFinished', { clubId: c.id })); details[c.id] = j.club; currentClub = j.club; }
+    catch(e){ toast(e.message); }
+  }
+}
+// Your own poll vote: the API poll view does not expose it, kept per poll id.
+let myVotes = {};
+try{ myVotes = JSON.parse(localStorage.getItem('blc_votes') || '{}'); }catch(e){ myVotes = {}; }
+function saveMyVote(pollId, key){ if(!pollId) return; myVotes[pollId] = key; try{ localStorage.setItem('blc_votes', JSON.stringify(myVotes)); }catch(e){} }
+// RSVP "Maybe": the API stores only going / notgoing, so Maybe is kept
+// locally per club (and clears any server RSVP). Reported as an API gap.
+let maybeStore = {};
+try{ maybeStore = JSON.parse(localStorage.getItem('rp_maybe_v1') || '{}'); }catch(e){ maybeStore = {}; }
+function myRsvp(c){
+  const s = (c.rsvps || {})[user.id];
+  if(s === 'going') return 'going';
+  if(s === 'notgoing') return 'cant';
+  if(maybeStore[c.id]) return 'maybe';
+  return '';
+}
+async function setRsvp(c, choice){
+  try{
+    if(choice === 'going' || choice === 'cant'){
+      delete maybeStore[c.id];
+      const j = await call3(() => api('rsvp', { clubId: c.id, status: choice === 'going' ? 'going' : 'notgoing' }));
+      details[c.id] = j.club; currentClub = j.club;
+    } else if(choice === 'maybe'){
+      maybeStore[c.id] = true;
+      const j = await call3(() => api('rsvp', { clubId: c.id, status: '' }));
+      details[c.id] = j.club; currentClub = j.club;
+    }
+    try{ localStorage.setItem('rp_maybe_v1', JSON.stringify(maybeStore)); }catch(e){}
+  }catch(e){ toast(e.message); }
+}
+
+// ---------- auth ----------
+function viewAuth(msg=''){
+  $('#topnav').classList.add('hide');
+  const gLogo = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-.95.66-2.23 1.08-4.07 1.08-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.21c-.25-.66-.38-1.4-.38-2.21s.14-1.55.38-2.21V6.7H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.3l3.98-3.09z"/><path fill="#EA4335" d="M12 4.83c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.21 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.7l3.98 3.09C6.22 6.94 8.87 4.83 12 4.83z"/></svg>';
+  app.innerHTML = `
+  <div class="brand"><img src="/icon.svg" alt=""><div class="bname">Reading Peeps</div></div>
+  <div class="card" id="formIn">
+    <h2 style="margin-top:2px">Sign in</h2>
+    <input type="email" id="inEmail" placeholder="Email" autocomplete="email">
+    <input type="password" id="inPw" placeholder="Password" autocomplete="current-password">
+    <div class="err" id="inErr">${esc(msg)}</div>
+    <button id="signin" style="width:100%">Sign in</button>
+    <div style="display:flex;align-items:center;gap:10px;margin:16px 0 12px;color:var(--muted);font-size:13px"><span style="flex:1;border-top:1px solid var(--line)"></span>or<span style="flex:1;border-top:1px solid var(--line)"></span></div>
+    <button class="gbtn" data-g>${gLogo}<span>Sign in with Google</span></button>
+    <div style="text-align:center;margin-top:12px"><a href="#" id="toSignup">Create account</a></div>
+  </div>
+  <div class="card hide" id="formUp">
+    <h2 style="margin-top:2px">Create account</h2>
+    <input type="text" id="upName" placeholder="Your name" autocomplete="name">
+    <input type="email" id="upEmail" placeholder="Email" autocomplete="email">
+    <input type="password" id="upPw" placeholder="Password" autocomplete="new-password">
+    <div class="err" id="upErr"></div>
+    <button id="signup" style="width:100%">Create account</button>
+    <div style="text-align:center;margin-top:12px"><a href="#" id="toSignin">Sign in</a></div>
+  </div>`;
+  app.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{ location.href = '/api/auth/google'; });
+  $('#toSignup').onclick = (e)=>{ e.preventDefault(); $('#formIn').classList.add('hide'); $('#formUp').classList.remove('hide'); };
+  $('#toSignin').onclick = (e)=>{ e.preventDefault(); $('#formUp').classList.add('hide'); $('#formIn').classList.remove('hide'); };
+  $('#signin').onclick = async ()=>{ try{ const j=await api('signin',{email:$('#inEmail').value, password:$('#inPw').value}); afterAuth(j); }catch(e){ $('#inErr').textContent=e.message; } };
+  $('#signup').onclick = async ()=>{ try{ const j=await api('signup',{name:$('#upName').value, email:$('#upEmail').value, password:$('#upPw').value}); afterAuth(j); }catch(e){ $('#upErr').textContent=e.message; } };
+}
+async function afterAuth(j){
+  token = j.token; user = j.user; localStorage.setItem('blc_token', token);
+  const inv = localStorage.getItem('blc_invite');
+  if(inv){ localStorage.removeItem('blc_invite'); try{ const r=await api('acceptInvite',{inviteToken:inv}); toast('You joined '+r.club.name); }catch(e){ toast(e.message); } }
+  boot();
+}
+async function boot(){
+  try{ const j = await api('me'); user = j.user; }catch(e){ return viewAuth(''); }
+  $('#topnav').classList.remove('hide');
+  await refreshClubs(); await loadDetails();
+  view = 'home'; render();
+}
+const invParam = new URLSearchParams(location.search).get('invite');
+if(invParam){ localStorage.setItem('blc_invite', invParam); history.replaceState({}, '', location.pathname); }
+$('#navExplore').onclick = ()=>{ if(!user) return; view='explore'; menuOpen=false; viewExplore(); };
+$('#navMe').onclick = ()=>{ if(!user) return; view='me'; menuOpen=false; viewMe(); };
+function goHome(idx){ view='home'; menuOpen=false; membersExpanded=false; if(typeof idx==='number') deckIdx = idx; render(); }
+function openClub(id){ const i = myClubs.findIndex(x=>x.id===id); goHome(i>=0?i:0); }
+function goPage(name){ view = name; menuOpen = false; window.scrollTo(0,0); render(); }
+function pageHead(title){
+  return `<div class="pagehead"><button class="backbtn" id="pgBack" aria-label="Back">‹</button><span class="pagetitle">${esc(title)}</span></div>`;
+}
+function wireBack(){ const b = $('#pgBack'); if(b) b.onclick = ()=>goHome(); }
+
+// ---------- Explore: search + create + invite live here, NOT on home ----------
+function viewExplore(){
+  app.innerHTML = `<button class="ghost small" id="expBack" style="margin-top:14px">‹ My clubs</button>
+  <h2>Explore</h2>
+  <div class="card"><h3 style="margin-top:0">Find a club</h3>
+    <div class="row"><input type="text" id="q" placeholder="Search clubs" class="grow"><button id="go" class="small">Search</button></div>
+    <div id="found"></div></div>
+  <div class="card"><h3 style="margin-top:0">Start a club</h3>
+    <input type="text" id="newName" placeholder="New club name">
+    <div class="row" style="margin-top:8px"><select id="newVis" class="grow" style="margin:0"><option value="private" selected>Private</option><option value="public">Public</option></select>
+    <button id="create">Create</button></div></div>
+  <div class="card"><h3 style="margin-top:0">Have an invite link?</h3>
+    <input type="text" id="invLink" placeholder="Paste the invite link">
+    <button id="invGo" style="width:100%">Join with invite</button><div class="err" id="invErr"></div></div>`;
+  $('#expBack').onclick = ()=>goHome();
+  $('#create').onclick = async ()=>{ try{ const j=await api('createClub',{name:$('#newName').value, private:$('#newVis').value==='private'}); await refreshClubs(); await loadDetails(); openClub(j.club.id); }catch(e){ toast(e.message); } };
+  const search = async ()=>{ const j=await api('searchClubs',{q:$('#q').value}); const f=$('#found'); if(!f) return; f.innerHTML = j.clubs.map(c=>`<div class="row" style="padding:6px 0"><div class="grow"><b>${esc(c.name)}</b><div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div></div>${c.isMember?'<span class="muted">Joined</span>':`<button class="small" data-join="${c.id}">Join</button>`}</div>`).join('') || '<div class="muted">Nothing found</div>';
+    app.querySelectorAll('[data-join]').forEach(b=>b.onclick=async()=>{ await api('joinClub',{clubId:b.dataset.join}); await refreshClubs(); await loadDetails(); openClub(b.dataset.join); }); };
+  $('#go').onclick = search; search();
+  $('#invGo').onclick = async ()=>{ const raw = $('#invLink').value.trim(); const m = raw.match(/invite=([^&\s]+)/); const tok = m ? m[1] : raw; if(!tok) return; try{ const r = await api('acceptInvite',{inviteToken:tok}); await refreshClubs(); await loadDetails(); toast('You joined '+r.club.name); openClub(r.club.id); }catch(e){ $('#invErr').textContent = e.message; } };
+}
+
+// ---------- Add books (a page, reached from the Library page) ----------
+function viewAdd(preClub){
+  const chosen = new Set(preClub?[preClub]: myClubs.map(c=>c.id));
+  const added = new Set();
+  app.innerHTML = `${pageHead('Add books')}
+  <div class="card"><h3 style="margin-top:0">To</h3><div id="clubPick">${myClubs.map(c=>`<span class="chip ${chosen.has(c.id)?'on':''}" data-club="${c.id}">${esc(c.name)}</span>`).join('')||'<span class="muted">Join or create a club first</span>'}</div></div>
+  <div class="card"><h3 style="margin-top:0">Search</h3>
+    <div class="row"><input type="text" id="sq" placeholder="Title or author" class="grow"><button id="sgo" class="small">Search</button></div>
+    <div id="sres"></div></div>
+  <div class="card"><h3 style="margin-top:0">Paste a link</h3>
+    <input type="url" id="link" placeholder="Amazon, Goodreads, Google Books or Open Library link">
+    <button id="linkGo" style="width:100%">Add from link</button><div class="err" id="lerr"></div></div>`;
+  $('#pgBack').onclick = ()=>{ if(addFrom==='library'){ view='library'; render(); } else goHome(); };
+  const clubs = ()=>[...app.querySelectorAll('#clubPick .chip.on')].map(x=>x.dataset.club);
+  app.querySelectorAll('#clubPick .chip').forEach(ch=>ch.onclick=()=>ch.classList.toggle('on'));
+  const renderRes = ()=>{ $('#sres').innerHTML = searchResults.map((b,i)=>`<div class="book">
+    ${b.cover?`<img class="cover" src="${esc(b.cover)}">`:'<div class="cover"></div>'}
+    <div class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>${ratingsLine(b)}</div>
+    <button class="small ${added.has(i)?'ghost':''}" data-add="${i}" ${added.has(i)?'disabled':''}>${added.has(i)?'Added':'Add'}</button></div>`).join('');
+    app.querySelectorAll('[data-add]').forEach(btn=>btn.onclick=async()=>{ if(!clubs().length) return toast('Pick a club first'); btn.disabled=true; btn.textContent='Adding…'; try{ await call3(()=>api('addBooks',{clubIds:clubs(), books:[searchResults[Number(btn.dataset.add)]]})); added.add(Number(btn.dataset.add)); await loadDetails(); if(currentClub) currentClub = details[currentClub.id]; renderRes(); toast('Added'); }catch(e){ btn.disabled=false; btn.textContent='Add'; toast(e.message); } }); };
+  $('#sgo').onclick = async ()=>{ try{ $('#sres').innerHTML='<div class="muted">Searching…</div>'; const j=await api('searchBooks',{q:$('#sq').value}); searchResults=j.results; added.clear(); renderRes(); if(!searchResults.length) $('#sres').innerHTML='<div class="muted">Nothing found</div>'; }catch(e){ toast(e.message); } };
+  $('#linkGo').onclick = async ()=>{ try{ $('#lerr').textContent=''; if(!clubs().length) return toast('Pick a club first'); const j=await api('addByLink',{url:$('#link').value, clubIds:clubs()}); toast('Added: '+j.book.title); await loadDetails(); if(currentClub) currentClub = details[currentClub.id]; $('#link').value=''; }catch(e){ $('#lerr').textContent=e.message; } };
+}
+
+// ---------- Me ----------
+function viewMe(){
+  app.innerHTML = `<button class="ghost small" id="meBack" style="margin-top:14px">‹ My clubs</button>
+  <div class="card" style="margin-top:12px"><h3 style="margin-top:0">${esc(user.name)}</h3><div class="muted">${esc(user.email)}</div>
+  <button id="meSignOut" class="ghost small" style="margin-top:12px">Sign out</button></div>
+  <h2>My clubs</h2>${myClubs.map(c=>`<div class="card row tappable" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b></div><span>›</span></div>`).join('')||'<div class="muted">No clubs yet</div>'}
+  <div class="card"><div id="delAcctBox"><button id="delAcct" class="ghost small danger">Delete account</button></div></div>`;
+  $('#meBack').onclick = ()=>goHome();
+  app.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openClub(el.dataset.open));
+  $('#meSignOut').onclick = async ()=>{ try{ await api('signout'); }catch(e){} token=''; user=null; currentClub=null; details={}; localStorage.removeItem('blc_token'); viewAuth(); };
+  $('#delAcct').onclick = ()=>{
+    $('#delAcctBox').innerHTML = `<div class="confirmbox"><div style="margin-bottom:8px">Delete your account and all your data?</div>
+    <div class="row"><button id="delAcctYes" class="danger small">Delete account</button><button id="delAcctNo" class="ghost small">Cancel</button></div></div>`;
+    $('#delAcctNo').onclick = ()=>viewMe();
+    $('#delAcctYes').onclick = async ()=>{ try{ await api('deleteAccount'); token=''; user=null; currentClub=null; myClubs=[]; details={}; localStorage.removeItem('blc_token'); viewAuth(); }catch(e){ toast(e.message); } };
+  };
+}
+
+
+// ---------- deck helpers ----------
+function deckNavHtml(){
+  return `<div class="decknav"><button id="deckPrev" ${deckIdx<=0?'disabled':''}>‹ Prev</button><span class="muted" style="color:#d9a8c2">${myClubs.length? (deckIdx+1)+' of '+myClubs.length : ''}</span><button id="deckNext" ${deckIdx>=myClubs.length-1?'disabled':''}>Next ›</button></div>`;
+}
+function dotsHtml(){ return `<div class="deckdots">${myClubs.map((c,i)=>`<i class="${i===deckIdx?'on':''}"></i>`).join('')}</div>`; }
+function wireDeck(){
+  const p = $('#deckPrev'), n = $('#deckNext');
+  if(p) p.onclick = ()=>{ if(deckIdx>0){ deckIdx--; membersExpanded=false; menuOpen=false; render(); } };
+  if(n) n.onclick = ()=>{ if(deckIdx<myClubs.length-1){ deckIdx++; membersExpanded=false; menuOpen=false; render(); } };
+  const cardEl = $('#clubScreen');
+  if(cardEl){
+    let tx=null, ty=null;
+    cardEl.addEventListener('touchstart', e=>{ tx=e.changedTouches[0].clientX; ty=e.changedTouches[0].clientY; }, {passive:true});
+    cardEl.addEventListener('touchend', e=>{ if(tx===null) return; const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty; tx=null;
+      if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.4){ if(dx<0 && deckIdx<myClubs.length-1){ deckIdx++; membersExpanded=false; menuOpen=false; render(); } if(dx>0 && deckIdx>0){ deckIdx--; membersExpanded=false; menuOpen=false; render(); } }
+    }, {passive:true});
+  }
+}
+function ensureClub(){
+  deckIdx = Math.min(deckIdx, myClubs.length - 1);
+  const cc = details[myClubs[deckIdx].id];
+  if(!cc){ (async()=>{ try{ await reloadClub(myClubs[deckIdx].id); }catch(e){} if(view==='home') render(); })(); return null; }
+  currentClub = cc;
+  return cc;
+}
+
+// ---------- shared fragments ----------
+function memberSort(c){
+  const others = c.members.filter(m=>m.userId!==user.id);
+  const rank = (m)=>{ const p = memberProgress(c, m); return p ? p.percent : -1; };
+  return others.sort((a,b)=> rank(b)-rank(a) || a.name.localeCompare(b.name));
+}
+function memberRowHtml(c, m){
+  const p = memberProgress(c, m);
+  const pct = p ? p.percent : 0;
+  return `<div class="mrow" data-member="${m.userId}">${avatarHtml(m, c)}
+    <div class="minfo"><div class="mname">${esc(m.name)}${m.role==='admin'?'<span class="badge">Admin</span>':''}</div>
+    <div class="minibar ${p && p.finished ? 'full' : ''}"><i style="width:${pct}%"></i></div></div>
+    <div style="text-align:right;flex:none">${p && p.finished ? '<span class="badge fin" style="margin-left:0">Finished</span>' : `<b style="font-size:15px">${progShort(p)}</b>`}${p && p.finished && p.rating ? `<div class="stars">★ ${p.rating}</div>` : ''}</div>
+  </div>`;
+}
+function rsvpSegHtml(c){
+  const mine = myRsvp(c);
+  return `<div class="seg" role="group" aria-label="Your RSVP">
+    <button data-rsvp2="going" class="${mine==='going'?'on':''}">Going</button>
+    <button data-rsvp2="maybe" class="${mine==='maybe'?'on':''}">Maybe</button>
+    <button data-rsvp2="cant" class="${mine==='cant'?'on':''}">Can't</button>
+  </div>`;
+}
+function wireRsvp(c){
+  document.querySelectorAll('[data-rsvp2]').forEach(b=>b.onclick=async()=>{ await setRsvp(details[c.id]||c, b.dataset.rsvp2); render(); });
+}
+function goingMembers(c){ return c.members.filter(m=>(c.rsvps||{})[m.userId]==='going'); }
+function voteStatus(c){
+  if(c.poll){
+    const mine = myVotes[c.poll.id];
+    if(mine){ const o = c.poll.options.find(o=>o.book.key===mine); if(o) return `You voted for ${o.book.title}`; }
+    const ends = new Date(c.poll.closesAt).toLocaleDateString(undefined,{weekday:'short'});
+    return `${c.poll.options.length} candidates · closes ${ends}`;
+  }
+  if(c.lastResult && c.lastResult.tie) return 'Vote tied';
+  return c.role==='admin' ? 'Not started' : 'No vote open';
+}
+
+// ---------- home: one club = one screen ----------
+function render(){
+  if(view === 'explore') return viewExplore();
+  if(view === 'add') return viewAdd(currentClub ? currentClub.id : null);
+  if(view === 'me') return viewMe();
+  if(view === 'book') return viewBook();
+  if(view === 'member') return viewMember();
+  if(view === 'meeting') return viewMeeting();
+  if(view === 'vote') return viewVote();
+  if(view === 'library') return viewLibrary();
+  if(view === 'settings') return viewSettings();
+  return viewHome();
+}
+function viewHome(){
+  if(!myClubs.length){
+    app.innerHTML = `<div class="decknav"><span></span><span></span><span></span></div>
+    <div class="clubcard" id="clubScreen"><b style="font-size:21px">No clubs yet</b>
+    <div class="muted" style="margin-top:8px">Find one, or start your own, in Explore.</div>
+    <button id="emptyExplore" style="margin-top:18px;width:100%">Explore</button></div>`;
+    const b=$('#emptyExplore'); if(b) b.onclick=()=>{ view='explore'; viewExplore(); };
+    return;
+  }
+  const c = ensureClub(); if(!c) return;
+  const b = c.current;
+  const mine = b ? myProgress(c) : null;
+  const finCount = (c.finishedBy||[]).length;
+  const avg = b ? Math.round(c.members.reduce((s,m)=>{ const p = memberProgress(c, m); return s + (p ? p.percent : 0); }, 0) / Math.max(1, c.members.length)) : 0;
+  const others = memberSort(c);
+  const shown = membersExpanded ? others : others.slice(0, 5);
+  const going = goingMembers(c);
+  const isToday = c.meeting && c.meeting.date === todayStr();
+  app.innerHTML = `${deckNavHtml()}
+  <div id="clubScreen">
+    <div class="clubcard">
+      <div class="clubhead">
+        <div class="grow"><div class="cname">${esc(c.name)}${c.private?'<span class="badge">Private</span>':''}</div>
+        <div class="muted">${c.members.length} member${c.members.length>1?'s':''} · meets every ${c.meetingFrequencyWeeks} week${c.meetingFrequencyWeeks>1?'s':''}</div></div>
+        <span class="avatarstack">${c.members.slice(0,4).map(m=>avatarHtml(m, c, 'sm')).join('')}</span>
+        <button class="dots" id="dotsBtn" aria-label="Club menu">⋯</button>
+      </div>
+      ${menuOpen ? `<div class="menu" id="clubMenu">
+        <button data-menu="settings">${icon('gear',18)}&nbsp; Club settings</button>
+        <button data-menu="invite">${icon('mail',18)}&nbsp; Invite member</button>
+        <button data-menu="share">${icon('share',18)}&nbsp; Share club</button>
+      </div>` : ''}
+      ${b ? `
+      <div class="hero">
+        <span class="tappable" data-gobook>${coverHtml(b,'cover hero')}</span>
+        <div class="grow">
+          <div class="clubtag">Reading now</div>
+          <div class="htitle tappable" data-gobook>${esc(b.title)}</div>
+          <div class="muted" style="margin-top:3px">${esc(b.author)}</div>
+          ${ratingsLine(b)}
+          <div class="agg" id="aggLine">${finCount} of ${c.members.length} finished</div>
+          <div class="clubbar"><i style="width:${avg}%"></i></div>
+        </div>
+      </div>
+      <div class="yourow" id="youRow">
+        <div class="row">${avatarHtml(c.members.find(m=>m.userId===user.id) || {userId:user.id, name:user.name}, c)}<b class="grow">You</b><b id="youLabel">${progLabel(mine)}</b></div>
+        ${mine && mine.finished ? `
+          <div class="pbar static"><i style="width:100%"></i></div>
+          <div class="row" style="margin-top:10px"><span class="badge fin" style="margin:0">Finished</span><span class="grow"></span><button class="quiet" id="youUndo">Undo</button></div>
+        ` : `
+          <div class="pbar" id="youBar" role="slider" aria-label="My progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${mine ? mine.percent : 0}"><i id="youFill" style="width:${mine ? mine.percent : 0}%"></i><b id="youKnob" style="left:${mine ? mine.percent : 0}%"></b></div>
+          <div class="row" style="margin-top:12px;justify-content:center">
+            <button class="stepbtn" id="youMinus" aria-label="One page back">−</button>
+            <input type="number" class="numin" id="youPage" min="0" placeholder="Page" value="${mine && mine.page ? mine.page : ''}" aria-label="Page I am on">
+            <span class="muted">of</span>
+            <input type="number" class="numin" id="youTotal" min="0" placeholder="Pages" value="${mine && mine.totalPages ? mine.totalPages : ''}" aria-label="Total pages in the book">
+            <button class="stepbtn" id="youPlus" aria-label="One page forward">+</button>
+          </div>
+          ${mine && mine.percent >= 100 ? `<button id="youFinish" style="margin-top:12px;width:100%">Mark as Finished</button>` : ''}
+        `}
+      </div>
+      ${others.length ? `<div class="clubtag" style="margin-top:18px">Where everyone is</div>
+      <div class="memlist" id="memList">${shown.map(m=>memberRowHtml(c, m)).join('')}</div>
+      ${others.length > 5 ? `<button class="expandlink" id="memExpand">${membersExpanded ? 'Show fewer' : `Show all ${others.length} members`}</button>` : ''}` : ''}
+      ` : `
+      <div style="margin-top:16px"><b style="font-size:20px">No book picked yet</b>
+      <div class="muted" style="margin-top:4px">${c.library.length ? 'Pick one from the library.' : 'Add books to the library first.'}</div></div>
+      `}
+    </div>
+    <div class="meetcard tappable" id="meetCard">
+      ${c.meeting && c.meeting.date ? `
+        <div class="meetwhen">${fmtDate(c.meeting.date)}${isToday ? ' · Today' : ''}</div>
+        ${c.meeting.type === 'online'
+          ? `<div class="meetwhere"><span style="color:var(--accent);display:flex">${icon('video',19)}</span>${c.meeting.link ? `<a href="${esc(c.meeting.link)}" target="_blank" data-stay>Online · Join link</a>` : '<span>Online</span>'}</div>`
+          : `<div class="meetwhere"><span style="color:var(--accent);display:flex">${icon('pin',19)}</span><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.meeting.address||'')}" target="_blank" data-stay>In person · ${esc(c.meeting.address || 'Address not set')}</a></div>`}
+        <div class="row" style="margin-top:10px"><span class="avatarstack">${going.slice(0,4).map(m=>avatarHtml(m, c, 'sm')).join('')}</span><span class="muted" id="goingLine">${going.length} going</span></div>
+        ${rsvpSegHtml(c)}
+        ${isToday && c.meeting.type === 'online' && c.meeting.link ? `<a class="btnfill" href="${esc(c.meeting.link)}" target="_blank" data-stay>Join meeting</a>` : ''}
+        ${isToday && c.meeting.type !== 'online' ? `<a class="btnline" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.meeting.address||'')}" target="_blank" data-stay>Directions</a>` : ''}
+      ` : `
+        <div class="meetwhen">No date yet</div>
+        <div class="muted" style="margin-top:4px">Meets every ${c.meetingFrequencyWeeks} week${c.meetingFrequencyWeeks>1?'s':''} · tap to plan it</div>
+      `}
+    </div>
+    <div class="lrows">
+      <div class="lrow" data-govote><span class="lic">${icon('vote',21)}</span><div class="grow"><b>Next book</b><div class="muted">${esc(voteStatus(c))}</div></div><span class="chev">›</span></div>
+      <div class="lrow" data-golib><span class="lic">${icon('lib',21)}</span><div class="grow"><b>Library</b><div class="muted">${c.library.length} book${c.library.length===1?'':'s'}</div></div><span class="chev">›</span></div>
+    </div>
+  </div>
+  ${dotsHtml()}`;
+  wireDeck();
+  // overflow menu
+  const db = $('#dotsBtn'); if(db) db.onclick = (e)=>{ e.stopPropagation(); menuOpen = !menuOpen; render(); };
+  document.querySelectorAll('[data-menu]').forEach(mb=>mb.onclick=()=>{
+    const k = mb.dataset.menu; menuOpen = false;
+    if(k==='settings'){ goPage('settings'); }
+    else if(k==='invite'){ openInviteSheet(c); }
+    else if(k==='share'){ if(navigator.share){ navigator.share({ title: c.name, text: 'Join my book club: ' + c.name, url: location.origin + location.pathname }).catch(()=>{}); } else { openInviteSheet(c); } }
+  });
+  // hero -> book page
+  document.querySelectorAll('[data-gobook]').forEach(el=>el.onclick=()=>goPage('book'));
+  // you row
+  wireYou(c);
+  const un = $('#youUndo'); if(un) un.onclick = async ()=>{ await undoFinished(details[c.id]||c); render(); };
+  const fin = $('#youFinish'); if(fin) fin.onclick = async ()=>{ fin.disabled = true; await markFinished(details[c.id]||c); render(); };
+  // members
+  document.querySelectorAll('[data-member]').forEach(el=>el.onclick=()=>{ viewMemberId = el.dataset.member; goPage('member'); });
+  const ex = $('#memExpand'); if(ex) ex.onclick = ()=>{ membersExpanded = !membersExpanded; render(); };
+  // meeting card -> meeting page (but not when tapping a link or the RSVP control)
+  const mc = $('#meetCard'); if(mc) mc.onclick = (e)=>{ if(e.target.closest('[data-stay]') || e.target.closest('[data-rsvp2]')) return; goPage('meeting'); };
+  wireRsvp(c);
+  const gv = document.querySelector('[data-govote]'); if(gv) gv.onclick = ()=>goPage('vote');
+  const gl = document.querySelector('[data-golib]'); if(gl) gl.onclick = ()=>goPage('library');
+}
+
+// ---------- the You row: the bar IS the control ----------
+function wireYou(c){
+  const bar = $('#youBar'); if(!bar) return;
+  // Keep deck swipe from stealing drags that start on the bar.
+  bar.addEventListener('touchstart', e=>e.stopPropagation(), {passive:true});
+  const fill = $('#youFill'), knob = $('#youKnob'), label = $('#youLabel');
+  const pageEl = $('#youPage'), totEl = $('#youTotal');
+  const cur = ()=> myProgress(details[c.id]||c) || { percent: 0, page: null, totalPages: null };
+  function paint(pct){
+    const total = Number(totEl.value) || cur().totalPages || null;
+    const page = total ? Math.round(pct/100*total) : (Number(pageEl.value) || null);
+    fill.style.width = pct + '%'; knob.style.left = pct + '%';
+    bar.setAttribute('aria-valuenow', pct);
+    label.textContent = progLabel({ percent: pct, page, totalPages: total, finished: false });
+    return { pct, page, total };
+  }
+  let dragState = null;
+  const pctFromEvent = (e)=>{ const r = bar.getBoundingClientRect(); return Math.max(0, Math.min(100, Math.round((e.clientX - r.left) / r.width * 100))); };
+  bar.addEventListener('pointerdown', (e)=>{ dragState = paint(pctFromEvent(e)); bar.setPointerCapture(e.pointerId); });
+  bar.addEventListener('pointermove', (e)=>{ if(dragState) dragState = paint(pctFromEvent(e)); });
+  bar.addEventListener('pointerup', async (e)=>{ if(!dragState) return; const s = dragState; dragState = null; await saveMyProgress(details[c.id]||c, s.pct, s.page, s.total); render(); });
+  $('#youMinus').onclick = async ()=>{ const cc = details[c.id]||c; const p = cur(); const total = Number(totEl.value) || p.totalPages || null;
+    if(total){ const page = Math.max(0, (p.page || Math.round(p.percent/100*total)) - 1); await saveMyProgress(cc, total ? Math.round(page/total*100) : p.percent, page, total); }
+    else await saveMyProgress(cc, Math.max(0, p.percent - 1), null, null); render(); };
+  $('#youPlus').onclick = async ()=>{ const cc = details[c.id]||c; const p = cur(); const total = Number(totEl.value) || p.totalPages || null;
+    if(total){ const page = Math.min(total, (p.page || Math.round(p.percent/100*total)) + 1); await saveMyProgress(cc, Math.round(page/total*100), page, total); }
+    else await saveMyProgress(cc, Math.min(100, p.percent + 1), null, null); render(); };
+  const commitInputs = async ()=>{ const cc = details[c.id]||c; const p = cur(); const total = Number(totEl.value) || null; const page = Number(pageEl.value) || null;
+    if(total && page !== null) await saveMyProgress(cc, Math.round(page/total*100), page, total);
+    else if(total) await saveMyProgress(cc, p.percent, p.page, total);
+    else if(page !== null) await saveMyProgress(cc, p.percent, page, null);
+    render(); };
+  pageEl.onchange = commitInputs; totEl.onchange = commitInputs;
+}
+
+
+// ---------- pushed pages ----------
+function cur(){ return currentClub ? (details[currentClub.id] || currentClub) : null; }
+
+// --- Book page ---
+function viewBook(){
+  const c = cur(); if(!c) return goHome();
+  const b = c.current;
+  if(!b){
+    app.innerHTML = `${pageHead('Book')}<div class="card">
+    <b style="font-size:19px">No book picked yet</b>
+    <div class="muted" style="margin-top:4px">${c.role==='admin' ? 'Pick the book the club reads next:' : 'The admin picks the book.'}</div>
+    <div style="margin-top:8px">${pickRowsHtml(c)}</div></div>`;
+    wireBack(); wirePickRows(c); return;
+  }
+  const finCount = (c.finishedBy||[]).length;
+  const everyone = [...c.members].sort((a,b2)=>{ const pa = memberProgress(c,a), pb = memberProgress(c,b2); return (pb?pb.percent:-1)-(pa?pa.percent:-1) || a.name.localeCompare(b2.name); });
+  app.innerHTML = `${pageHead('Book')}<div class="card">
+    <div class="row" style="align-items:flex-start">${coverHtml(b,'cover hero')}<div class="grow"><b style="font-size:22px">${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>${ratingsLine(b)}
+    <div style="margin-top:8px"><select class="rate" data-rate="${b.key}">${halfOptions(b.myRating)}</select></div>
+    <div class="agg" style="margin-top:10px">${finCount} of ${c.members.length} finished</div></div></div>
+    <div class="clubtag" style="margin-top:18px">Everyone</div>
+    <div class="memlist">${everyone.map(m=>memberRowHtml(c, m)).join('')}</div>
+    ${c.role==='admin' ? `<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px"><b>Change book</b><div style="margin-top:6px">${pickRowsHtml(c)}</div></div>` : ''}
+  </div>`;
+  wireBack();
+  wireRates(c);
+  document.querySelectorAll('[data-member]').forEach(el=>el.onclick=()=>{ viewMemberId = el.dataset.member; goPage('member'); });
+  wirePickRows(c);
+}
+function pickRowsHtml(c){
+  if(!c.library.length) return '<div class="muted">The library is empty</div>';
+  return c.library.map(b=>{
+    const isCur = c.current && c.current.key===b.key;
+    return `<div class="pickrow">${coverHtml(b)}<div class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}</div>${ratingsLine(b)}</div>${isCur?'<span class="badge">Reading now</span>':(c.role==='admin'?`<button class="small" data-setbook="${b.key}">Read this</button>`:'')}</div>`;
+  }).join('');
+}
+function wirePickRows(c){
+  document.querySelectorAll('[data-setbook]').forEach(btn=>btn.onclick=async()=>{ btn.disabled=true; try{ const j = await call3(()=>api('setCurrent',{clubId:c.id, bookKey:btn.dataset.setbook})); details[c.id]=j.club; currentClub=j.club; goHome(); }catch(e){ btn.disabled=false; toast(e.message); } });
+}
+function wireRates(c){
+  document.querySelectorAll('[data-rate]').forEach(s=>s.onchange=async()=>{ await api('rate',{bookKey:s.dataset.rate, rating:Number(s.value)}); toast('Saved'); await reloadClub(c.id); render(); });
+}
+
+// --- Member page ---
+function viewMember(){
+  const c = cur(); if(!c) return goHome();
+  const m = c.members.find(x=>x.userId===viewMemberId) || c.members[0];
+  if(!m) return goHome();
+  const p = memberProgress(c, m);
+  const rt = (c.currentRatings||[]).find(r=>r.userId===m.userId);
+  const rsvp = c.meeting && c.meeting.date ? (c.rsvps||{})[m.userId] : null;
+  app.innerHTML = `${pageHead('Member')}<div class="card">
+    <div class="row">${avatarHtml(m, c)}<div class="grow"><b style="font-size:20px">${esc(m.name)}</b>${m.userId===user.id?'<span class="badge">You</span>':''}${m.role==='admin'?'<span class="badge">Admin</span>':''}
+    <div class="muted">${c.meeting && c.meeting.date ? (rsvp==='going'?'Going to the meeting':rsvp==='notgoing'?'Not going to the meeting':'No RSVP yet') : ''}</div></div></div>
+    ${c.current ? `<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px">
+      <div class="clubtag">${esc(c.current.title)}</div>
+      <div class="pbar static" style="margin-top:10px"><i style="width:${p ? p.percent : 0}%"></i></div>
+      <div class="row" style="margin-top:8px"><b class="grow">${progLabel(p)}</b>${p && p.finished ? '<span class="badge fin">Finished</span>' : ''}${rt && rt.rating ? `<span class="stars">★ ${rt.rating}</span>` : ''}</div>
+      ${m.userId===user.id && !(p && p.finished) ? '<div class="muted" style="margin-top:6px">Update your place from the club card.</div>' : ''}
+    </div>` : '<div class="muted" style="margin-top:12px">No book picked yet, so there is no progress to show.</div>'}
+  </div>`;
+  wireBack();
+}
+
+// --- Meeting page ---
+function overlapOf(c){ const o = {}; Object.values(c.availability||{}).forEach(days=>days.forEach(d=>o[d]=(o[d]||0)+1)); return o; }
+function viewMeeting(){
+  const c = cur(); if(!c) return goHome();
+  const admin = c.role==='admin';
+  let body = '';
+  if(c.meeting && c.meeting.date){
+    const going = goingMembers(c);
+    const isToday = c.meeting.date === todayStr();
+    body = `<div style="text-align:center;margin-top:6px"><b style="font-size:26px">${fmtDate(c.meeting.date)}</b>
+    <div class="muted" style="margin-top:4px">Meets every ${c.meetingFrequencyWeeks} week${c.meetingFrequencyWeeks>1?'s':''}</div></div>
+    <div style="margin-top:14px">${c.meeting.type==='online'
+      ? (c.meeting.link ? `<a class="btnline" style="margin-top:0" href="${esc(c.meeting.link)}" target="_blank">${icon('video',18)}&nbsp; Online · Open the join link</a>` : '<div class="muted" style="text-align:center">Online · no link set yet</div>')
+      : `<a class="btnline" style="margin-top:0" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.meeting.address||'')}" target="_blank">${icon('pin',18)}&nbsp; In person · ${esc(c.meeting.address || 'Address not set')}</a>`}</div>
+    ${rsvpSegHtml(c)}
+    ${isToday && c.meeting.type==='online' && c.meeting.link ? `<a class="btnfill" href="${esc(c.meeting.link)}" target="_blank">Join meeting</a>` : ''}
+    <button class="ghost" id="addCal" style="margin-top:12px;width:100%">${icon('calendar',18)}&nbsp; Add to calendar</button>
+    <div class="clubtag" style="margin-top:18px">Coming · ${going.length}</div>
+    ${c.members.map(m=>{ const r=(c.rsvps||{})[m.userId]; return `<div class="memrow" style="display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)">${avatarHtml(m, c)}<b class="grow">${esc(m.name)}</b><span class="muted">${r==='going'?'Going':r==='notgoing'?'Not going':'No answer'}</span></div>`; }).join('')}
+    ${admin ? '<button class="ghost" id="editMeet" style="margin-top:16px;width:100%">Edit meeting</button>' : ''}`;
+  } else {
+    const over = overlapOf(c);
+    const maxOver = Math.max(0, ...(c.week||[]).map(d=>over[d]||0));
+    const best = maxOver>0 ? (c.week||[]).filter(d=>(over[d]||0)===maxOver) : [];
+    body = `<div style="text-align:center;margin-top:6px"><b style="font-size:22px">Plan the meeting</b>
+    <div class="muted" style="margin-top:4px">Meets every ${c.meetingFrequencyWeeks} week${c.meetingFrequencyWeeks>1?'s':''}</div></div>
+    <div class="muted" style="margin-top:16px">Pick the days you are available</div>
+    <div class="row" style="margin-top:8px">${(c.week||[]).map(d=>{ const dt=new Date(d+'T12:00:00'); const mine2=(c.availability[user.id]||[]).includes(d); const n=over[d]||0; return `<div class="day ${mine2?'on':''} ${best.includes(d)?'best':''}" data-day="${d}"><span class="n">${'Sun Mon Tue Wed Thu Fri Sat'.split(' ')[dt.getDay()]}</span>${dt.getDate()}<span class="n">${n} ✓</span></div>`; }).join('')}</div>
+    ${admin && best.length ? `<div class="clubtag" style="margin-top:16px">${best.length>1?'Best days':'Best day'}</div>${best.map(d=>`<button data-setday="${d}" style="margin-top:8px;width:100%">Set ${fmtDate(d)} · ${maxOver} in</button>`).join('')}` : ''}
+    ${admin ? '<button class="ghost" id="editMeet" style="margin-top:16px;width:100%">Set date and place</button>' : ''}`;
+  }
+  app.innerHTML = `${pageHead('Meeting')}<div class="card">${body}</div>`;
+  wireBack();
+  wireRsvp(c);
+  const ac = $('#addCal'); if(ac) ac.onclick = ()=>toast('Calendar export is not in this prototype yet');
+  const em = $('#editMeet'); if(em) em.onclick = ()=>openMeetingSheet(c);
+  document.querySelectorAll('[data-day]').forEach(d=>d.onclick=async()=>{ const cc = details[c.id]||c; const mine2=new Set(((cc.availability||{})[user.id]||[])); const day=d.dataset.day; mine2.has(day)?mine2.delete(day):mine2.add(day); try{ const j = await call3(()=>api('availability',{clubId:c.id, days:[...mine2]})); details[c.id]=j.club; currentClub=j.club; render(); }catch(e){ toast(e.message); } });
+  document.querySelectorAll('[data-setday]').forEach(btn=>btn.onclick=async()=>{ try{ const j = await call3(()=>api('pickDate',{clubId:c.id, date:btn.dataset.setday})); details[c.id]=j.club; currentClub=j.club; render(); }catch(e){ toast(e.message); } });
+}
+let meetSheetType = null;
+function openMeetingSheet(c){
+  const type = meetSheetType || c.meeting.type || 'online';
+  showSheet(sheetHead('Edit meeting') + `
+  <div class="muted">Date</div>
+  <div class="datefield"><input type="date" id="msDate" value="${esc(c.meeting.date || '')}"><span class="cal">${icon('calendar',18)}</span></div>
+  <div class="muted" style="margin-top:10px">How</div>
+  <select id="msType" style="margin:0"><option value="online" ${type==='online'?'selected':''}>Online</option><option value="inperson" ${type==='inperson'?'selected':''}>In person</option></select>
+  <div id="msPlace">${type==='online'
+    ? `<input type="url" id="msLink" placeholder="Meeting link" value="${esc(c.meeting.link||'')}">`
+    : `<input type="text" id="msAddr" placeholder="Address" value="${esc(c.meeting.address||'')}">`}</div>
+  <button id="msSave" style="margin-top:12px;width:100%">Save</button>
+  ${c.meeting.date ? '<button class="ghost small danger" id="msClear" style="margin-top:10px;width:100%">Clear the date</button>' : ''}`);
+  document.querySelector('[data-close]').onclick = ()=>{ meetSheetType = null; closeSheet(); };
+  $('#msType').onchange = ()=>{ meetSheetType = $('#msType').value; openMeetingSheet(details[c.id]||c); };
+  const df = $('#msDate').closest('.datefield'); if(df) df.onclick = ()=>{ const inp = $('#msDate'); try{ inp.focus(); if(inp.showPicker) inp.showPicker(); }catch(e){} };
+  $('#msSave').onclick = async ()=>{
+    const cc = details[c.id]||c;
+    const t = $('#msType').value;
+    const m = { type: t };
+    if(t==='online'){ const el=$('#msLink'); m.link = el?el.value:''; } else { const el=$('#msAddr'); m.address = el?el.value:''; }
+    try{
+      await api('clubSettings',{clubId:c.id, meeting:m});
+      const dv = $('#msDate').value;
+      if(dv && dv !== cc.meeting.date){ const j = await call3(()=>api('pickDate',{clubId:c.id, date:dv})); details[c.id]=j.club; currentClub=j.club; }
+      else await reloadClub(c.id);
+      meetSheetType = null; closeSheet(); toast('Saved'); render();
+    }catch(e){ toast(e.message); }
+  };
+  const cl = $('#msClear'); if(cl) cl.onclick = async ()=>{ try{ const j = await api('clubSettings',{clubId:c.id, meeting:{date:null}}); details[c.id]=j.club; currentClub=j.club; meetSheetType=null; closeSheet(); render(); }catch(e){ toast(e.message); } };
+}
+
+// --- Vote page ---
+function viewVote(){
+  const c = cur(); if(!c) return goHome();
+  const admin = c.role==='admin';
+  let body = '';
+  if(c.poll){
+    const p = c.poll, mine = myVotes[p.id];
+    const ends = new Date(p.closesAt).toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'});
+    const maxV = Math.max(1, ...p.options.map(o=>o.votes));
+    body = `<div style="text-align:center"><b style="font-size:21px">${p.runoff?'Tiebreak vote':'Pick the next book'}</b>
+    <div class="muted">Voting ends ${ends} · ${p.totalVotes} vote${p.totalVotes===1?'':'s'}</div>
+    ${p.runoff?'<div class="muted">The last vote tied.</div>':''}</div>
+    ${p.options.map(o=>{ const isMine = mine===o.book.key;
+      return `<div class="vcand"><div class="row">${coverHtml(o.book)}<div class="grow"><b>${esc(o.book.title)}</b><div class="muted">${esc(o.book.author)}</div><div class="vbar"><i style="width:${Math.round(o.votes/maxV*100)}%"></i></div></div>
+      <div style="text-align:right;flex:none"><b style="font-size:19px">${o.votes}</b><div style="margin-top:6px">${isMine?'<button class="small" disabled>✓ Your pick</button>':`<button class="small" data-vote="${o.book.key}">Vote</button>`}</div></div></div></div>`; }).join('')}
+    ${admin?'<button class="ghost small" data-closepoll style="margin-top:10px">Close the vote</button>':''}`;
+  } else if(c.lastResult && c.lastResult.tie){
+    const tied = c.lastResult.tie.map(k=>c.library.find(b=>b.key===k)).filter(Boolean);
+    body = `<div style="text-align:center"><b style="font-size:21px">The vote tied</b><div class="muted" style="margin-top:4px">Only these books are still in it.</div></div>
+    ${tied.map(b=>`<div class="pickrow">${coverHtml(b)}<div class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}</div></div>${admin?`<button class="small ghost" data-pick="${b.key}">Pick</button>`:''}</div>`).join('')}
+    ${admin?'<button data-runoff style="margin-top:12px;width:100%">Run the runoff</button>':'<div class="muted" style="text-align:center;margin-top:10px">The admin settles the tie.</div>'}`;
+  } else if(!c.library.length){
+    body = `<div style="text-align:center"><b style="font-size:21px">The library is empty</b><div class="muted" style="margin-top:6px">Add books and the club can choose its next read.</div></div><button class="ghost" data-golib2 style="margin-top:14px;width:100%">Open the library</button>`;
+  } else if(!admin){
+    body = `<div style="text-align:center"><b style="font-size:21px">No vote open</b><div class="muted" style="margin-top:6px">The admin starts the vote for the next book.</div></div>`;
+  } else {
+    body = `<div style="text-align:center"><b style="font-size:21px">Choose the next book</b><div class="muted" style="margin-top:6px">${c.library.length} books in the library</div></div>
+    <div class="muted" style="margin:14px 0 4px">Vote end date</div>
+    <div class="datefield"><input type="date" id="voteEnd" value="${pollDefaultEnd(c)}"><span class="cal">${icon('calendar',18)}</span></div>
+    <button data-startopen style="margin-top:12px;width:100%">Open the vote</button>`;
+  }
+  app.innerHTML = `${pageHead('Next book')}<div class="card">${body}</div>`;
+  wireBack();
+  document.querySelectorAll('[data-vote]').forEach(btn=>btn.onclick=async()=>{ const pid = c.poll ? c.poll.id : null; btn.disabled = true; try{ const j = await call3(()=>api('vote',{clubId:c.id, bookKey:btn.dataset.vote})); details[c.id]=j.club; currentClub=j.club; saveMyVote(pid, btn.dataset.vote); render(); }catch(e){ btn.disabled=false; toast(e.message); } });
+  const cp = document.querySelector('[data-closepoll]'); if(cp) cp.onclick = async ()=>{ try{ const j = await api('closePoll',{clubId:c.id}); details[c.id]=j.club; currentClub=j.club; render(); }catch(e){ toast(e.message); } };
+  const ro = document.querySelector('[data-runoff]'); if(ro) ro.onclick = async ()=>{ try{ const j = await api('runoff',{clubId:c.id}); details[c.id]=j.club; currentClub=j.club; render(); }catch(e){ toast(e.message); } };
+  document.querySelectorAll('[data-pick]').forEach(btn=>btn.onclick=async()=>{ try{ const j = await api('adminPick',{clubId:c.id, bookKey:btn.dataset.pick}); details[c.id]=j.club; currentClub=j.club; goHome(); }catch(e){ toast(e.message); } });
+  const so = document.querySelector('[data-startopen]'); if(so) so.onclick = async ()=>{ try{ const j = await call3(()=>api('startPoll',{clubId:c.id, endDate:$('#voteEnd').value})); details[c.id]=j.club; currentClub=j.club; render(); }catch(e){ toast(e.message); } };
+  const gl = document.querySelector('[data-golib2]'); if(gl) gl.onclick = ()=>goPage('library');
+  const ve = $('#voteEnd'); if(ve){ const f = ve.closest('.datefield'); if(f) f.onclick = ()=>{ try{ ve.focus(); if(ve.showPicker) ve.showPicker(); }catch(e){} }; }
+}
+
+// --- Library page ---
+function viewLibrary(){
+  const c = cur(); if(!c) return goHome();
+  app.innerHTML = `${pageHead('Library')}<div class="card">
+  ${c.library.length ? c.library.map(b=>{
+    const isCur = c.current && c.current.key===b.key;
+    return `<div class="book">${coverHtml(b)}<div class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>${ratingsLine(b)}${b.memberCount?`<div class="muted">Members ★ ${b.memberAverage} (${b.memberCount})</div>`:''}</div>
+    <select class="rate" data-rate="${b.key}">${halfOptions(b.myRating)}</select>
+    ${isCur?'<span class="badge">Reading now</span>':(c.role==='admin'?`<button class="small ghost" data-setbook="${b.key}">Read this</button>`:'')}</div>`;
+  }).join('') : '<div class="muted">No books yet. Add the first ones.</div>'}
+  <button data-addbooks style="margin-top:14px;width:100%">Add books</button></div>`;
+  wireBack();
+  wireRates(c);
+  wirePickRows(c);
+  const ab = document.querySelector('[data-addbooks]'); if(ab) ab.onclick = ()=>{ addFrom = 'library'; view = 'add'; render(); };
+}
+
+// --- Settings page (behind the ... menu; rare actions live here) ---
+function viewSettings(){
+  const c = cur(); if(!c) return goHome();
+  const admin = c.role==='admin';
+  const admins = c.members.filter(m=>m.role==='admin').length;
+  app.innerHTML = `${pageHead('Club settings')}<div class="card">
+  ${admin ? `
+    <div class="clubtag">Meeting rhythm</div>
+    <div class="row" style="margin-top:6px"><select id="setFreq" class="grow" style="margin:0">${[1,2,3,4,5,6,7,8].map(w=>`<option value="${w}" ${c.meetingFrequencyWeeks===w?'selected':''}>Every ${w} week${w>1?'s':''}</option>`).join('')}</select>
+    <button class="small" id="setFreqSave">Save</button></div>
+    <label class="row" style="margin-top:8px"><input type="checkbox" id="setAuto" ${c.autoPoll?'checked':''} style="width:auto"><span>Run a vote automatically before each cycle ends</span></label>
+    <div class="clubtag" style="margin-top:20px">Members</div>
+    ${c.members.map(m=>`<div class="row" style="padding:5px 0">${avatarHtml(m, c, 'sm')}<span class="grow">${esc(m.name)}${m.role==='admin'?'<span class="badge">Admin</span>':''}</span>${m.role==='admin' ? (admins>1?`<button class="small ghost" data-demote="${m.userId}">Remove admin</button>`:'') : `<button class="small ghost" data-promote="${m.userId}">Make admin</button>`}</div>`).join('')}
+    <button class="ghost" id="setInvite" style="margin-top:14px;width:100%">Invite member</button>
+  ` : '<div class="muted">Only admins change club settings.</div>'}
+    <div style="border-top:1px solid var(--line);margin-top:18px;padding-top:14px">
+      <div id="leaveBox"><button class="ghost small" id="leaveBtn">Leave club</button></div>
+      ${admin?'<div id="delClubBox" style="margin-top:10px"><button class="ghost small danger" id="delClubBtn">Delete club</button></div>':''}
+    </div>
+  </div>`;
+  wireBack();
+  if(admin){
+    $('#setFreqSave').onclick = async ()=>{ try{ const j = await api('clubSettings',{clubId:c.id, meetingFrequencyWeeks:Number($('#setFreq').value), autoPoll:$('#setAuto').checked}); details[c.id]=j.club; currentClub=j.club; toast('Saved'); render(); }catch(e){ toast(e.message); } };
+    document.querySelectorAll('[data-promote]').forEach(btn=>btn.onclick=async()=>{ const j = await api('makeAdmin',{clubId:c.id, userId:btn.dataset.promote}); details[c.id]=j.club; currentClub=j.club; render(); });
+    document.querySelectorAll('[data-demote]').forEach(btn=>btn.onclick=async()=>{ const j = await api('removeAdmin',{clubId:c.id, userId:btn.dataset.demote}); details[c.id]=j.club; currentClub=j.club; render(); });
+    const iv = $('#setInvite'); if(iv) iv.onclick = ()=>openInviteSheet(details[c.id]||c);
+    const dc = $('#delClubBtn'); if(dc) dc.onclick = ()=>{
+      $('#delClubBox').innerHTML = `<div class="confirmbox"><div style="margin-bottom:8px">Delete ${esc(c.name)} for everyone?</div><div class="row"><button id="delClubYes" class="danger small">Delete club</button><button id="delClubNo" class="ghost small">Cancel</button></div></div>`;
+      $('#delClubNo').onclick = ()=>render();
+      $('#delClubYes').onclick = async ()=>{ try{ await api('deleteClub',{clubId:c.id}); await refreshClubs(); await loadDetails(); deckIdx = 0; toast('Club deleted'); goHome(); }catch(e){ toast(e.message); } };
+    };
+  }
+  $('#leaveBtn').onclick = ()=>{
+    $('#leaveBox').innerHTML = `<div class="confirmbox"><div style="margin-bottom:8px">Leave ${esc(c.name)}?</div><div class="row"><button id="leaveYes" class="danger small">Leave club</button><button id="leaveNo" class="ghost small">Cancel</button></div></div>`;
+    $('#leaveNo').onclick = ()=>render();
+    $('#leaveYes').onclick = async ()=>{ try{ await api('leaveClub',{clubId:c.id}); await refreshClubs(); await loadDetails(); deckIdx = 0; goHome(); }catch(e){ toast(e.message); } };
+  };
+}
+
+// --- Invite sheet (scoped form; one of only two sheets) ---
+function openInviteSheet(c){
+  showSheet(sheetHead('Invite member') + `
+  <div class="row"><input type="email" id="invEmail" placeholder="Email to invite" class="grow"><button id="invBtn" class="small">Invite</button></div>
+  <div id="invOut"></div>`);
+  document.querySelector('[data-close]').onclick = ()=>closeSheet();
+  $('#invBtn').onclick = async ()=>{ try{ const j = await api('createInvite',{clubId:c.id, email:$('#invEmail').value}); const link = location.origin + location.pathname + '?invite=' + j.inviteToken; $('#invOut').innerHTML = `<div class="muted" style="margin-top:6px">Send this link to ${esc(j.email)} (works once):</div><input type="text" readonly value="${link}" onclick="this.select()">`; }catch(e){ toast(e.message); } };
+}
+
+if(token) boot(); else viewAuth();
+</script>
+</body>
+</html>
