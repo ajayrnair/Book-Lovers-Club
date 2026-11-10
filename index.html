@@ -45,7 +45,7 @@
   button.gbtn svg{flex:none;display:block}
   .muted{color:var(--muted);font-size:14px}
   .err{color:#b3261e;font-size:14px;min-height:18px}
-  .book{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .book{display:flex;flex-wrap:wrap;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
   .book:last-child{border-bottom:0}
   .cover{width:50px;height:74px;object-fit:cover;border-radius:6px;background:#f3e2d3;flex:none}
   .stars{color:var(--accent2);font-size:13px}
@@ -62,7 +62,15 @@
   .badge{font-size:11px;font-weight:700;background:#fde8d8;color:var(--accent);border-radius:999px;padding:3px 8px;margin-left:6px;vertical-align:2px}
   .voteBar{height:6px;background:#f3ddc8;border-radius:3px;overflow:hidden}
   .voteBar i{display:block;height:100%;background:var(--accent2)}
-  select.rate{width:auto;padding:8px 10px;margin:0;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:15px}
+  .ratewrap{display:inline-flex;align-items:center;gap:2px;flex:none}
+  .ratestars{display:inline-flex;gap:2px;padding:5px 3px;cursor:pointer;touch-action:none;border-radius:10px;line-height:0}
+  .ratestars:focus-visible{outline:2px solid #ff8a66;outline-offset:1px}
+  .st{position:relative;width:25px;height:25px;flex:none;display:block}
+  .st svg{width:25px;height:25px;display:block}
+  .st .stbg{fill:#f3e0cd;stroke:#ddb995;stroke-width:1.4}
+  .stf{position:absolute;left:0;top:0;height:100%;overflow:hidden}
+  .st .stfg{fill:var(--accent);stroke:var(--accent);stroke-width:1.4}
+  .rateclear{background:none;border:0;color:var(--muted);min-height:34px;min-width:30px;padding:4px 2px;font-size:13px;font-weight:700;cursor:pointer}
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));background:#5b2144;color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:500;z-index:30;max-width:90%;box-shadow:0 8px 24px rgba(20,4,16,.35)}
   .overlay{position:fixed;inset:0;background:rgba(30,6,24,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20}
   .sheet{background:var(--card);border-radius:20px 20px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));width:100%;max-height:86vh;overflow:auto;animation:slideup .22s ease-out}
@@ -140,8 +148,19 @@ function ratingsLine(b){
   if(!b.google && !b.hardcover && b.openlibrary) parts.push(`Open Library ★ ${b.openlibrary.rating} (${b.openlibrary.count})`);
   return parts.length ? `<div class="stars">${parts.join(' · ')}</div>` : '';
 }
-function halfOptions(sel){
-  let o=''; for(let v=0; v<=5; v+=0.5){ o+=`<option value="${v}" ${sel===v?'selected':''}>${v===0?'Rate':v+' ★'}</option>`; } return o;
+const STAR_POLY = '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/>';
+function starsHTML(v){
+  let h = '';
+  for(let i = 0; i < 5; i++){ const pct = Math.max(0, Math.min(100, (v - i) * 100)); h += `<span class="st"><svg viewBox="0 0 24 24" class="stbg">${STAR_POLY}</svg><span class="stf" style="width:${pct}%"><svg viewBox="0 0 24 24" class="stfg">${STAR_POLY}</svg></span></span>`; }
+  return h;
+}
+function rateStrip(b){
+  const v = (b.myRating === null || b.myRating === undefined) ? 0 : b.myRating;
+  return `<span class="ratewrap"><span class="ratestars" data-rate="${b.key}" data-val="${v}" tabindex="0" role="slider" aria-label="Your rating for ${esc(b.title)}" aria-valuemin="0" aria-valuemax="5" aria-valuenow="${v}">${starsHTML(v)}</span>${v > 0 ? `<button class="rateclear" data-clear="${b.key}" aria-label="Clear your rating" title="Clear rating">✕</button>` : ''}</span>`;
+}
+function paintStars(el, v){
+  el.querySelectorAll('.stf').forEach((f, i)=>{ f.style.width = Math.max(0, Math.min(100, (v - i) * 100)) + '%'; });
+  el.setAttribute('aria-valuenow', v);
 }
 
 // ---------- auth ----------
@@ -222,31 +241,64 @@ function bookRow(b, opts={}){
     ${ratingsLine(b)}
     ${b.memberCount?`<div class="muted">Members ★ ${b.memberAverage} (${b.memberCount})</div>`:''}
     </div>
-    <select class="rate" data-rate="${b.key}">${halfOptions(b.myRating)}</select>
+    ${rateStrip(b)}
     ${opts.current?`<button class="small ghost" data-setcurrent="${b.key}">Reading now</button>`:''}
   </div>`;
 }
 function wireRates(rerender){
-  app.querySelectorAll('[data-rate]').forEach(s=>s.onchange=async()=>{ await api('rate',{bookKey:s.dataset.rate, rating:Number(s.value)}); toast('Saved'); if(rerender){ await reloadClub(); rerender(); } });
+  app.querySelectorAll('[data-rate]').forEach(el=>{
+    const key = el.dataset.rate;
+    let val = Number(el.dataset.val) || 0;
+    let dragVal = null;
+    const fromEvent = (e)=>{
+      const r = el.getBoundingClientRect();
+      const frac = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+      return Math.min(5, Math.max(0.5, Math.ceil(frac * 10) / 2));
+    };
+    const commit = async (v)=>{
+      if(v === val){ paintStars(el, val); return; }
+      try{
+        await api('rate', {bookKey:key, rating:v});
+        val = v; el.dataset.val = v; paintStars(el, v); toast('Saved');
+        if(rerender){ await reloadClub(); rerender(); }
+      }catch(err){ paintStars(el, val); toast(err.message); }
+    };
+    el.addEventListener('pointerdown', (e)=>{ try{ el.setPointerCapture(e.pointerId); }catch(_){} dragVal = fromEvent(e); paintStars(el, dragVal); });
+    el.addEventListener('pointermove', (e)=>{ if(dragVal === null) return; dragVal = fromEvent(e); paintStars(el, dragVal); });
+    el.addEventListener('pointerup', ()=>{ if(dragVal === null) return; const v = dragVal; dragVal = null; commit(v); });
+    el.addEventListener('pointercancel', ()=>{ dragVal = null; paintStars(el, val); });
+    el.addEventListener('keydown', (e)=>{
+      let v = null;
+      if(e.key === 'ArrowRight' || e.key === 'ArrowUp') v = Math.min(5, val + 0.5);
+      else if(e.key === 'ArrowLeft' || e.key === 'ArrowDown') v = Math.max(0, val - 0.5);
+      else if(e.key === 'Home') v = 0;
+      else if(e.key === 'End') v = 5;
+      if(v !== null){ e.preventDefault(); commit(v); }
+    });
+  });
+  app.querySelectorAll('[data-clear]').forEach(b=>b.onclick=async()=>{ try{ await api('rate',{bookKey:b.dataset.clear, rating:0}); toast('Saved'); if(rerender){ await reloadClub(); rerender(); } }catch(e){ toast(e.message); } });
   app.querySelectorAll('[data-setcurrent]').forEach(b=>b.onclick=async()=>{ const go=()=>api('setCurrent',{clubId:currentClub.id, bookKey:b.dataset.setcurrent}); try{ const j=await go(); currentClub=j.club; viewClub(); }catch(e1){ await new Promise(r=>setTimeout(r,900)); try{ const j=await go(); currentClub=j.club; viewClub(); }catch(e2){ toast(e2.message); } } });
 }
-function pollSection(c){
+function nextBookSection(c){
   const isAdmin = c.role==='admin';
-  const wrap = 'border-top:1px solid var(--line);margin-top:10px;padding-top:10px';
+  let inner = '';
   if(c.poll){
-    return `<div class="row setrow" id="pollRow" style="${wrap}"><span style="color:#8b5cf6">${icon('chart',20)}</span><b class="grow">Pick the next book${c.poll.runoff?' · Runoff':''}</b><span class="muted">Closes ${new Date(c.poll.closesAt).toLocaleDateString(undefined,{month:'short', day:'numeric'})}</span><span class="muted">›</span></div>`;
-  }
-  if(c.lastResult && c.lastResult.tie){
-    return `<div class="row setrow" id="pollRow" style="${wrap}"><span style="color:#8b5cf6">${icon('chart',20)}</span><b class="grow">Poll tied</b><span class="muted">›</span></div>`;
-  }
-  if(c.library.length===0) return `<div style="${wrap}"><button class="small ic" id="addBooksBtn">${icon('plus',16)} Add books to library</button></div>`;
-  if(c.library.length===1){
+    inner = `<div class="row setrow" id="pollRow"><span style="color:#8b5cf6">${icon('chart',20)}</span><b class="grow">${c.current?'Pick the next book':'Pick a book'}${c.poll.runoff?' · Runoff':''}</b><span class="muted">Closes ${new Date(c.poll.closesAt).toLocaleDateString(undefined,{month:'short', day:'numeric'})}</span><span class="muted">›</span></div>`;
+  } else if(c.lastResult && c.lastResult.tie){
+    inner = `<div class="row setrow" id="pollRow"><span style="color:#8b5cf6">${icon('chart',20)}</span><b class="grow">Poll tied</b><span class="muted">›</span></div>`;
+  } else if(c.library.length===0){
+    inner = `<button class="small ic" id="addBooksBtn">${icon('plus',16)} Add books to library</button>`;
+  } else if(c.library.length===1){
     const only = c.library[0];
     if(c.current && c.current.key===only.key) return '';
-    return `<div style="${wrap}"><div class="muted">Only one book in the library</div><button class="small" style="margin-top:6px" data-setcurrent="${only.key}">Pick ${esc(only.title)}</button></div>`;
+    inner = `<div class="muted">Only one book in the library</div><button class="small" style="margin-top:6px" data-setcurrent="${only.key}">Pick ${esc(only.title)}</button>`;
+  } else if(!isAdmin){
+    return '';
+  } else {
+    inner = `<button id="startPoll" class="small ic">${icon('chart',16)} Start a poll</button>`;
   }
-  if(!isAdmin) return '';
-  return `<div style="${wrap}"><button id="startPoll" class="small ic">${icon('chart',16)} Start a poll</button></div>`;
+  if(!inner) return '';
+  return `<div class="card a-violet"><h3 style="margin-top:0">${c.current?'Next book':'Pick a book'}</h3>${inner}</div>`;
 }
 function currentSection(c){
   let h = `<div class="card a-coral"><h3 style="margin-top:0">Current book</h3>`;
@@ -262,7 +314,6 @@ function currentSection(c){
   } else {
     h += '<div class="muted">No book picked yet</div>';
   }
-  h += pollSection(c);
   return h + '</div>';
 }
 function meetingSection(c){
@@ -316,6 +367,7 @@ function viewClub(){
   <h2>${esc(c.name)}${c.private?'<span class="badge">Private</span>':''}</h2>
   ${currentSection(c)}
   ${meetingSection(c)}
+  ${nextBookSection(c)}
   <div class="card row setrow a-teal" id="libRow"><span style="color:#17a398">${icon('book',20)}</span><b class="grow">Library</b><span class="muted">${c.library.length} book${c.library.length===1?'':'s'}</span><span class="muted">›</span></div>
   <div style="margin-top:10px"><button id="leave" class="ghost small">Leave club</button></div>`;
   $('#back').onclick = ()=>{ currentClub=null; viewHome(); };
@@ -375,7 +427,7 @@ function viewPoll(){
   } else if(c.lastResult && c.lastResult.tie){
     body = `<h3 style="margin-top:0">Tie</h3>${isAdmin?'<button id="runoff" class="small">One day runoff</button> '+c.lastResult.tie.map(k=>{const b=c.library.find(x=>x.key===k); return b?`<button class="small ghost" data-pick="${k}">Pick ${esc(b.title)}</button>`:'';}).join(' '):'<div class="muted">The admin picks the winner</div>'}`;
   } else if(isAdmin && c.library.length>=2){
-    body = `<h3 style="margin-top:0">Start a poll</h3>
+    body = `<h3 style="margin-top:0">${c.current?'Pick the next book':'Pick a book'}</h3>
     <div class="muted" style="margin:6px 0 4px">End date</div>
     <div class="datefield"><input type="date" id="pollEnd" value="${pollDefaultEnd(c)}"><span class="cal">${icon('calendar',18)}</span></div>
     <button id="doStartPoll" class="ic" style="margin-top:10px;width:100%;justify-content:center">${icon('chart',16)} Start poll</button>`;
