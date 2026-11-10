@@ -87,6 +87,16 @@
   .deckdots i{width:8px;height:8px;border-radius:50%;background:rgba(255,233,210,.3);display:block}
   .deckdots i.on{background:#ff8a66}
   .cardcover{width:118px;height:174px;border-radius:9px;object-fit:cover;background:#f3e2d3;box-shadow:0 12px 26px rgba(20,4,16,.25);margin:8px auto;display:block}
+  .pickrow{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+  .pickrow:last-child{border-bottom:0}
+  .voterow{display:flex;gap:12px;align-items:center;padding:10px;margin:8px 0;border:1.5px solid var(--line);border-radius:14px;background:#fff;cursor:pointer}
+  .voterow.mine{border-color:var(--accent);background:#fdeeea}
+  .voterow .vbar{height:6px;background:#f3ddc8;border-radius:3px;overflow:hidden;margin-top:6px}
+  .voterow .vbar i{display:block;height:100%;background:var(--accent2)}
+  .picktag{color:var(--accent);font-size:12.5px;font-weight:700;margin-top:2px}
+  .day.best{border-color:var(--teal);box-shadow:0 0 0 2px rgba(23,163,152,.4)}
+  .facehead{text-align:center}
+  .snaprow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -382,13 +392,211 @@ function viewDeleteClubPage(){
     $('#delYes').onclick = async ()=>{ try{ await api('deleteClub',{clubId:c.id}); await refreshClubs(); await loadDetails(); currentClub=null; toast('Club deleted'); setTab('home'); startApp(); }catch(e){ toast(e.message); } };
   };
 }
+// ---------- shared card-family helpers (Index Card family) ----------
+// The API does not expose the viewer's own poll vote, so it is kept here,
+// keyed by poll id, whenever this client votes.
+let cdVotes = {};
+try{ cdVotes = JSON.parse(localStorage.getItem('blc_votes') || '{}'); }catch(e){ cdVotes = {}; }
+function cdSaveVote(pollId, key){ if(!pollId) return; cdVotes[pollId] = key; try{ localStorage.setItem('blc_votes', JSON.stringify(cdVotes)); }catch(e){} }
+// Per-club transient UI state (start-vote expander, meeting type switch).
+let cdUi = { clubId: null, startOpen: false, meetType: null };
+function cdUiFor(c){ if(cdUi.clubId !== c.id) cdUi = { clubId: c.id, startOpen: false, meetType: null }; return cdUi; }
+// The test backend is one JSON document whose reads can briefly lag a
+// write; the app already retries setCurrent once after ~900ms, so the other
+// write actions in this family do the same.
+async function cdCall(fn){ let err; for(let i = 0; i < 3; i++){ try{ return await fn(); }catch(e){ err = e; if(i < 2) await new Promise(r => setTimeout(r, 900)); } } throw err; }
+async function cdSetCurrent(c, key){
+  const j = await cdCall(() => api('setCurrent', { clubId: c.id, bookKey: key }));
+  details[c.id] = j.club; if(currentClub && currentClub.id === c.id) currentClub = j.club;
+  return j.club;
+}
+function cdOverlap(c){ const o = {}; Object.values(c.availability || {}).forEach(days => days.forEach(d => o[d] = (o[d] || 0) + 1)); return o; }
+function cdCover(b, cls){ return b && b.cover ? `<img class="${cls || 'cover'}" src="${esc(b.cover)}" alt="">` : `<div class="${cls || 'cover'}"></div>`; }
 
-// ---------- Concept 7: THE INDEX CARD ----------
+// --- Book: pick list rows (cover, title, author; one set action for admins) ---
+function cdPickRows(c, admin){
+  if(!c.library.length) return '<div class="muted">No books in the library yet</div>';
+  return c.library.map(b => {
+    const cur = c.current && c.current.key === b.key;
+    return `<div class="pickrow">${cdCover(b)}<div class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}</div>${ratingsLine(b)}</div>${cur ? '<span class="badge">Reading now</span>' : (admin ? `<button class="small" data-setbook="${b.key}">Read this</button>` : '')}</div>`;
+  }).join('');
+}
+function cdChangeSheet(c, rerender){
+  showModal(`<h3 style="margin-top:0">Change book</h3><div>${cdPickRows(c, true)}</div>
+  <button class="ghost" data-sheetadd style="margin-top:12px;width:100%">Add books</button>
+  <button class="ghost small" data-sheetclose style="margin-top:8px;width:100%">Close</button>`);
+  cdWireSetBook(c, rerender);
+  document.querySelector('[data-sheetadd]').onclick = () => { closeModal(); setTab('add'); viewAdd(c.id); };
+  document.querySelector('[data-sheetclose]').onclick = closeModal;
+}
+function cdWireSetBook(c, rerender){
+  document.querySelectorAll('[data-setbook]').forEach(b => b.onclick = async () => { b.disabled = true; try{ await cdSetCurrent(c, b.dataset.setbook); closeModal(); rerender(); }catch(e){ b.disabled = false; toast(e.message); } });
+}
+// --- Book face / section ---
+function cdBookHtml(c){
+  const admin = c.role === 'admin';
+  if(c.current){
+    const b = c.current;
+    return `${cdCover(b, 'cardcover')}
+    <div style="text-align:center"><b style="font-size:20px">${esc(b.title)}</b><div class="muted">${esc(b.author)}</div>${ratingsLine(b)}</div>
+    <div class="row" style="margin-top:14px"><button class="small ic ${c.myFinished ? '' : 'ghost'}" id="cdFin" data-fin style="flex:1;justify-content:center">${c.myFinished ? icon('check', 16) + ' Finished' : 'I finished reading'}</button>
+    <select class="rate" data-rate="${b.key}">${halfOptions(b.myRating)}</select></div>
+    <div class="muted" style="text-align:center;margin-top:8px">${(c.finishedBy || []).length} of ${c.members.length} finished</div>
+    ${admin ? '<button class="ghost" id="cdChange" data-changebook style="margin-top:12px;width:100%">Change book</button>' : ''}`;
+  }
+  if(!c.library.length){
+    return `<div style="text-align:center;padding-top:26px"><b style="font-size:20px">Nothing picked yet</b><div class="muted" style="margin-top:6px">Add books to the library first.</div></div>
+    <button id="cdAdd" data-addbooks style="margin-top:16px;width:100%">Add books</button>`;
+  }
+  return `<div style="text-align:center;padding-top:8px"><b style="font-size:20px">Nothing picked yet</b><div class="muted" style="margin-top:6px">Pick the book the club reads next.</div></div>
+  <div style="margin-top:6px">${cdPickRows(c, admin)}</div>
+  ${admin ? '' : '<div class="muted" style="text-align:center;margin-top:8px">The admin picks the book.</div>'}
+  <button class="ghost small" data-addbooks style="margin-top:10px;width:100%">Add books</button>`;
+}
+function cdWireBook(c, rerender){
+  wireRates(document, async () => { await reloadClub(c.id); rerender(); });
+  const fin = document.querySelector('[data-fin]');
+  if(fin) fin.onclick = async () => { const j = await api('toggleFinished', { clubId: c.id }); details[c.id] = j.club; rerender(); };
+  cdWireSetBook(c, rerender);
+  document.querySelectorAll('[data-addbooks]').forEach(b => b.onclick = () => { setTab('add'); viewAdd(c.id); });
+  const ch = document.querySelector('[data-changebook]');
+  if(ch) ch.onclick = () => cdChangeSheet(c, rerender);
+}
+// --- Vote (Next) face / section ---
+function cdVoteHtml(c, ui){
+  const admin = c.role === 'admin';
+  if(c.poll){
+    const p = c.poll;
+    const mine = cdVotes[p.id];
+    const ends = new Date(p.closesAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    return `<div class="facehead"><b style="font-size:20px">${p.runoff ? 'Tiebreak vote' : 'Pick the next book'}</b>
+    <div class="muted">Voting ends ${ends} · ${p.totalVotes} vote${p.totalVotes === 1 ? '' : 's'}</div>
+    ${p.runoff ? '<div class="muted">The last vote tied.</div>' : ''}${mine ? '' : '<div class="muted">Tap a book to vote.</div>'}</div>
+    ${p.options.map(o => { const pct = p.totalVotes ? Math.round(o.votes / p.totalVotes * 100) : 0; const isMine = mine === o.book.key;
+      return `<div class="voterow ${isMine ? 'mine' : ''}" data-cdvote="${o.book.key}">${cdCover(o.book)}<div class="grow"><b>${esc(o.book.title)}</b><div class="muted">${esc(o.book.author)}</div><div class="vbar"><i style="width:${pct}%"></i></div></div><div style="text-align:right;flex:none"><b style="font-size:19px">${o.votes}</b>${isMine ? '<div class="picktag">✓ Your pick</div>' : ''}</div></div>`; }).join('')}
+    ${admin ? '<button class="ghost small" id="cdClosePoll" data-closepoll style="margin-top:4px">Close the vote</button>' : ''}`;
+  }
+  if(c.lastResult && c.lastResult.tie){
+    const tied = c.lastResult.tie.map(k => c.library.find(b => b.key === k)).filter(Boolean);
+    return `<div class="facehead"><b style="font-size:20px">The vote tied</b><div class="muted" style="margin-top:4px">Only these books are still in it.</div></div>
+    <div style="margin-top:6px">${tied.map(b => `<div class="pickrow">${cdCover(b)}<div class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}</div></div>${admin ? `<button class="small ghost" data-cdpick="${b.key}">Pick</button>` : ''}</div>`).join('')}</div>
+    ${admin ? '<button id="cdRunoff" data-runoff style="margin-top:12px;width:100%">Run the runoff</button>' : '<div class="muted" style="text-align:center;margin-top:10px">The admin settles the tie.</div>'}`;
+  }
+  if(!c.library.length){
+    return `<div class="facehead" style="padding-top:26px"><b style="font-size:20px">The library is empty</b><div class="muted" style="margin-top:6px">Add books and the club can choose its next read.</div></div>
+    <button id="cdAdd2" data-addbooks style="margin-top:16px;width:100%">Add books</button>`;
+  }
+  if(c.library.length === 1){
+    const only = c.library[0];
+    const isCur = c.current && c.current.key === only.key;
+    return `<div class="facehead"><b style="font-size:20px">One book in the library</b></div>
+    <div style="margin-top:6px">${cdPickRows(c, admin)}</div>
+    ${admin && !isCur ? `<button id="cdPick1" data-pickonly style="margin-top:10px;width:100%">Make it the current book</button>` : ''}
+    ${isCur ? '<div class="muted" style="text-align:center;margin-top:4px">This is the current book.</div>' : ''}
+    <button class="ghost" id="cdLib" data-openlib style="margin-top:10px;width:100%">Open the library</button>`;
+  }
+  if(!admin){
+    return `<div class="facehead" style="padding-top:26px"><b style="font-size:20px">No vote open</b><div class="muted" style="margin-top:6px">The admin starts the vote for the next book.</div></div>
+    <button class="ghost" id="cdLib" data-openlib style="margin-top:14px;width:100%">Open the library</button>`;
+  }
+  if(!ui.startOpen){
+    return `<div class="facehead" style="padding-top:26px"><b style="font-size:20px">Choose the next book</b><div class="muted" style="margin-top:6px">${c.library.length} books in the library</div></div>
+    <button id="cdStartToggle" data-starttoggle style="margin-top:16px;width:100%">Start the vote</button>
+    <button class="ghost" id="cdLib" data-openlib style="margin-top:10px;width:100%">Open the library</button>`;
+  }
+  return `<div class="facehead"><b style="font-size:20px">Start the vote</b></div>
+  <div class="muted" style="margin:14px 0 4px">Vote end date</div>
+  <div class="datefield"><input type="date" id="cdEnd" class="pollend" value="${pollDefaultEnd(c)}"><span class="cal">${icon('calendar', 18)}</span></div>
+  <button id="cdStart" data-startopen style="margin-top:12px;width:100%">Open the vote</button>
+  <button class="ghost small" data-startcancel style="margin-top:8px;width:100%">Cancel</button>`;
+}
+function cdWireVote(c, rerender, ui){
+  document.querySelectorAll('[data-cdvote]').forEach(r => r.onclick = async () => { const pid = c.poll ? c.poll.id : null; try{ const j = await cdCall(() => api('vote', { clubId: c.id, bookKey: r.dataset.cdvote })); details[c.id] = j.club; cdSaveVote(pid, r.dataset.cdvote); rerender(); }catch(e){ toast(e.message); } });
+  const cp = document.querySelector('[data-closepoll]'); if(cp) cp.onclick = async () => { const j = await api('closePoll', { clubId: c.id }); details[c.id] = j.club; rerender(); };
+  const ro = document.querySelector('[data-runoff]'); if(ro) ro.onclick = async () => { const j = await api('runoff', { clubId: c.id }); details[c.id] = j.club; rerender(); };
+  document.querySelectorAll('[data-cdpick]').forEach(b => b.onclick = async () => { const j = await api('adminPick', { clubId: c.id, bookKey: b.dataset.cdpick }); details[c.id] = j.club; rerender(); });
+  const tg = document.querySelector('[data-starttoggle]'); if(tg) tg.onclick = () => { ui.startOpen = true; rerender(); };
+  const so = document.querySelector('[data-startopen]'); if(so) so.onclick = async () => { try{ const j = await cdCall(() => api('startPoll', { clubId: c.id, endDate: document.querySelector('.pollend').value })); details[c.id] = j.club; ui.startOpen = false; rerender(); }catch(e){ toast(e.message); } };
+  const sc = document.querySelector('[data-startcancel]'); if(sc) sc.onclick = () => { ui.startOpen = false; rerender(); };
+  const po = document.querySelector('[data-pickonly]'); if(po) po.onclick = async () => { try{ await cdSetCurrent(c, c.library[0].key); rerender(); }catch(e){ toast(e.message); } };
+  const ol = document.querySelector('[data-openlib]'); if(ol) ol.onclick = () => viewLibraryPage();
+  const pe = document.querySelector('.pollend'); if(pe){ const f = pe.closest('.datefield'); if(f) f.onclick = () => { try{ pe.focus(); if(pe.showPicker) pe.showPicker(); }catch(e){} }; }
+}
+// --- Meeting face / section: two states (no date / date set) ---
+function cdMeetingHtml(c, ui){
+  const admin = c.role === 'admin';
+  const head = `<div class="facehead"><b style="font-size:20px">Group meeting</b><div class="muted">Meets every ${c.meetingFrequencyWeeks} week${c.meetingFrequencyWeeks > 1 ? 's' : ''}</div></div>`;
+  if(c.meeting.date){
+    const myR = (c.rsvps || {})[user.id];
+    const going = c.members.filter(m => (c.rsvps || {})[m.userId] === 'going').length;
+    const type = (ui && ui.meetType) || c.meeting.type;
+    const place = c.meeting.type === 'online'
+      ? (c.meeting.link ? `<a href="${esc(c.meeting.link)}" target="_blank">Join online</a>` : '<span class="muted">Online</span>')
+      : `<span class="muted">📍 ${esc(c.meeting.address || 'In person')}</span>`;
+    return head + `<div style="text-align:center;margin-top:12px"><b style="font-size:24px">${fmtDate(c.meeting.date)}</b><div style="margin-top:6px">${place}</div></div>
+    <div class="row" style="margin-top:14px"><button class="small ${myR === 'going' ? '' : 'ghost'}" data-cdrsvp="going" style="flex:1">Going</button><button class="small ${myR === 'notgoing' ? '' : 'ghost'}" data-cdrsvp="notgoing" style="flex:1">Not going</button></div>
+    <div class="muted" style="text-align:center;margin-top:8px">${going} going</div>
+    ${admin ? `<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px">
+      ${type === 'online' ? `<input type="url" class="mlink" placeholder="Meeting link" value="${esc(c.meeting.link || '')}">` : `<input type="text" class="maddr" placeholder="Address" value="${esc(c.meeting.address || '')}">`}
+      <div class="row" style="margin-top:6px"><select class="mtype" style="width:auto"><option value="online" ${type === 'online' ? 'selected' : ''}>Online</option><option value="inperson" ${type === 'inperson' ? 'selected' : ''}>In person</option></select><button class="small" data-meetsave>Save</button><span class="grow"></span><button class="small ghost" id="cdChangeDate" data-changedate>Change date</button></div></div>` : ''}`;
+  }
+  const over = cdOverlap(c);
+  const maxOver = Math.max(0, ...c.week.map(d => over[d] || 0));
+  const best = maxOver > 0 ? c.week.filter(d => (over[d] || 0) === maxOver) : [];
+  return head + `<div class="muted" style="text-align:center;margin-top:12px">Pick the days you are available</div>
+  <div class="row" style="margin-top:10px">${c.week.map(d => { const dt = new Date(d + 'T12:00:00'); const mine = (c.availability[user.id] || []).includes(d); const n = over[d] || 0; return `<div class="day ${mine ? 'on' : ''} ${best.includes(d) ? 'best' : ''}" data-cdday="${d}"><span class="n">${'Sun Mon Tue Wed Thu Fri Sat'.split(' ')[dt.getDay()]}</span>${dt.getDate()}<span class="n">${n} ✓</span></div>`; }).join('')}</div>
+  ${admin && best.length ? `<div class="clubtag" style="margin-top:14px">${best.length > 1 ? 'Best days' : 'Best day'}</div>${best.map(d => `<button data-cdsetday="${d}" style="margin-top:8px;width:100%">Set ${fmtDate(d)} · ${maxOver} in</button>`).join('')}` : ''}
+  ${admin && !best.length ? `<div class="muted" style="margin-top:14px">Or pick a date</div><div class="datefield" style="margin-top:6px"><input type="date" class="pickdate"><span class="cal">${icon('calendar', 18)}</span></div>` : ''}`;
+}
+function cdWireMeeting(c, rerender, ui){
+  document.querySelectorAll('[data-cdrsvp]').forEach(b => b.onclick = async () => { const cur = ((details[c.id] || c).rsvps || {})[user.id]; const status = cur === b.dataset.cdrsvp ? '' : b.dataset.cdrsvp; try{ const j = await cdCall(() => api('rsvp', { clubId: c.id, status })); details[c.id] = j.club; rerender(); }catch(e){ toast(e.message); } });
+  document.querySelectorAll('[data-cdday]').forEach(d => d.onclick = async () => { const mine = new Set(((details[c.id] || c).availability[user.id] || [])); const day = d.dataset.cdday; mine.has(day) ? mine.delete(day) : mine.add(day); const days = [...mine]; try{ const j = await cdCall(() => api('availability', { clubId: c.id, days })); details[c.id] = j.club; rerender(); }catch(e){ toast(e.message); } });
+  document.querySelectorAll('[data-cdsetday]').forEach(b => b.onclick = async () => { try{ const j = await cdCall(() => api('pickDate', { clubId: c.id, date: b.dataset.cdsetday })); details[c.id] = j.club; rerender(); }catch(e){ toast(e.message); } });
+  const mt = document.querySelector('.mtype'); if(mt) mt.onchange = () => { ui.meetType = mt.value; rerender(); };
+  const sv = document.querySelector('[data-meetsave]'); if(sv) sv.onclick = async () => { const t = (ui && ui.meetType) || c.meeting.type; const m = { type: t }; if(t === 'online'){ const el = document.querySelector('.mlink'); m.link = el ? el.value : ''; } else { const el = document.querySelector('.maddr'); m.address = el ? el.value : ''; } const j = await api('clubSettings', { clubId: c.id, meeting: m }); details[c.id] = j.club; ui.meetType = null; toast('Saved'); rerender(); };
+  const chd = document.querySelector('[data-changedate]'); if(chd) chd.onclick = async () => { try{ const j = await api('clubSettings', { clubId: c.id, meeting: { date: null } }); details[c.id] = j.club; rerender(); }catch(e){ toast(e.message); } };
+  const pd = document.querySelector('.pickdate'); if(pd){ const f = pd.closest('.datefield'); if(f) f.onclick = () => { try{ pd.focus(); if(pd.showPicker) pd.showPicker(); }catch(e){} }; pd.onchange = async () => { if(!pd.value) return; try{ const j = await cdCall(() => api('pickDate', { clubId: c.id, date: pd.value })); details[c.id] = j.club; rerender(); }catch(e){ toast(e.message); } }; }
+}
+// --- Small shared bits ---
+function cdRsvpMini(c){
+  const myR = (c.rsvps || {})[user.id];
+  const going = c.members.filter(m => (c.rsvps || {})[m.userId] === 'going').length;
+  return `<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px"><div class="muted" style="text-align:center">Meeting ${fmtDate(c.meeting.date)} · ${going} going</div>
+  <div class="row" style="margin-top:8px"><button class="small ${myR === 'going' ? '' : 'ghost'}" data-cdrsvp="going" style="flex:1">Going</button><button class="small ${myR === 'notgoing' ? '' : 'ghost'}" data-cdrsvp="notgoing" style="flex:1">Not going</button></div></div>`;
+}
+function cdSnapLines(c){
+  return `<div class="snaprow"><span class="muted">Meeting</span><b>${c.meeting.date ? fmtDate(c.meeting.date) : 'No date yet'}</b></div>
+  ${c.current ? `<div class="snaprow"><span class="muted">Finished</span><b>${(c.finishedBy || []).length} of ${c.members.length}</b></div>` : ''}
+  <div class="snaprow"><span class="muted">Next book</span><b>${c.poll ? (c.poll.runoff ? 'Tiebreak vote open' : 'Vote open') : ((c.lastResult && c.lastResult.tie) ? 'Vote tied' : 'No vote open')}</b></div>`;
+}
+function cdCreateFindHtml(){
+  return `<div class="card"><input type="text" id="newName" placeholder="New club name"><div class="row" style="margin-top:8px">
+  <select id="newVis" class="grow" style="margin:0"><option value="private" selected>Private</option><option value="public">Public</option></select>
+  <button id="create">Create</button></div></div>
+  <div class="card"><h3 style="margin-top:0">Find a club</h3>
+  <div class="row"><input type="text" id="q" placeholder="Search clubs" class="grow"><button id="go" class="small">Search</button></div>
+  <div id="found"></div></div>`;
+}
+function cdWireCreateFind(onShow){
+  const cr = $('#create'); if(!cr) return;
+  cr.onclick = async () => { try{ const j = await api('createClub', { name: $('#newName').value, private: $('#newVis').value === 'private' }); await refreshClubs(); await loadDetails(); onShow(j.club.id); }catch(e){ toast(e.message); } };
+  const search = async () => { const j = await api('searchClubs', { q: $('#q').value }); const f = $('#found'); if(!f) return; f.innerHTML = j.clubs.map(x => `<div class="row" style="padding:6px 0"><div class="grow"><b>${esc(x.name)}</b><div class="muted">${x.memberCount} member${x.memberCount > 1 ? 's' : ''}</div></div>${x.isMember ? '<span class="muted">Joined</span>' : `<button class="small" data-join="${x.id}">Join</button>`}</div>`).join('') || '<div class="muted">Nothing found</div>';
+    app.querySelectorAll('[data-join]').forEach(b => b.onclick = async () => { await api('joinClub', { clubId: b.dataset.join }); await refreshClubs(); await loadDetails(); search(); }); };
+  $('#go').onclick = search; search();
+}
+function cdDeckNav(idx, total, prevId, nextId){
+  return `<div class="decknav"><button class="ghost small" id="${prevId}" ${idx === 0 ? 'disabled' : ''}>‹ Prev club</button><span class="onbg">${idx + 1} of ${total}</span><button class="ghost small" id="${nextId}" ${idx === total - 1 ? 'disabled' : ''}>Next club ›</button></div>`;
+}
+function cdDots(idx, total){ return `<div class="deckdots">${Array.from({ length: total }, (_, i) => `<i class="${i === idx ? 'on' : ''}"></i>`).join('')}</div>`; }
+function cdWireTabs(startFn){
+  document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { setTab(b.dataset.tab); if(tab === 'home'){ currentClub = null; startFn(); } if(tab === 'add') viewAdd(); if(tab === 'me') viewMe(); });
+}
+// ---------- Concept 7: THE INDEX CARD (refined) ----------
 let deckIdx = 0; let cardFace = 'book';
 function startApp(){ setTab('home'); viewDeck(); }
 function renderClub(){ // opening a club from elsewhere jumps the deck to it
-  const i = myClubs.findIndex(x=>x.id===currentClub.id);
-  if(i>=0) deckIdx = i;
+  const i = myClubs.findIndex(x => x.id === currentClub.id);
+  if(i >= 0) deckIdx = i;
   cardFace = 'book';
   viewDeck();
 }
@@ -397,89 +605,38 @@ function viewDeck(){
     app.innerHTML = `<h2>My clubs</h2><div class="card"><h3 style="margin-top:0">No clubs yet</h3><div class="muted">Create one below, or find one to join.</div></div>` + createFindHtml();
     wireCreateFind(); return;
   }
-  deckIdx = Math.min(deckIdx, myClubs.length-1);
+  deckIdx = Math.min(deckIdx, myClubs.length - 1);
   const summary = myClubs[deckIdx];
   const cc = details[summary.id]; if(!cc){ openClub(summary.id); return; }
   currentClub = cc;
-  const isAdmin = cc.role==='admin';
+  const isAdmin = cc.role === 'admin';
+  const ui = cdUiFor(cc);
   let face = '';
-  if(cardFace==='book'){
-    face = cc.current ? `
-      ${cc.current.cover?`<img class="cardcover" src="${esc(cc.current.cover)}">`:'<div class="cardcover"></div>'}
-      <div style="text-align:center"><b style="font-size:20px">${esc(cc.current.title)}</b><div class="muted">${esc(cc.current.author)}</div>${ratingsLine(cc.current)}</div>
-      <div class="row" style="margin-top:14px"><button class="small ic ${cc.myFinished?'':'ghost'}" id="cdFin" style="flex:1;justify-content:center">${cc.myFinished?icon('check',16)+' Finished':'I finished reading'}</button>
-      <select class="rate" data-rate="${cc.current.key}">${halfOptions(cc.current.myRating)}</select></div>
-      <div class="muted" style="text-align:center;margin-top:8px">${(cc.finishedBy||[]).length} of ${cc.members.length} finished</div>`
-    : `<div style="text-align:center;padding-top:26px"><b style="font-size:20px">Nothing picked yet</b><div class="muted" style="margin-top:6px">${cc.library.length? 'The choice lives on the Next face of this card.' : 'Add books, then choose on the Next face.'}</div></div>
-      ${cc.library.length? '': '<button id="cdAdd" style="margin-top:16px;width:100%">Add books</button>'}`;
-  } else if(cardFace==='meeting'){
-    const myR = (cc.rsvps||{})[user.id];
-    const going = cc.members.filter(m=>(cc.rsvps||{})[m.userId]==='going').length;
-    face = `<div style="text-align:center"><b style="font-size:20px">Group meeting</b><div class="muted">Meets every ${cc.meetingFrequencyWeeks} week${cc.meetingFrequencyWeeks>1?'s':''}</div></div>
-    ${cc.meeting.date ? `<div style="text-align:center;margin-top:14px"><b style="font-size:24px">${fmtDate(cc.meeting.date)}</b><div style="margin-top:6px">${cc.meeting.type==='online'?(cc.meeting.link?`<a href="${esc(cc.meeting.link)}" target="_blank">Join online</a>`:'<span class="muted">Online</span>'):`<span class="muted">📍 ${esc(cc.meeting.address||'In person')}</span>`}</div></div>
-      <div class="row" style="margin-top:14px"><button class="small ${myR==='going'?'':'ghost'}" data-cdrsvp="going" style="flex:1">Going</button><button class="small ${myR==='notgoing'?'':'ghost'}" data-cdrsvp="notgoing" style="flex:1">Not going</button></div>
-      <div class="muted" style="text-align:center;margin-top:8px">${going} going</div>`
-    : `<div class="muted" style="text-align:center;margin-top:12px">Pick the days you are available</div>
-      <div class="row" style="margin-top:10px">${cc.week.map(d=>{const dt=new Date(d+'T12:00:00'); const mine=(cc.availability[user.id]||[]).includes(d); const over=Object.values(cc.availability||{}).filter(days=>days.includes(d)).length; return `<div class="day ${mine?'on':''}" data-cdday="${d}"><span class="n">${'Sun Mon Tue Wed Thu Fri Sat'.split(' ')[dt.getDay()]}</span>${dt.getDate()}${over?`<span class="n">${over} ✓</span>`:''}</div>`;}).join('')}</div>`}
-    ${isAdmin?`<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px"><div class="datefield"><input type="date" id="cdDate" value="${esc(cc.meeting.date||'')}"><span class="cal">${icon('calendar',18)}</span></div>
-      <div class="row" style="margin-top:6px"><select id="cdType" style="width:auto"><option value="online" ${cc.meeting.type==='online'?'selected':''}>Online</option><option value="inperson" ${cc.meeting.type==='inperson'?'selected':''}>In person</option></select><button id="cdSave" class="small">Save</button></div>
-      <input type="url" id="cdLink" placeholder="Meeting link" value="${esc(cc.meeting.link||'')}" class="${cc.meeting.type==='online'?'':'hide'}">
-      <input type="text" id="cdAddr" placeholder="Address" value="${esc(cc.meeting.address||'')}" class="${cc.meeting.type==='inperson'?'':'hide'}"></div>`:''}`;
-  } else {
-    if(cc.poll){
-      face = `<div style="text-align:center"><b style="font-size:20px">Pick the next book</b><div class="muted">Closes ${new Date(cc.poll.closesAt).toLocaleDateString(undefined,{month:'short', day:'numeric'})}</div></div>
-      ${cc.poll.options.map(o=>`<div style="margin:9px 0"><div class="row"><div class="grow">${esc(o.book.title)}</div><b>${o.votes}</b><button class="small" data-cdvote="${o.book.key}">Vote</button></div><div class="voteBar"><i style="width:${cc.poll.totalVotes?Math.round(o.votes/cc.poll.totalVotes*100):0}%"></i></div></div>`).join('')}
-      ${isAdmin?'<button id="cdClosePoll" class="ghost small" style="margin-top:6px">Close the vote</button>':''}`;
-    } else if(cc.lastResult && cc.lastResult.tie){
-      face = `<div style="text-align:center"><b style="font-size:20px">The vote tied</b></div>${isAdmin?'<div style="margin-top:12px"><button id="cdRunoff" class="small">One day runoff</button> '+cc.lastResult.tie.map(k=>{const b=cc.library.find(x=>x.key===k); return b?`<button class="small ghost" data-cdpick="${k}">Pick ${esc(b.title)}</button>`:'';}).join(' ')+'</div>':'<div class="muted" style="text-align:center;margin-top:8px">The admin picks the winner</div>'}`;
-    } else if(cc.library.length===0){
-      face = `<div style="text-align:center;padding-top:26px"><b style="font-size:20px">The library is empty</b><div class="muted" style="margin-top:6px">Add books and the club can choose its next read.</div></div><button id="cdAdd2" style="margin-top:16px;width:100%">Add books</button>`;
-    } else if(cc.library.length===1){
-      const only = cc.library[0];
-      face = `<div style="text-align:center"><b style="font-size:20px">One book in the library</b><div class="muted" style="margin-top:4px">${esc(only.title)}</div></div>${isAdmin && !(cc.current && cc.current.key===only.key)?`<button id="cdPick1" style="margin-top:14px;width:100%">Make it the current book</button>`:'<div class="muted" style="text-align:center;margin-top:10px">It is already the current read, or the admin can set it.</div>'}<button class="ghost" id="cdLib" style="margin-top:10px;width:100%">Open the library</button>`;
-    } else {
-      face = `<div style="text-align:center"><b style="font-size:20px">${cc.library.length} books in the library</b><div class="muted" style="margin-top:4px">${isAdmin?'Run a vote, or open the library to pick one.':'The admin runs the vote.'}</div></div>
-      ${isAdmin?`<div class="muted" style="margin:14px 0 4px">Vote end date</div><div class="datefield"><input type="date" id="cdEnd" value="${pollDefaultEnd(cc)}"><span class="cal">${icon('calendar',18)}</span></div><button id="cdStart" style="margin-top:10px;width:100%">Start the vote</button>`:''}
-      <button class="ghost" id="cdLib" style="margin-top:10px;width:100%">Open the library</button>`;
-    }
-  }
+  if(cardFace === 'book') face = cdBookHtml(cc);
+  else if(cardFace === 'meeting') face = cdMeetingHtml(cc, ui);
+  else face = cdVoteHtml(cc, ui);
   app.innerHTML = `
-  <div class="decknav"><button class="ghost small" id="deckPrev" ${deckIdx===0?'disabled':''}>‹ Prev club</button><span class="onbg">${deckIdx+1} of ${myClubs.length}</span><button class="ghost small" id="deckNext" ${deckIdx===myClubs.length-1?'disabled':''}>Next club ›</button></div>
+  ${cdDeckNav(deckIdx, myClubs.length, 'deckPrev', 'deckNext')}
   <div class="clubcard" id="clubCard">
-    <div class="row"><b style="font-size:21px" class="grow">${esc(cc.name)}${cc.private?'<span class="badge">Private</span>':''}</b>${isAdmin?`<button class="iconbtn" id="gear" aria-label="Settings" style="color:var(--accent)">${icon('gear',22)}</button>`:''}</div>
-    <div class="muted">${cc.members.length} member${cc.members.length>1?'s':''}</div>
+    <div class="row"><b style="font-size:21px" class="grow">${esc(cc.name)}${cc.private ? '<span class="badge">Private</span>' : ''}</b>${isAdmin ? `<button class="iconbtn" id="gear" aria-label="Settings" style="color:var(--accent)">${icon('gear', 22)}</button>` : ''}</div>
+    <div class="muted">${cc.members.length} member${cc.members.length > 1 ? 's' : ''}</div>
     <div style="margin-top:10px">${face}</div>
-    <div class="facebtns"><button data-face="book" class="${cardFace==='book'?'on':''}">Book</button><button data-face="meeting" class="${cardFace==='meeting'?'on':''}">Meeting</button><button data-face="next" class="${cardFace==='next'?'on':''}">Next</button></div>
+    <div class="facebtns"><button data-face="book" class="${cardFace === 'book' ? 'on' : ''}">Book</button><button data-face="meeting" class="${cardFace === 'meeting' ? 'on' : ''}">Meeting</button><button data-face="next" class="${cardFace === 'next' ? 'on' : ''}">Next</button></div>
   </div>
-  <div class="deckdots">${myClubs.map((_,i)=>`<i class="${i===deckIdx?'on':''}"></i>`).join('')}</div>
+  ${cdDots(deckIdx, myClubs.length)}
   <div style="margin-top:14px">${createFindHtml()}</div>`;
   wireCreateFind();
-  $('#deckPrev').onclick = ()=>{ if(deckIdx>0){ deckIdx--; cardFace='book'; viewDeck(); } };
-  $('#deckNext').onclick = ()=>{ if(deckIdx<myClubs.length-1){ deckIdx++; cardFace='book'; viewDeck(); } };
+  $('#deckPrev').onclick = () => { if(deckIdx > 0){ deckIdx--; cardFace = 'book'; viewDeck(); } };
+  $('#deckNext').onclick = () => { if(deckIdx < myClubs.length - 1){ deckIdx++; cardFace = 'book'; viewDeck(); } };
   const cardEl = $('#clubCard');
   let tx = null;
-  cardEl.addEventListener('touchstart', e=>{ tx = e.changedTouches[0].clientX; }, {passive:true});
-  cardEl.addEventListener('touchend', e=>{ if(tx===null) return; const dx = e.changedTouches[0].clientX - tx; tx = null; if(Math.abs(dx)<60) return; if(dx<0 && deckIdx<myClubs.length-1){ deckIdx++; cardFace='book'; viewDeck(); } if(dx>0 && deckIdx>0){ deckIdx--; cardFace='book'; viewDeck(); } }, {passive:true});
-  app.querySelectorAll('[data-face]').forEach(b=>b.onclick=()=>{ cardFace=b.dataset.face; viewDeck(); });
-  if(isAdmin) $('#gear').onclick = ()=>viewSettingsPage();
-  wireRates(app, async ()=>{ await reloadClub(cc.id); viewDeck(); });
-  if($('#cdFin')) $('#cdFin').onclick=async()=>{ const j=await api('toggleFinished',{clubId:cc.id}); details[cc.id]=j.club; viewDeck(); };
-  app.querySelectorAll('[data-cdrsvp]').forEach(b=>b.onclick=async()=>{ const cur=(cc.rsvps||{})[user.id]; const j=await api('rsvp',{clubId:cc.id, status: cur===b.dataset.cdrsvp?'':b.dataset.cdrsvp}); details[cc.id]=j.club; viewDeck(); });
-  app.querySelectorAll('[data-cdday]').forEach(d=>d.onclick=async()=>{ const mine=new Set((cc.availability[user.id]||[])); const day=d.dataset.cdday; mine.has(day)?mine.delete(day):mine.add(day); const j=await api('availability',{clubId:cc.id, days:[...mine]}); details[cc.id]=j.club; viewDeck(); });
-  app.querySelectorAll('[data-cdvote]').forEach(b=>b.onclick=async()=>{ const j=await api('vote',{clubId:cc.id, bookKey:b.dataset.cdvote}); details[cc.id]=j.club; viewDeck(); });
-  if($('#cdClosePoll')) $('#cdClosePoll').onclick=async()=>{ const j=await api('closePoll',{clubId:cc.id}); details[cc.id]=j.club; viewDeck(); };
-  if($('#cdRunoff')) $('#cdRunoff').onclick=async()=>{ const j=await api('runoff',{clubId:cc.id}); details[cc.id]=j.club; viewDeck(); };
-  app.querySelectorAll('[data-cdpick]').forEach(b=>b.onclick=async()=>{ const j=await api('adminPick',{clubId:cc.id, bookKey:b.dataset.cdpick}); details[cc.id]=j.club; cardFace='book'; viewDeck(); });
-  if($('#cdPick1')) $('#cdPick1').onclick=async()=>{ const only=cc.library[0]; const j=await api('setCurrent',{clubId:cc.id, bookKey:only.key}); details[cc.id]=j.club; cardFace='book'; viewDeck(); };
-  if($('#cdStart')) $('#cdStart').onclick=async()=>{ try{ const j=await api('startPoll',{clubId:cc.id, endDate:$('#cdEnd').value}); details[cc.id]=j.club; viewDeck(); }catch(e){ toast(e.message); } };
-  const cdl = $('#cdLib'); if(cdl) cdl.onclick=()=>viewLibraryPage();
-  const ca = $('#cdAdd'); if(ca) ca.onclick=()=>{ setTab('add'); viewAdd(cc.id); };
-  const ca2 = $('#cdAdd2'); if(ca2) ca2.onclick=()=>{ setTab('add'); viewAdd(cc.id); };
-  if(isAdmin && cardFace==='meeting'){
-    const sm=$('#cdSave'); if(sm) sm.onclick=async()=>{ const j=await api('clubSettings',{clubId:cc.id, meeting:{type:$('#cdType').value, link:$('#cdLink').value, address:$('#cdAddr').value}}); details[cc.id]=j.club; toast('Saved'); viewDeck(); };
-    const mt=$('#cdType'); if(mt) mt.onchange=()=>{ const online=mt.value==='online'; $('#cdLink').classList.toggle('hide', !online); $('#cdAddr').classList.toggle('hide', online); };
-    const pd=$('#cdDate'); if(pd){ const pdf=pd.closest('.datefield'); if(pdf) pdf.onclick=()=>{ try{ pd.focus(); if(pd.showPicker) pd.showPicker(); }catch(e){} }; pd.onchange=async()=>{ if(!pd.value) return; try{ const j=await api('pickDate',{clubId:cc.id, date:pd.value}); details[cc.id]=j.club; viewDeck(); }catch(e){ toast(e.message); } }; }
-  }
+  cardEl.addEventListener('touchstart', e => { tx = e.changedTouches[0].clientX; }, { passive: true });
+  cardEl.addEventListener('touchend', e => { if(tx === null) return; const dx = e.changedTouches[0].clientX - tx; tx = null; if(Math.abs(dx) < 60) return; if(dx < 0 && deckIdx < myClubs.length - 1){ deckIdx++; cardFace = 'book'; viewDeck(); } if(dx > 0 && deckIdx > 0){ deckIdx--; cardFace = 'book'; viewDeck(); } }, { passive: true });
+  app.querySelectorAll('[data-face]').forEach(b => b.onclick = () => { cardFace = b.dataset.face; viewDeck(); });
+  if(isAdmin) $('#gear').onclick = () => viewSettingsPage();
+  cdWireBook(cc, viewDeck);
+  cdWireMeeting(cc, viewDeck, ui);
+  cdWireVote(cc, viewDeck, ui);
 }
 function createFindHtml(){
   return `<div class="card"><input type="text" id="newName" placeholder="New club name"><div class="row" style="margin-top:8px">
@@ -491,12 +648,13 @@ function createFindHtml(){
 }
 function wireCreateFind(){
   const cr = $('#create'); if(!cr) return;
-  cr.onclick = async ()=>{ try{ const j=await api('createClub',{name:$('#newName').value, private:$('#newVis').value==='private'}); await refreshClubs(); await loadDetails(); deckIdx = myClubs.findIndex(x=>x.id===j.club.id); cardFace='book'; viewDeck(); }catch(e){ toast(e.message); } };
-  const search = async ()=>{ const j=await api('searchClubs',{q:$('#q').value}); const f=$('#found'); if(!f) return; f.innerHTML = j.clubs.map(c=>`<div class="row" style="padding:6px 0"><div class="grow"><b>${esc(c.name)}</b><div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div></div>${c.isMember?'<span class="muted">Joined</span>':`<button class="small" data-join="${c.id}">Join</button>`}</div>`).join('') || '<div class="muted">Nothing found</div>';
-    app.querySelectorAll('[data-join]').forEach(b=>b.onclick=async()=>{ await api('joinClub',{clubId:b.dataset.join}); await refreshClubs(); await loadDetails(); search(); }); };
+  cr.onclick = async () => { try{ const j = await api('createClub', { name: $('#newName').value, private: $('#newVis').value === 'private' }); await refreshClubs(); await loadDetails(); deckIdx = myClubs.findIndex(x => x.id === j.club.id); cardFace = 'book'; viewDeck(); }catch(e){ toast(e.message); } };
+  const search = async () => { const j = await api('searchClubs', { q: $('#q').value }); const f = $('#found'); if(!f) return; f.innerHTML = j.clubs.map(c => `<div class="row" style="padding:6px 0"><div class="grow"><b>${esc(c.name)}</b><div class="muted">${c.memberCount} member${c.memberCount > 1 ? 's' : ''}</div></div>${c.isMember ? '<span class="muted">Joined</span>' : `<button class="small" data-join="${c.id}">Join</button>`}</div>`).join('') || '<div class="muted">Nothing found</div>';
+    app.querySelectorAll('[data-join]').forEach(b => b.onclick = async () => { await api('joinClub', { clubId: b.dataset.join }); await refreshClubs(); await loadDetails(); renderMineSearch(); }); };
+  const renderMineSearch = search;
   $('#go').onclick = search; search();
 }
-document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{ setTab(b.dataset.tab); if(tab==='home'){ currentClub=null; viewDeck(); } if(tab==='add') viewAdd(); if(tab==='me') viewMe(); });
+cdWireTabs(startApp);
 if(token) boot(); else viewAuth();
 
 </script>
