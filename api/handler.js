@@ -1,15 +1,56 @@
-// Book Lovers Club — single-file API. State is one JSON document in a private Vercel Blob store.
+// Book Lovers Club — single-file API. State is one JSON document.
+// Storage priority: (1) BLC_LOCAL_STORE local JSON file (test seam), (2) Upstash
+// Redis via its REST API when its env vars are present (key rp:state), (3) the
+// private Vercel Blob store. Whole-document semantics are identical on all three.
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 const BLOB_PATH = 'state/db.json';
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN || '';
+const LOCAL_STORE = process.env.BLC_LOCAL_STORE || '';
+const REDIS_KEY = 'rp:state';
 
-// ---------- blob persistence ----------
+// Upstash REST credentials: accept either env-name pair, whichever is fully set.
+function redisConfig() {
+  const pairs = [
+    [process.env.UPSTASH_REDIS_REST_URL, process.env.UPSTASH_REDIS_REST_TOKEN],
+    [process.env.KV_REST_API_URL, process.env.KV_REST_API_TOKEN],
+  ];
+  for (const [u, t] of pairs) {
+    if (u && t) return { url: String(u).replace(/\/+$/, ''), token: t };
+  }
+  return null;
+}
+async function redisGetState(rc) {
+  const r = await fetch(rc.url + '/get/' + encodeURIComponent(REDIS_KEY), {
+    headers: { authorization: `Bearer ${rc.token}` },
+  });
+  if (!r.ok) throw new Error('Redis read failed: HTTP ' + r.status);
+  const j = await r.json();
+  if (!j || j.result === null || j.result === undefined) return null; // missing key = fresh state
+  return JSON.parse(j.result);
+}
+async function redisSetState(rc, db) {
+  const r = await fetch(rc.url + '/set/' + encodeURIComponent(REDIS_KEY), {
+    method: 'POST',
+    headers: { authorization: `Bearer ${rc.token}`, 'content-type': 'text/plain' },
+    body: JSON.stringify(db),
+  });
+  if (!r.ok) throw new Error('Redis write failed: HTTP ' + r.status);
+}
+
+// ---------- persistence ----------
 let cache = null, cacheAt = 0;
 async function readDB() {
   if (cache && Date.now() - cacheAt < 3000) return cache;
   let db = null;
-  if (TOKEN) {
+  const rc = LOCAL_STORE ? null : redisConfig();
+  if (LOCAL_STORE) {
+    try { db = JSON.parse(fs.readFileSync(LOCAL_STORE, 'utf8')); } catch (e) { /* fall through to fresh db */ }
+  } else if (rc) {
+    db = await redisGetState(rc);
+  } else if (TOKEN) {
     try {
       const list = await fetch('https://blob.vercel-storage.com/?prefix=state/', {
         headers: { authorization: `Bearer ${TOKEN}` },
@@ -24,7 +65,8 @@ async function readDB() {
       }
     } catch (e) { /* fall through to fresh db */ }
   }
-  if (!db) db = { users: [], sessions: {}, books: {}, clubs: [], invites: [], ratings: {} };
+  if (!db) db = { users: [], sessions: {}, books: {}, clubs: [], invites: [], ratings: {}, progress: {} };
+  db.progress = db.progress || {};
   (db.clubs || []).forEach((club) => {
     club.finished = club.finished || {};
     club.rsvps = club.rsvps || {};
@@ -37,6 +79,15 @@ async function readDB() {
 }
 async function writeDB(db) {
   cache = db; cacheAt = Date.now();
+  if (LOCAL_STORE) {
+    try {
+      fs.mkdirSync(path.dirname(LOCAL_STORE), { recursive: true });
+      fs.writeFileSync(LOCAL_STORE, JSON.stringify(db));
+    } catch (e) { }
+    return;
+  }
+  const rc = redisConfig();
+  if (rc) { await redisSetState(rc, db); return; }
   if (!TOKEN) return;
   await fetch('https://blob.vercel-storage.com/' + BLOB_PATH, {
     method: 'PUT',
@@ -152,6 +203,10 @@ function publicClub(db, club, userId) {
     availability: club.availability,
     finishedBy: club.current ? club.members.filter((m) => ((club.finished || {})[m.userId] || []).includes(club.current)).map((m) => m.userId) : [],
     myFinished: club.current ? ((club.finished || {})[userId] || []).includes(club.current) : false,
+    progress: club.current ? club.members.map((m) => {
+      const p = (db.progress || {})[m.userId + '|' + club.id + '|' + club.current];
+      return p ? { userId: m.userId, percent: p.percent, page: p.page, totalPages: p.totalPages, updatedAt: p.updatedAt } : null;
+    }).filter(Boolean) : [],
     rsvps: club.rsvps || {},
     poll: club.poll ? pollView(db, club) : null,
     lastResult: club.lastResult || null,
@@ -180,7 +235,7 @@ function bookView(db, key, userId) {
   const mine = db.ratings[userId + '|' + key];
   const all = Object.keys(db.ratings).filter((k) => k.endsWith('|' + key)).map((k) => db.ratings[k]);
   return {
-    key, isbn: b.isbn, title: b.title, author: b.author, cover: b.cover, year: b.year,
+    key, isbn: b.isbn, title: b.title, author: b.author, cover: b.cover, year: b.year, pageCount: b.pageCount || null,
     google: b.google || null, hardcover: b.hardcover || null, openlibrary: b.openlibrary || null,
     myRating: mine === undefined ? null : mine,
     memberAverage: all.length ? Math.round((all.reduce((a, c) => a + c, 0) / all.length) * 10) / 10 : null,
@@ -223,6 +278,7 @@ function googleBook(v) {
     isbn, title: info.title || '', author: (info.authors || []).join(', '),
     cover: info.imageLinks ? (info.imageLinks.thumbnail || '').replace('http:', 'https:') : '',
     year: (info.publishedDate || '').slice(0, 4),
+    pageCount: info.pageCount ? Number(info.pageCount) : null,
     google: info.averageRating ? { rating: info.averageRating, count: info.ratingsCount || 0 } : null,
     hardcover: null, openlibrary: null,
   };
@@ -233,6 +289,7 @@ function olBook(d) {
     title: d.title || '', author: (d.author_name || []).join(', '),
     cover: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : '',
     year: d.first_publish_year ? String(d.first_publish_year) : '',
+    pageCount: d.number_of_pages || d.number_of_pages_median || null,
     google: null, hardcover: null,
     openlibrary: d.ratings_average ? { rating: Math.round(d.ratings_average * 100) / 100, count: d.ratings_count || 0 } : null,
   };
@@ -245,7 +302,7 @@ async function searchBooks(q) {
   } catch (e) { }
   if (out.length < 3) {
     try {
-      const r = await fetch('https://openlibrary.org/search.json?limit=20&fields=title,author_name,isbn,cover_i,first_publish_year,ratings_average,ratings_count&q=' + encodeURIComponent(q));
+      const r = await fetch('https://openlibrary.org/search.json?limit=20&fields=title,author_name,isbn,cover_i,first_publish_year,ratings_average,ratings_count,number_of_pages,number_of_pages_median&q=' + encodeURIComponent(q));
       if (r.ok) {
         const j = await r.json();
         const seen = new Set(out.map((b) => norm(b.title) + '|' + norm(b.author)));
@@ -259,6 +316,18 @@ async function searchBooks(q) {
   for (const b of out.slice(0, 8)) if (b.isbn && !b.hardcover) b.hardcover = await hardcover(b.isbn);
   return out;
 }
+function parsePagination(s) {
+  if (!s) return null;
+  const m = String(s).match(/(\d+)\s*(?:pages?|p\.)/);
+  return m ? Number(m[1]) : null;
+}
+async function olPageCount(isbn) {
+  try {
+    const r = await fetch('https://openlibrary.org/isbn/' + isbn + '.json');
+    if (r.ok) { const j = await r.json(); return j.number_of_pages || parsePagination(j.pagination); }
+  } catch (e) { }
+  return null;
+}
 async function lookupISBN(isbn) {
   const clean = isbn.replace(/[^0-9Xx]/g, '');
   try {
@@ -266,8 +335,15 @@ async function lookupISBN(isbn) {
     if (r.ok) { const j = await r.json(); if (j.items && j.items[0]) return googleBook(j.items[0]); }
   } catch (e) { }
   try {
-    const r = await fetch('https://openlibrary.org/search.json?limit=1&fields=title,author_name,isbn,cover_i,first_publish_year,ratings_average,ratings_count&q=' + encodeURIComponent('isbn:' + clean));
-    if (r.ok) { const j = await r.json(); if (j.docs && j.docs[0]) return olBook(j.docs[0]); }
+    const r = await fetch('https://openlibrary.org/search.json?limit=1&fields=title,author_name,isbn,cover_i,first_publish_year,ratings_average,ratings_count,number_of_pages,number_of_pages_median&q=' + encodeURIComponent('isbn:' + clean));
+    if (r.ok) {
+      const j = await r.json();
+      if (j.docs && j.docs[0]) {
+        const b = olBook(j.docs[0]);
+        if (!b.pageCount) b.pageCount = await olPageCount(clean);
+        return b;
+      }
+    }
   } catch (e) { }
   return null;
 }
@@ -282,7 +358,7 @@ async function resolveLink(url) {
         const j = await r.json();
         const isbn = (j.isbn_13 && j.isbn_13[0]) || (j.isbn_10 && j.isbn_10[0]) || '';
         if (isbn) { const b = await lookupISBN(isbn); if (b) return b; }
-        return { isbn, title: j.title || '', author: '', cover: '', year: '', google: null, hardcover: null, openlibrary: null };
+        return { isbn, title: j.title || '', author: '', cover: '', year: '', pageCount: j.number_of_pages || parsePagination(j.pagination), google: null, hardcover: null, openlibrary: null };
       }
     }
     if (u.hostname.includes('google')) {
@@ -305,6 +381,7 @@ function storeBook(db, data) {
     if (data.openlibrary && !b.openlibrary) b.openlibrary = data.openlibrary;
     if (!b.cover && data.cover) b.cover = data.cover;
     if (!b.isbn && data.isbn) b.isbn = data.isbn;
+    if (!b.pageCount && data.pageCount) b.pageCount = data.pageCount;
   }
   return key;
 }
@@ -641,6 +718,47 @@ module.exports = async (req, res) => {
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
+      case 'setProgress': {
+        const club = db.clubs.find((c) => c.id === body.clubId);
+        if (!club || !club.members.some((m) => m.userId === me.id)) return send(403, { error: 'Members only' });
+        const key = body.bookKey || club.current;
+        if (!key) return send(400, { error: 'No book picked yet' });
+        const book = db.books[key];
+        if (!book) return send(404, { error: 'Book not found' });
+        const total = book.pageCount ? Math.max(1, Math.round(Number(book.pageCount))) : null;
+        const hasPage = body.page !== undefined && body.page !== null && body.page !== '';
+        const hasPercent = body.percent !== undefined && body.percent !== null && body.percent !== '';
+        if (!hasPage && !hasPercent) return send(400, { error: 'Give a page or a percent' });
+        let page = null, percent = null;
+        if (total) {
+          if (hasPage) {
+            page = Math.round(Number(body.page));
+            if (isNaN(page)) return send(400, { error: 'Page must be a number' });
+            page = Math.min(total, Math.max(0, page));
+            percent = Math.round((page / total) * 100);
+          } else {
+            percent = Math.round(Number(body.percent));
+            if (isNaN(percent)) return send(400, { error: 'Percent must be a number' });
+            percent = Math.min(100, Math.max(0, percent));
+            page = Math.round((percent / 100) * total);
+          }
+        } else {
+          if (!hasPercent) return send(400, { error: 'This book has no page count yet, so set progress as a percent' });
+          percent = Math.round(Number(body.percent));
+          if (isNaN(percent)) return send(400, { error: 'Percent must be a number' });
+          percent = Math.min(100, Math.max(0, percent));
+          page = null;
+        }
+        db.progress = db.progress || {};
+        const entry = { percent, page, totalPages: total, updatedAt: nowISO() };
+        db.progress[me.id + '|' + club.id + '|' + key] = entry;
+        club.finished = club.finished || {};
+        const arr = new Set(club.finished[me.id] || []);
+        if (percent >= 100) arr.add(key); else arr.delete(key);
+        club.finished[me.id] = [...arr];
+        await writeDB(db);
+        return send(200, { club: publicClub(db, club, me.id), progress: { bookKey: key, ...entry } });
+      }
       case 'toggleFinished': {
         const club = db.clubs.find((c) => c.id === body.clubId);
         if (!club || !club.members.some((m) => m.userId === me.id)) return send(403, { error: 'Members only' });
@@ -657,7 +775,7 @@ module.exports = async (req, res) => {
         const club = db.clubs.find((c) => c.id === body.clubId);
         if (!club || !club.members.some((m) => m.userId === me.id)) return send(403, { error: 'Members only' });
         club.rsvps = club.rsvps || {};
-        if (body.status === 'going' || body.status === 'notgoing') club.rsvps[me.id] = body.status;
+        if (body.status === 'going' || body.status === 'maybe' || body.status === 'notgoing') club.rsvps[me.id] = body.status;
         else delete club.rsvps[me.id];
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
@@ -683,6 +801,7 @@ module.exports = async (req, res) => {
         }
         db.clubs = db.clubs.filter((c) => c.members.length > 0);
         Object.keys(db.ratings).forEach((k) => { if (k.startsWith(me.id + '|')) delete db.ratings[k]; });
+        Object.keys(db.progress || {}).forEach((k) => { if (k.startsWith(me.id + '|')) delete db.progress[k]; });
         Object.keys(db.sessions).forEach((t) => { if (db.sessions[t] === me.id) delete db.sessions[t]; });
         db.invites = db.invites.filter((i) => i.email !== me.email && i.createdBy !== me.id);
         db.users = db.users.filter((u) => u.id !== me.id);
