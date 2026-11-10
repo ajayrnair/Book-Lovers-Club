@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reading Peeps</title>
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<meta name="theme-color" content="#3d1436">
+<style>
+  :root{--bg:#3d1436;--plum:#2e0e28;--card:#fff9f1;--ink:#2b1421;--muted:#8d6a7a;--accent:#c93a54;--accent2:#8b5cf6;--teal:#17a398;--line:#ecd9c6;--good:#2e7d32;--danger:#cf2233;--cream:#fff3e2}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:17px;line-height:1.42;-webkit-font-smoothing:antialiased}
+  header{position:sticky;top:0;background:rgba(46,14,40,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;z-index:10;color:var(--cream)}
+  header::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,#ff7e5f,#f95d6a,#8b5cf6,#17a398,#1b8fa8)}
+  h1{font-size:17px;font-weight:700;letter-spacing:-.01em;margin:0;display:flex;align-items:center}
+  .concept{font-size:10.5px;font-weight:700;color:#2e0e28;background:#ffb59f;border-radius:999px;padding:3px 9px;white-space:nowrap}
+  h2{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:24px 0 10px;color:#ffe9d2}
+  .card h2,.sheet h2{color:var(--ink)}
+  h3{font-size:19px;font-weight:700;letter-spacing:-.01em;margin:16px 0 8px}
+  main{padding:2px 16px 112px;max-width:640px;margin:0 auto}
+  .card{background:var(--card);border-radius:20px;padding:16px;margin:12px 0;box-shadow:0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
+  .row{display:flex;gap:12px;align-items:center}
+  .grow{flex:1}
+  input,select,button,textarea{font-size:17px;font-family:inherit}
+  input[type=text],input[type=email],input[type=password],input[type=url],input[type=date],input[type=number],select,textarea{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:6px 0;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:2px solid rgba(201,58,84,.5);outline-offset:0;border-color:transparent}
+  input[type=range]{width:100%;accent-color:var(--accent);height:36px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:12px 18px;min-height:48px;cursor:pointer;font-weight:600;font-size:16px;transition:transform .08s ease}
+  button:active{transform:scale(.98)}
+  button.ghost{background:var(--card);color:var(--accent);border:1px solid var(--accent)}
+  button.small{padding:8px 14px;min-height:40px;font-size:15px;border-radius:10px}
+  button:disabled{opacity:.45}
+  button.danger{background:var(--danger);color:#fff}
+  button.ghost.danger{background:var(--card);color:var(--danger);border-color:var(--danger)}
+  button.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:52px;background:#fff;color:#1f1f1f;border:1px solid #dadce0;font-family:Roboto,Arial,sans-serif;font-weight:500}
+  button.gbtn svg{flex:none;display:block}
+  .muted{color:var(--muted);font-size:14px}
+  .err{color:#b3261e;font-size:14px;min-height:18px}
+  .book{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .book:last-child{border-bottom:0}
+  .cover{width:50px;height:74px;object-fit:cover;border-radius:6px;background:#f3e2d3;flex:none}
+  .cover.big{width:64px;height:95px;border-radius:8px}
+  .stars{color:var(--accent2);font-size:13px}
+  .chip{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;padding:9px 14px;min-height:40px;margin:3px 3px 3px 0;font-size:15px;background:#fff;cursor:pointer;color:var(--ink)}
+  .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .day{flex:1;text-align:center;padding:9px 0;min-height:54px;border:1px solid var(--line);border-radius:12px;background:#fff;cursor:pointer;font-size:15px;color:var(--ink)}
+  .day.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .day .n{display:block;font-size:11px;color:inherit;opacity:.75}
+  .day.best{border-color:var(--teal);box-shadow:0 0 0 2px rgba(23,163,152,.4)}
+  .hide{display:none}
+  a{color:var(--accent)}
+  .badge{font-size:11px;font-weight:700;background:#fde8d8;color:var(--accent);border-radius:999px;padding:3px 8px;margin-left:6px;vertical-align:2px}
+  select.rate{width:auto;padding:8px 10px;margin:0;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:15px;color:var(--ink)}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(40px + env(safe-area-inset-bottom));background:#5b2144;color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:500;z-index:30;max-width:90%;box-shadow:0 8px 24px rgba(20,4,16,.35)}
+  .overlay{position:fixed;inset:0;background:rgba(30,6,24,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+  .sheet{background:var(--card);border-radius:20px 20px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));width:100%;max-height:86vh;overflow:auto;animation:slideup .22s ease-out}
+  @media(min-width:640px){.overlay{align-items:center}.sheet{width:380px;max-width:92%;border-radius:20px;padding:20px}}
+  @keyframes slideup{from{transform:translateY(26px);opacity:.5}to{transform:none;opacity:1}}
+  .datefield{position:relative}
+  .datefield input[type=date]{margin:0;padding-right:44px;cursor:pointer;min-height:48px}
+  .datefield input[type=date]::-webkit-calendar-picker-indicator{opacity:0;position:absolute;right:0;top:0;width:44px;height:100%;cursor:pointer}
+  .datefield .cal{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:var(--accent);display:flex;pointer-events:none}
+  .brand{text-align:center;padding:30px 0 4px;color:var(--cream)}
+  .brand img{width:78px;height:78px;border-radius:19px;box-shadow:0 10px 28px rgba(20,4,16,.35)}
+  .brand .bname{font-size:27px;font-weight:800;letter-spacing:-.02em;margin-top:12px;color:#ffe9d2}
+  .clubtag{font-size:12px;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.04em}
+  :focus-visible{outline:2px solid #ff8a66;outline-offset:2px}
+  /* ---- rethink shared ---- */
+  .topbtns{display:flex;gap:4px;align-items:center}
+  button.iconbtn{background:none;border:0;color:#ffb59f;padding:8px;min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;border-radius:12px}
+  button.iconbtn:active{background:rgba(255,255,255,.12)}
+  .decknav{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
+  .decknav button{background:rgba(255,233,210,.16);color:#ffe9d2;min-height:44px;padding:8px 16px;font-size:15px}
+  .decknav button:disabled{opacity:.35}
+  .deckdots{display:flex;gap:6px;justify-content:center;margin-top:12px}
+  .deckdots i{width:8px;height:8px;border-radius:50%;background:rgba(255,233,210,.3);display:block}
+  .deckdots i.on{background:#ff8a66}
+  .clubcard{background:var(--card);border-radius:22px;padding:20px;min-height:460px;box-shadow:0 2px 4px rgba(20,4,16,.25),0 18px 40px rgba(20,4,16,.3);display:flex;flex-direction:column;margin-top:10px;position:relative}
+  .avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#ff7e5f,#8b5cf6);color:#fff;font-weight:700;font-size:14px;display:inline-flex;align-items:center;justify-content:center;flex:none;position:relative}
+  .avatar.me{box-shadow:0 0 0 2.5px var(--accent)}
+  .avatar .finb{position:absolute;right:-3px;bottom:-3px;width:16px;height:16px;border-radius:50%;background:var(--teal);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;border:2px solid var(--card)}
+  .avatarrow{display:flex;gap:7px;flex-wrap:wrap}
+  .rail{display:flex;justify-content:space-between;gap:2px;margin-top:auto;padding-top:16px;border-top:1px solid var(--line)}
+  .rail button{background:none;border:0;color:var(--muted);min-width:46px;min-height:48px;padding:6px 2px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;font-weight:700;letter-spacing:.02em;border-radius:12px;cursor:pointer}
+  .rail button.on{color:var(--accent);background:#fdeeea}
+  .rail button .dot{position:absolute}
+  .railwrap{position:relative}
+  .metaline{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
+  .metaline:last-child{border-bottom:0}
+  /* tracks (concept A + layers People) */
+  .ptrack{padding:10px 10px 12px;border-radius:14px;margin-top:8px;background:#fff;border:1.5px solid var(--line)}
+  .ptrack.me{border-color:var(--accent);background:#fff7f2}
+  .ptrack .tline{position:relative;height:10px;background:#f3ddc8;border-radius:5px;margin-top:8px}
+  .ptrack .tline i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:linear-gradient(90deg,#8b5cf6,#17a398)}
+  .ptrack .tline b{position:absolute;top:50%;width:18px;height:18px;border-radius:50%;background:#fff;border:3.5px solid var(--accent2);transform:translate(-50%,-50%)}
+  .ptrack.me .tline b{border-color:var(--accent)}
+  /* ring (concept B) */
+  .ringwrap{position:relative;width:272px;height:272px;margin:6px auto 0}
+  .ringwrap .centercover{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:104px;height:154px;border-radius:9px;object-fit:cover;background:#f3e2d3;box-shadow:0 10px 24px rgba(20,4,16,.25)}
+  .ringwrap .ravatar{position:absolute;width:38px;height:38px;margin:-19px 0 0 -19px}
+  /* layers (concept C) */
+  .layertabs{position:absolute;right:-11px;top:88px;display:flex;flex-direction:column;gap:6px;z-index:3}
+  .layertabs button{min-height:40px;padding:8px 7px;border-radius:9px;background:#e9d3f5;color:var(--plum);font-size:11.5px;font-weight:800;writing-mode:vertical-rl;box-shadow:0 4px 10px rgba(20,4,16,.25)}
+  .layertabs button.on{background:var(--accent);color:#fff}
+  .updown{display:flex;gap:8px;justify-content:center;margin-top:12px}
+  .updown button{background:#f6e3cd;color:var(--ink);min-height:44px;flex:1}
+  .updown button:disabled{opacity:.4}
+  .pickrow{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+  .pickrow:last-child{border-bottom:0}
+  .voterow{display:flex;gap:12px;align-items:center;padding:10px;margin:8px 0;border:1.5px solid var(--line);border-radius:14px;background:#fff;cursor:pointer}
+  .voterow.mine{border-color:var(--accent);background:#fdeeea}
+  .voterow .vbar{height:6px;background:#f3ddc8;border-radius:3px;overflow:hidden;margin-top:6px}
+  .voterow .vbar i{display:block;height:100%;background:var(--accent2)}
+  .picktag{color:var(--accent);font-size:12.5px;font-weight:700;margin-top:2px}
+  .memrow{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+  .memrow:last-child{border-bottom:0}
+  .progbar{height:10px;background:#f3ddc8;border-radius:5px;overflow:hidden}
+  .progbar i{display:block;height:100%;background:linear-gradient(90deg,#8b5cf6,#17a398)}
+  .sheethead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .tappable{cursor:pointer}
+</style>
+</head>
+<body>
+<header><h1><img src="/icon.svg" alt="" style="width:26px;height:26px;border-radius:7px;margin-right:8px">Reading&nbsp;Peeps</h1><span class="concept">Rethink · Layered Card</span><span class="topbtns" id="topnav"><button class="iconbtn" id="navExplore" aria-label="Explore"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg></button><button class="iconbtn" id="navMe" aria-label="Me"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button></span></header>
+<main id="app"></main>
+<div id="modal"></div>
+<div class="toast hide" id="toast"></div>
+<script>
+
+const $ = (s, el=document) => el.querySelector(s);
+const app = $('#app');
+let token = localStorage.getItem('blc_token') || '';
+if(location.hash.startsWith('#t=')){ token = location.hash.slice(3); localStorage.setItem('blc_token', token); history.replaceState(null, '', location.pathname); }
+let user = null, myClubs = [], currentClub = null, screen = 'home';
+let details = {};
+let deckIdx = 0, panel = null;
+let searchResults = []; let addSelCleanup = null;
+
+const ICONS = {
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+  vote: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  lib: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+  compass: '<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>',
+  user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  up: '<polyline points="18 15 12 9 6 15"/>',
+  down: '<polyline points="6 9 12 15 18 9"/>',
+  gauge: '<path d="M12 15l4.5-6.5"/><path d="M20.2 16.2A9 9 0 1 0 3.8 16.2"/>'
+};
+function icon(n, s=21){ return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`; }
+function showModal(html){ $('#modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet">${html}</div></div>`; $('#ovl').onclick = (e)=>{ if(e.target.id==='ovl') closeModal(); }; }
+function closeModal(){ $('#modal').innerHTML=''; panel = null; }
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.remove('hide'); setTimeout(()=>t.classList.add('hide'), 2600); }
+async function api(action, body={}){
+  const r = await fetch('/api/handler', { method:'POST', headers:{'content-type':'application/json', ...(token?{authorization:'Bearer '+token}:{})}, body: JSON.stringify({action, ...body}) });
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.error || 'Something went wrong');
+  return j;
+}
+// The test backend is one JSON document whose reads can lag a write; retry
+// idempotent writes up to 3 times, 900ms apart (existing app convention).
+async function call3(fn){ let err; for(let i=0;i<3;i++){ try{ return await fn(); }catch(e){ err=e; if(i<2) await new Promise(r=>setTimeout(r,900)); } } throw err; }
+function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fmtDate(ds){ if(!ds) return ''; const d=new Date(ds+'T12:00:00'); return d.toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'}); }
+function ratingsLine(b){
+  const parts=[];
+  if(b.google) parts.push(`Google ★ ${b.google.rating} (${b.google.count})`);
+  if(b.hardcover && !(b.google && b.google.count > (b.hardcover.count||0)*10)) parts.push(`Hardcover ★ ${b.hardcover.rating} (${b.hardcover.count})`);
+  if(!b.google && !b.hardcover && b.openlibrary) parts.push(`Open Library ★ ${b.openlibrary.rating} (${b.openlibrary.count})`);
+  return parts.length ? `<div class="stars">${parts.join(' · ')}</div>` : '';
+}
+function halfOptions(sel){ let o=''; for(let v=0; v<=5; v+=0.5){ o+=`<option value="${v}" ${sel===v?'selected':''}>${v===0?'Rate':v+' ★'}</option>`; } return o; }
+function pollDefaultEnd(c){
+  const week = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+  if(c.meeting && c.meeting.date){ const d = new Date(c.meeting.date + 'T12:00:00'); if(!isNaN(d.getTime())){ d.setDate(d.getDate() - 1); const ds = d.toISOString().slice(0, 10); return ds < week ? ds : week; } }
+  return week;
+}
+async function refreshClubs(){ const j = await api('myClubs'); myClubs = j.clubs; }
+async function loadDetails(){ details = {}; await Promise.all(myClubs.map(async c=>{ try{ const j = await api('club',{clubId:c.id}); details[c.id]=j.club; }catch(e){} })); }
+async function reloadClub(id){ const j = await api('club',{clubId:id}); details[id]=j.club; if(currentClub && currentClub.id===id) currentClub=j.club; return j.club; }
+function initials(name){ return (name||'?').split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+function avatarHtml(m, c, cls=''){ const fin = c && c.current && (c.finishedBy||[]).includes(m.userId); return `<span class="avatar ${m.userId===user.id?'me':''} ${cls}">${esc(initials(m.name))}${fin?'<span class="finb">✓</span>':''}</span>`; }
+
+// ---------- reading progress (local overlay; the API has no progress yet) ----------
+// Key: userId|clubId|bookKey -> {percent, page, totalPages, updatedAt}
+// API truth maps on top of it: finished (finishedBy / myFinished) = 100%.
+let progStore = {};
+try{ progStore = JSON.parse(localStorage.getItem('rp_progress_v1') || '{}'); }catch(e){ progStore = {}; }
+function progSaveStore(){ try{ localStorage.setItem('rp_progress_v1', JSON.stringify(progStore)); }catch(e){} }
+function progKey(c){ return user.id + '|' + c.id + '|' + (c.current ? c.current.key : ''); }
+function myProgress(c){
+  if(!c.current) return null;
+  if(c.myFinished) return { percent: 100, finished: true };
+  const o = progStore[progKey(c)];
+  if(o && typeof o.percent === 'number') return { percent: o.percent, page: o.page || null, totalPages: o.totalPages || null, finished: false };
+  return null;
+}
+function memberProgress(c, m){
+  if(!c.current) return null;
+  if((c.finishedBy||[]).includes(m.userId)){
+    const rt = (c.currentRatings||[]).find(r=>r.userId===m.userId);
+    return { percent: 100, finished: true, rating: rt ? rt.rating : null };
+  }
+  if(m.userId === user.id){
+    const o = progStore[progKey(c)];
+    if(o && typeof o.percent === 'number') return { percent: o.percent, page: o.page || null, totalPages: o.totalPages || null, finished: false };
+  }
+  return null; // never fabricated: no data = "Not set"
+}
+function progLabel(p){
+  if(!p) return 'Not set';
+  if(p.finished) return 'Finished';
+  if(p.page && p.totalPages) return `Page ${p.page} of ${p.totalPages} · ${p.percent}%`;
+  return p.percent + '%';
+}
+async function setMyProgress(c, percent, page, totalPages){
+  percent = Math.max(0, Math.min(100, Math.round(percent)));
+  progStore[progKey(c)] = { percent, page: page || null, totalPages: totalPages || null, updatedAt: new Date().toISOString() };
+  progSaveStore();
+  const wantFin = percent >= 100;
+  if(!!c.myFinished !== wantFin){
+    try{ const j = await call3(() => api('toggleFinished', { clubId: c.id })); details[c.id] = j.club; currentClub = j.club; }
+    catch(e){ toast(e.message); }
+  }
+  await reloadClub(c.id);
+}
+// Your own poll vote: the API poll view does not expose it, kept per poll id.
+let myVotes = {};
+try{ myVotes = JSON.parse(localStorage.getItem('blc_votes') || '{}'); }catch(e){ myVotes = {}; }
+function saveMyVote(pollId, key){ if(!pollId) return; myVotes[pollId] = key; try{ localStorage.setItem('blc_votes', JSON.stringify(myVotes)); }catch(e){} }
+
+// ---------- auth ----------
+function viewAuth(msg=''){
+  $('#topnav').classList.add('hide');
+  const gLogo = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-.95.66-2.23 1.08-4.07 1.08-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.21c-.25-.66-.38-1.4-.38-2.21s.14-1.55.38-2.21V6.7H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.3l3.98-3.09z"/><path fill="#EA4335" d="M12 4.83c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.21 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.7l3.98 3.09C6.22 6.94 8.87 4.83 12 4.83z"/></svg>';
+  app.innerHTML = `
+  <div class="brand"><img src="/icon.svg" alt=""><div class="bname">Reading Peeps</div></div>
+  <div class="card" id="formIn">
+    <h2 style="margin-top:2px">Sign in</h2>
+    <input type="email" id="inEmail" placeholder="Email" autocomplete="email">
+    <input type="password" id="inPw" placeholder="Password" autocomplete="current-password">
+    <div class="err" id="inErr">${esc(msg)}</div>
+    <button id="signin" style="width:100%">Sign in</button>
+    <div style="display:flex;align-items:center;gap:10px;margin:16px 0 12px;color:var(--muted);font-size:13px"><span style="flex:1;border-top:1px solid var(--line)"></span>or<span style="flex:1;border-top:1px solid var(--line)"></span></div>
+    <button class="gbtn" data-g>${gLogo}<span>Sign in with Google</span></button>
+    <div style="text-align:center;margin-top:12px"><a href="#" id="toSignup">Create account</a></div>
+  </div>
+  <div class="card hide" id="formUp">
+    <h2 style="margin-top:2px">Create account</h2>
+    <input type="text" id="upName" placeholder="Your name" autocomplete="name">
+    <input type="email" id="upEmail" placeholder="Email" autocomplete="email">
+    <input type="password" id="upPw" placeholder="Password" autocomplete="new-password">
+    <div class="err" id="upErr"></div>
+    <button id="signup" style="width:100%">Create account</button>
+    <div style="text-align:center;margin-top:12px"><a href="#" id="toSignin">Sign in</a></div>
+  </div>`;
+  app.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{ location.href = '/api/auth/google'; });
+  $('#toSignup').onclick = (e)=>{ e.preventDefault(); $('#formIn').classList.add('hide'); $('#formUp').classList.remove('hide'); };
+  $('#toSignin').onclick = (e)=>{ e.preventDefault(); $('#formUp').classList.add('hide'); $('#formIn').classList.remove('hide'); };
+  $('#signin').onclick = async ()=>{ try{ const j=await api('signin',{email:$('#inEmail').value, password:$('#inPw').value}); afterAuth(j); }catch(e){ $('#inErr').textContent=e.message; } };
+  $('#signup').onclick = async ()=>{ try{ const j=await api('signup',{name:$('#upName').value, email:$('#upEmail').value, password:$('#upPw').value}); afterAuth(j); }catch(e){ $('#upErr').textContent=e.message; } };
+}
+async function afterAuth(j){
+  token = j.token; user = j.user; localStorage.setItem('blc_token', token);
+  const inv = localStorage.getItem('blc_invite');
+  if(inv){ localStorage.removeItem('blc_invite'); try{ const r=await api('acceptInvite',{inviteToken:inv}); toast('You joined '+r.club.name); }catch(e){ toast(e.message); } }
+  boot();
+}
+async function boot(){
+  try{ const j = await api('me'); user = j.user; }catch(e){ return viewAuth(''); }
+  $('#topnav').classList.remove('hide');
+  await refreshClubs(); await loadDetails();
+  screen = 'home'; startApp();
+}
+const invParam = new URLSearchParams(location.search).get('invite');
+if(invParam){ localStorage.setItem('blc_invite', invParam); history.replaceState({}, '', location.pathname); }
+$('#navExplore').onclick = ()=>{ if(!user) return; screen='explore'; viewExplore(); };
+$('#navMe').onclick = ()=>{ if(!user) return; screen='me'; viewMe(); };
+function goHome(idx){ screen='home'; if(typeof idx==='number') deckIdx = idx; startApp(); }
+function openClub(id){ const i = myClubs.findIndex(x=>x.id===id); goHome(i>=0?i:0); }
+
+// ---------- Explore: search + create + invite live here, NOT on home ----------
+function viewExplore(){
+  app.innerHTML = `<button class="ghost small" id="expBack" style="margin-top:14px">‹ My clubs</button>
+  <h2>Explore</h2>
+  <div class="card"><h3 style="margin-top:0">Find a club</h3>
+    <div class="row"><input type="text" id="q" placeholder="Search clubs" class="grow"><button id="go" class="small">Search</button></div>
+    <div id="found"></div></div>
+  <div class="card"><h3 style="margin-top:0">Start a club</h3>
+    <input type="text" id="newName" placeholder="New club name">
+    <div class="row" style="margin-top:8px"><select id="newVis" class="grow" style="margin:0"><option value="private" selected>Private</option><option value="public">Public</option></select>
+    <button id="create">Create</button></div></div>
+  <div class="card"><h3 style="margin-top:0">Have an invite link?</h3>
+    <input type="text" id="invLink" placeholder="Paste the invite link">
+    <button id="invGo" style="width:100%">Join with invite</button><div class="err" id="invErr"></div></div>`;
+  $('#expBack').onclick = ()=>goHome();
+  $('#create').onclick = async ()=>{ try{ const j=await api('createClub',{name:$('#newName').value, private:$('#newVis').value==='private'}); await refreshClubs(); await loadDetails(); openClub(j.club.id); }catch(e){ toast(e.message); } };
+  const search = async ()=>{ const j=await api('searchClubs',{q:$('#q').value}); const f=$('#found'); if(!f) return; f.innerHTML = j.clubs.map(c=>`<div class="row" style="padding:6px 0"><div class="grow"><b>${esc(c.name)}</b><div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div></div>${c.isMember?'<span class="muted">Joined</span>':`<button class="small" data-join="${c.id}">Join</button>`}</div>`).join('') || '<div class="muted">Nothing found</div>';
+    app.querySelectorAll('[data-join]').forEach(b=>b.onclick=async()=>{ await api('joinClub',{clubId:b.dataset.join}); await refreshClubs(); await loadDetails(); openClub(b.dataset.join); }); };
+  $('#go').onclick = search; search();
+  $('#invGo').onclick = async ()=>{ const raw = $('#invLink').value.trim(); const m = raw.match(/invite=([^&\s]+)/); const tok = m ? m[1] : raw; if(!tok) return; try{ const r = await api('acceptInvite',{inviteToken:tok}); await refreshClubs(); await loadDetails(); toast('You joined '+r.club.name); openClub(r.club.id); }catch(e){ $('#invErr').textContent = e.message; } };
+}
+
+// ---------- Add books (reached from the Library panel; per-row add) ----------
+function viewAdd(preClub){
+  screen = 'add';
+  const chosen = new Set(preClub?[preClub]: myClubs.map(c=>c.id));
+  const added = new Set();
+  app.innerHTML = `<button class="ghost small" id="addBack" style="margin-top:14px">‹ Back</button><h2>Add books</h2>
+  <div class="card"><h3 style="margin-top:0">To</h3><div id="clubPick">${myClubs.map(c=>`<span class="chip ${chosen.has(c.id)?'on':''}" data-club="${c.id}">${esc(c.name)}</span>`).join('')||'<span class="muted">Join or create a club first</span>'}</div></div>
+  <div class="card"><h3 style="margin-top:0">Search</h3>
+    <div class="row"><input type="text" id="sq" placeholder="Title or author" class="grow"><button id="sgo" class="small">Search</button></div>
+    <div id="sres"></div></div>
+  <div class="card"><h3 style="margin-top:0">Paste a link</h3>
+    <input type="url" id="link" placeholder="Amazon, Goodreads, Google Books or Open Library link">
+    <button id="linkGo" style="width:100%">Add from link</button><div class="err" id="lerr"></div></div>`;
+  $('#addBack').onclick = ()=>goHome();
+  const clubs = ()=>[...app.querySelectorAll('#clubPick .chip.on')].map(x=>x.dataset.club);
+  app.querySelectorAll('#clubPick .chip').forEach(ch=>ch.onclick=()=>ch.classList.toggle('on'));
+  const render = ()=>{ $('#sres').innerHTML = searchResults.map((b,i)=>`<div class="book">
+    ${b.cover?`<img class="cover" src="${esc(b.cover)}">`:'<div class="cover"></div>'}
+    <div class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>${ratingsLine(b)}</div>
+    <button class="small ${added.has(i)?'ghost':''}" data-add="${i}" ${added.has(i)?'disabled':''}>${added.has(i)?'Added':'Add'}</button></div>`).join('');
+    app.querySelectorAll('[data-add]').forEach(btn=>btn.onclick=async()=>{ if(!clubs().length) return toast('Pick a club first'); btn.disabled=true; btn.textContent='Adding…'; try{ await call3(()=>api('addBooks',{clubIds:clubs(), books:[searchResults[Number(btn.dataset.add)]]})); added.add(Number(btn.dataset.add)); await loadDetails(); render(); toast('Added'); }catch(e){ btn.disabled=false; btn.textContent='Add'; toast(e.message); } }); };
+  $('#sgo').onclick = async ()=>{ try{ $('#sres').innerHTML='<div class="muted">Searching…</div>'; const j=await api('searchBooks',{q:$('#sq').value}); searchResults=j.results; added.clear(); render(); if(!searchResults.length) $('#sres').innerHTML='<div class="muted">Nothing found</div>'; }catch(e){ toast(e.message); } };
+  $('#linkGo').onclick = async ()=>{ try{ $('#lerr').textContent=''; if(!clubs().length) return toast('Pick a club first'); const j=await api('addByLink',{url:$('#link').value, clubIds:clubs()}); toast('Added: '+j.book.title); await loadDetails(); $('#link').value=''; }catch(e){ $('#lerr').textContent=e.message; } };
+}
+
+// ---------- Me ----------
+function viewMe(){
+  app.innerHTML = `<button class="ghost small" id="meBack" style="margin-top:14px">‹ My clubs</button>
+  <div class="card" style="margin-top:12px"><h3 style="margin-top:0">${esc(user.name)}</h3><div class="muted">${esc(user.email)}</div>
+  <button id="meSignOut" class="ghost small" style="margin-top:12px">Sign out</button></div>
+  <h2>My clubs</h2>${myClubs.map(c=>`<div class="card row tappable" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b></div><span>›</span></div>`).join('')||'<div class="muted">No clubs yet</div>'}
+  <div class="card"><div id="delAcctBox"><button id="delAcct" class="ghost small danger">Delete account</button></div></div>`;
+  $('#meBack').onclick = ()=>goHome();
+  app.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openClub(el.dataset.open));
+  $('#meSignOut').onclick = async ()=>{ try{ await api('signout'); }catch(e){} token=''; user=null; currentClub=null; details={}; localStorage.removeItem('blc_token'); viewAuth(); };
+  $('#delAcct').onclick = ()=>{
+    $('#delAcctBox').innerHTML = `<div class="muted" style="margin-bottom:8px">Delete your account and all your data?</div>
+    <div class="row"><button id="delAcctYes" class="danger small">Delete account</button><button id="delAcctNo" class="ghost small">Cancel</button></div>`;
+    $('#delAcctNo').onclick = ()=>viewMe();
+    $('#delAcctYes').onclick = async ()=>{ try{ await api('deleteAccount'); token=''; user=null; currentClub=null; myClubs=[]; details={}; localStorage.removeItem('blc_token'); viewAuth(); }catch(e){ toast(e.message); } };
+  };
+}
+
+// ---------- deck helpers ----------
+function deckNavHtml(){
+  return `<div class="decknav"><button id="deckPrev" ${deckIdx<=0?'disabled':''}>‹ Prev club</button><span class="muted" style="color:#d9a8c2">${myClubs.length? (deckIdx+1)+' of '+myClubs.length : ''}</span><button id="deckNext" ${deckIdx>=myClubs.length-1?'disabled':''}>Next club ›</button></div>`;
+}
+function dotsHtml(){ return `<div class="deckdots">${myClubs.map((c,i)=>`<i class="${i===deckIdx?'on':''}"></i>`).join('')}</div>`; }
+function wireDeck(render){
+  const p = $('#deckPrev'), n = $('#deckNext');
+  if(p) p.onclick = ()=>{ if(deckIdx>0){ deckIdx--; render(); } };
+  if(n) n.onclick = ()=>{ if(deckIdx<myClubs.length-1){ deckIdx++; render(); } };
+  const cardEl = $('#clubCard');
+  if(cardEl){
+    let tx=null, ty=null;
+    cardEl.addEventListener('touchstart', e=>{ tx=e.changedTouches[0].clientX; ty=e.changedTouches[0].clientY; }, {passive:true});
+    cardEl.addEventListener('touchend', e=>{ if(tx===null) return; const dx=e.changedTouches[0].clientX-tx, dy=e.changedTouches[0].clientY-ty; tx=null;
+      if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.4){ if(dx<0 && deckIdx<myClubs.length-1){ deckIdx++; render(); } if(dx>0 && deckIdx>0){ deckIdx--; render(); } }
+      else if(typeof onVerticalSwipe==='function' && Math.abs(dy)>60 && Math.abs(dy)>Math.abs(dx)*1.4){ onVerticalSwipe(dy<0?1:-1); }
+    }, {passive:true});
+  }
+}
+function emptyDeckHtml(){
+  return `<div class="decknav"><span></span><span></span><span></span></div>
+  <div class="clubcard" id="clubCard"><b style="font-size:21px">No clubs yet</b>
+  <div class="muted" style="margin-top:8px">Find one, or start your own, in Explore.</div>
+  <button id="emptyExplore" style="margin-top:18px;width:100%">${''}Explore</button></div>`;
+}
+function wireEmpty(){ const b=$('#emptyExplore'); if(b) b.onclick=()=>{ screen='explore'; viewExplore(); }; }
+function meetingLine(c){
+  if(c.meeting && c.meeting.date) return `${fmtDate(c.meeting.date)} · ${(c.members||[]).filter(m=>(c.rsvps||{})[m.userId]==='going').length} going`;
+  return 'No date yet';
+}
+function voteLine(c){
+  if(c.poll) return c.poll.runoff ? 'Tiebreak vote open' : `Vote open · ${c.poll.totalVotes} vote${c.poll.totalVotes===1?'':'s'}`;
+  if(c.lastResult && c.lastResult.tie) return 'Vote tied';
+  return 'No vote open';
+}
+function coverHtml(b, cls){ return b && b.cover ? `<img class="${cls||'cover'}" src="${esc(b.cover)}" alt="">` : `<div class="${cls||'cover'}"></div>`; }
+
+
+// ---------- icon rail + panels ----------
+const RAIL = [
+  ['book', 'book', 'Book'],
+  ['vote', 'vote', 'Vote'],
+  ['meeting', 'calendar', 'Meeting'],
+  ['members', 'users', 'Members'],
+  ['library', 'lib', 'Library'],
+  ['settings', 'gear', 'Settings'],
+];
+function railHtml(c){
+  return `<div class="rail">${RAIL.map(([k,icn,label])=>`<button data-panel="${k}" aria-label="${label}" class="${panel===k?'on':''}">${icon(icn,22)}<span>${label}</span></button>`).join('')}</div>`;
+}
+function wireRail(c){
+  document.querySelectorAll('[data-panel]').forEach(b=>b.onclick=()=>openPanel(b.dataset.panel));
+}
+function sheetHead(title){
+  return `<div class="sheethead"><b style="font-size:20px">${title}</b><button class="ghost small" data-close aria-label="Close">${icon('x',16)}</button></div>`;
+}
+function openPanel(name){
+  const c = currentClub; if(!c) return;
+  panel = name;
+  const body = { book: panelBook, vote: panelVote, meeting: panelMeeting, members: panelMembers, library: panelLibrary, settings: panelSettings }[name];
+  showModal(sheetHead({book:'Book', vote:'Vote', meeting:'Meeting', members:'Members', library:'Library', settings:'Settings'}[name]) + body(c));
+  document.querySelector('[data-close]').onclick = ()=>{ closeModal(); renderHome(); };
+  ({ book: wireBook, vote: wireVote, meeting: wireMeeting, members: ()=>{}, library: wireLibrary, settings: wireSettings })[name](c);
+  document.querySelectorAll('#modal [data-panel]').forEach(b=>b.onclick=()=>openPanel(b.dataset.panel));
+}
+function refreshPanel(name){ openPanel(name); renderHome(); }
+
+// --- Book panel: current book + MY PROGRESS setter + rating + change book ---
+function panelBook(c){
+  if(!c.current){
+    return `<div class="muted">Nothing picked yet. ${c.role==='admin' ? 'Pick the book from the library:' : 'The admin picks the book.'}</div>
+    <div style="margin-top:8px">${pickRows(c)}</div>
+    <button class="ghost" data-golib style="margin-top:12px;width:100%">Open the library</button>`;
+  }
+  const b = c.current;
+  const p = myProgress(c);
+  const pct = p ? p.percent : 0;
+  return `<div class="row" style="align-items:flex-start">${coverHtml(b,'cover big')}<div class="grow"><b style="font-size:19px">${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>${ratingsLine(b)}
+  <div style="margin-top:8px"><select class="rate" data-rate="${b.key}">${halfOptions(b.myRating)}</select></div></div></div>
+  <div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px">
+    <div class="row"><b class="grow">My progress</b><b id="progPctLabel">${pct}%</b></div>
+    <div class="progbar" style="margin-top:8px"><i id="progBarFill" style="width:${pct}%"></i></div>
+    <input type="range" id="progRange" min="0" max="100" step="1" value="${pct}" aria-label="My progress in percent">
+    <div class="row">
+      <input type="number" id="progPage" class="grow" min="0" placeholder="Page I am on" value="${p && p.page ? p.page : ''}">
+      <span class="muted">of</span>
+      <input type="number" id="progTotal" class="grow" min="0" placeholder="Book pages" value="${p && p.totalPages ? p.totalPages : ''}">
+    </div>
+    <div class="muted">Move the slider, or type the page you are on. 100% marks the book finished.</div>
+    <button id="progSave" style="margin-top:10px;width:100%">Save progress</button>
+  </div>
+  <div class="muted" style="text-align:center;margin-top:12px">${(c.finishedBy||[]).length} of ${c.members.length} finished</div>
+  ${c.role==='admin' ? '<button class="ghost" data-changebook style="margin-top:10px;width:100%">Change book</button><div data-changelist class="hide" style="margin-top:6px"></div>' : ''}`;
+}
+function pickRows(c){
+  if(!c.library.length) return '<div class="muted">The library is empty</div>';
+  return c.library.map(b=>{
+    const cur = c.current && c.current.key===b.key;
+    return `<div class="pickrow">${coverHtml(b)}<div class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}</div>${ratingsLine(b)}</div>${cur?'<span class="badge">Reading now</span>':(c.role==='admin'?`<button class="small" data-setbook="${b.key}">Read this</button>`:'')}</div>`;
+  }).join('');
+}
+function wireSetBook(c){
+  document.querySelectorAll('[data-setbook]').forEach(b=>b.onclick=async()=>{ b.disabled=true; try{ const j = await call3(()=>api('setCurrent',{clubId:c.id, bookKey:b.dataset.setbook})); details[c.id]=j.club; currentClub=j.club; refreshPanel('book'); }catch(e){ b.disabled=false; toast(e.message); } });
+}
+function wireBook(c){
+  document.querySelectorAll('#modal [data-rate]').forEach(s=>s.onchange=async()=>{ await api('rate',{bookKey:s.dataset.rate, rating:Number(s.value)}); toast('Saved'); await reloadClub(c.id); renderHome(); });
+  wireSetBook(c);
+  const gl = document.querySelector('[data-golib]'); if(gl) gl.onclick = ()=>openPanel('library');
+  const ch = document.querySelector('[data-changebook]');
+  if(ch) ch.onclick = ()=>{ const box = document.querySelector('[data-changelist]'); box.classList.remove('hide'); box.innerHTML = pickRows(details[c.id]||c); wireSetBook(details[c.id]||c); ch.classList.add('hide'); };
+  const range = $('#progRange');
+  if(range){
+    const pageEl = $('#progPage'), totEl = $('#progTotal'), lbl = $('#progPctLabel'), fill = $('#progBarFill');
+    range.oninput = ()=>{ const v = Number(range.value); lbl.textContent = v+'%'; fill.style.width = v+'%'; const t = Number(totEl.value); if(t>0) pageEl.value = Math.round(v/100*t) || ''; };
+    pageEl.oninput = ()=>{ const t = Number(totEl.value), pg = Number(pageEl.value); if(t>0 && pg>=0){ const v = Math.max(0, Math.min(100, Math.round(pg/t*100))); range.value = v; lbl.textContent = v+'%'; fill.style.width = v+'%'; } };
+    $('#progSave').onclick = async ()=>{
+      const btn = $('#progSave'); btn.disabled = true;
+      try{ await setMyProgress(details[c.id]||c, Number(range.value), Number(pageEl.value)||null, Number(totEl.value)||null); toast('Progress saved'); refreshPanel('book'); }
+      catch(e){ btn.disabled = false; toast(e.message); }
+    };
+  }
+}
+
+// --- Vote panel (tappable rows, your pick, tie as its own state) ---
+let voteUi = { startOpen: false };
+function panelVote(c){
+  const admin = c.role==='admin';
+  if(c.poll){
+    const p = c.poll, mine = myVotes[p.id];
+    const ends = new Date(p.closesAt).toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'});
+    return `<div style="text-align:center"><b style="font-size:20px">${p.runoff?'Tiebreak vote':'Pick the next book'}</b>
+    <div class="muted">Voting ends ${ends} · ${p.totalVotes} vote${p.totalVotes===1?'':'s'}</div>
+    ${p.runoff?'<div class="muted">The last vote tied.</div>':''}${mine?'':'<div class="muted">Tap a book to vote.</div>'}</div>
+    ${p.options.map(o=>{ const pct = p.totalVotes ? Math.round(o.votes/p.totalVotes*100) : 0; const isMine = mine===o.book.key;
+      return `<div class="voterow ${isMine?'mine':''}" data-vote="${o.book.key}">${coverHtml(o.book)}<div class="grow"><b>${esc(o.book.title)}</b><div class="muted">${esc(o.book.author)}</div><div class="vbar"><i style="width:${pct}%"></i></div></div><div style="text-align:right;flex:none"><b style="font-size:19px">${o.votes}</b>${isMine?'<div class="picktag">✓ Your pick</div>':''}</div></div>`; }).join('')}
+    ${admin?'<button class="ghost small" data-closepoll style="margin-top:4px">Close the vote</button>':''}`;
+  }
+  if(c.lastResult && c.lastResult.tie){
+    const tied = c.lastResult.tie.map(k=>c.library.find(b=>b.key===k)).filter(Boolean);
+    return `<div style="text-align:center"><b style="font-size:20px">The vote tied</b><div class="muted" style="margin-top:4px">Only these books are still in it.</div></div>
+    ${tied.map(b=>`<div class="pickrow">${coverHtml(b)}<div class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}</div></div>${admin?`<button class="small ghost" data-pick="${b.key}">Pick</button>`:''}</div>`).join('')}
+    ${admin?'<button data-runoff style="margin-top:12px;width:100%">Run the runoff</button>':'<div class="muted" style="text-align:center;margin-top:10px">The admin settles the tie.</div>'}`;
+  }
+  if(!c.library.length) return `<div style="text-align:center"><b style="font-size:20px">The library is empty</b><div class="muted" style="margin-top:6px">Add books and the club can choose its next read.</div></div><button class="ghost" data-golib2 style="margin-top:14px;width:100%">Open the library</button>`;
+  if(!admin) return `<div style="text-align:center"><b style="font-size:20px">No vote open</b><div class="muted" style="margin-top:6px">The admin starts the vote for the next book.</div></div>`;
+  if(!voteUi.startOpen) return `<div style="text-align:center"><b style="font-size:20px">Choose the next book</b><div class="muted" style="margin-top:6px">${c.library.length} books in the library</div></div><button data-starttoggle style="margin-top:16px;width:100%">Start the vote</button>`;
+  return `<div style="text-align:center"><b style="font-size:20px">Start the vote</b></div>
+  <div class="muted" style="margin:14px 0 4px">Vote end date</div>
+  <div class="datefield"><input type="date" id="voteEnd" value="${pollDefaultEnd(c)}"><span class="cal">${icon('calendar',18)}</span></div>
+  <button data-startopen style="margin-top:12px;width:100%">Open the vote</button>
+  <button class="ghost small" data-startcancel style="margin-top:8px;width:100%">Cancel</button>`;
+}
+function wireVote(c){
+  document.querySelectorAll('[data-vote]').forEach(r=>r.onclick=async()=>{ const pid = c.poll ? c.poll.id : null; try{ const j = await call3(()=>api('vote',{clubId:c.id, bookKey:r.dataset.vote})); details[c.id]=j.club; currentClub=j.club; saveMyVote(pid, r.dataset.vote); refreshPanel('vote'); }catch(e){ toast(e.message); } });
+  const cp = document.querySelector('[data-closepoll]'); if(cp) cp.onclick = async ()=>{ const j = await api('closePoll',{clubId:c.id}); details[c.id]=j.club; currentClub=j.club; refreshPanel('vote'); };
+  const ro = document.querySelector('[data-runoff]'); if(ro) ro.onclick = async ()=>{ const j = await api('runoff',{clubId:c.id}); details[c.id]=j.club; currentClub=j.club; refreshPanel('vote'); };
+  document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=async()=>{ const j = await api('adminPick',{clubId:c.id, bookKey:b.dataset.pick}); details[c.id]=j.club; currentClub=j.club; closeModal(); renderHome(); });
+  const tg = document.querySelector('[data-starttoggle]'); if(tg) tg.onclick = ()=>{ voteUi.startOpen = true; openPanel('vote'); };
+  const so = document.querySelector('[data-startopen]'); if(so) so.onclick = async ()=>{ try{ const j = await call3(()=>api('startPoll',{clubId:c.id, endDate:$('#voteEnd').value})); details[c.id]=j.club; currentClub=j.club; voteUi.startOpen=false; refreshPanel('vote'); }catch(e){ toast(e.message); } };
+  const sc = document.querySelector('[data-startcancel]'); if(sc) sc.onclick = ()=>{ voteUi.startOpen=false; openPanel('vote'); };
+  const gl = document.querySelector('[data-golib2]'); if(gl) gl.onclick = ()=>openPanel('library');
+  const pe = $('#voteEnd'); if(pe){ const f = pe.closest('.datefield'); if(f) f.onclick = ()=>{ try{ pe.focus(); if(pe.showPicker) pe.showPicker(); }catch(e){} }; }
+}
+
+// --- Meeting panel (days -> best day -> date + one field) ---
+let meetUi = { type: null };
+function overlapOf(c){ const o = {}; Object.values(c.availability||{}).forEach(days=>days.forEach(d=>o[d]=(o[d]||0)+1)); return o; }
+function panelMeeting(c){
+  const admin = c.role==='admin';
+  const head = `<div style="text-align:center"><b style="font-size:20px">Group meeting</b><div class="muted">Meets every ${c.meetingFrequencyWeeks} week${c.meetingFrequencyWeeks>1?'s':''}</div></div>`;
+  if(c.meeting.date){
+    const myR = (c.rsvps||{})[user.id];
+    const going = c.members.filter(m=>(c.rsvps||{})[m.userId]==='going').length;
+    const type = meetUi.type || c.meeting.type;
+    const place = c.meeting.type==='online'
+      ? (c.meeting.link ? `<a href="${esc(c.meeting.link)}" target="_blank">Join online</a>` : '<span class="muted">Online</span>')
+      : `<span class="muted">📍 ${esc(c.meeting.address || 'In person')}</span>`;
+    return head + `<div style="text-align:center;margin-top:12px"><b style="font-size:24px">${fmtDate(c.meeting.date)}</b><div style="margin-top:6px">${place}</div></div>
+    <div class="row" style="margin-top:14px"><button class="small ${myR==='going'?'':'ghost'}" data-rsvp="going" style="flex:1">Going</button><button class="small ${myR==='notgoing'?'':'ghost'}" data-rsvp="notgoing" style="flex:1">Not going</button></div>
+    <div class="muted" style="text-align:center;margin-top:8px">${going} going</div>
+    ${admin?`<div style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px">
+      ${type==='online' ? `<input type="url" class="mlink" placeholder="Meeting link" value="${esc(c.meeting.link||'')}">` : `<input type="text" class="maddr" placeholder="Address" value="${esc(c.meeting.address||'')}">`}
+      <div class="row" style="margin-top:6px"><select class="mtype" style="width:auto"><option value="online" ${type==='online'?'selected':''}>Online</option><option value="inperson" ${type==='inperson'?'selected':''}>In person</option></select><button class="small" data-meetsave>Save</button><span class="grow"></span><button class="small ghost" data-changedate>Change date</button></div></div>`:''}`;
+  }
+  const over = overlapOf(c);
+  const maxOver = Math.max(0, ...(c.week||[]).map(d=>over[d]||0));
+  const best = maxOver>0 ? (c.week||[]).filter(d=>(over[d]||0)===maxOver) : [];
+  return head + `<div class="muted" style="text-align:center;margin-top:12px">Pick the days you are available</div>
+  <div class="row" style="margin-top:10px">${(c.week||[]).map(d=>{ const dt=new Date(d+'T12:00:00'); const mine=(c.availability[user.id]||[]).includes(d); const n=over[d]||0; return `<div class="day ${mine?'on':''} ${best.includes(d)?'best':''}" data-day="${d}"><span class="n">${'Sun Mon Tue Wed Thu Fri Sat'.split(' ')[dt.getDay()]}</span>${dt.getDate()}<span class="n">${n} ✓</span></div>`; }).join('')}</div>
+  ${admin && best.length ? `<div class="clubtag" style="margin-top:14px">${best.length>1?'Best days':'Best day'}</div>${best.map(d=>`<button data-setday="${d}" style="margin-top:8px;width:100%">Set ${fmtDate(d)} · ${maxOver} in</button>`).join('')}` : ''}
+  ${admin && !best.length ? `<div class="muted" style="margin-top:14px">Or pick a date</div><div class="datefield" style="margin-top:6px"><input type="date" class="pickdate"><span class="cal">${icon('calendar',18)}</span></div>` : ''}`;
+}
+function wireMeeting(c){
+  document.querySelectorAll('[data-rsvp]').forEach(b=>b.onclick=async()=>{ const cur=((details[c.id]||c).rsvps||{})[user.id]; const status = cur===b.dataset.rsvp ? '' : b.dataset.rsvp; try{ const j = await call3(()=>api('rsvp',{clubId:c.id, status})); details[c.id]=j.club; currentClub=j.club; refreshPanel('meeting'); }catch(e){ toast(e.message); } });
+  document.querySelectorAll('[data-day]').forEach(d=>d.onclick=async()=>{ const mine=new Set(((details[c.id]||c).availability[user.id]||[])); const day=d.dataset.day; mine.has(day)?mine.delete(day):mine.add(day); try{ const j = await call3(()=>api('availability',{clubId:c.id, days:[...mine]})); details[c.id]=j.club; currentClub=j.club; refreshPanel('meeting'); }catch(e){ toast(e.message); } });
+  document.querySelectorAll('[data-setday]').forEach(b=>b.onclick=async()=>{ try{ const j = await call3(()=>api('pickDate',{clubId:c.id, date:b.dataset.setday})); details[c.id]=j.club; currentClub=j.club; refreshPanel('meeting'); }catch(e){ toast(e.message); } });
+  const mt = document.querySelector('.mtype'); if(mt) mt.onchange = ()=>{ meetUi.type = mt.value; openPanel('meeting'); };
+  const sv = document.querySelector('[data-meetsave]'); if(sv) sv.onclick = async ()=>{ const t = meetUi.type || c.meeting.type; const m = { type: t }; if(t==='online'){ const el=document.querySelector('.mlink'); m.link = el?el.value:''; } else { const el=document.querySelector('.maddr'); m.address = el?el.value:''; } const j = await api('clubSettings',{clubId:c.id, meeting:m}); details[c.id]=j.club; currentClub=j.club; meetUi.type=null; toast('Saved'); refreshPanel('meeting'); };
+  const chd = document.querySelector('[data-changedate]'); if(chd) chd.onclick = async ()=>{ try{ const j = await api('clubSettings',{clubId:c.id, meeting:{date:null}}); details[c.id]=j.club; currentClub=j.club; refreshPanel('meeting'); }catch(e){ toast(e.message); } };
+  const pd = document.querySelector('.pickdate'); if(pd){ const f = pd.closest('.datefield'); if(f) f.onclick = ()=>{ try{ pd.focus(); if(pd.showPicker) pd.showPicker(); }catch(e){} }; pd.onchange = async ()=>{ if(!pd.value) return; try{ const j = await call3(()=>api('pickDate',{clubId:c.id, date:pd.value})); details[c.id]=j.club; currentClub=j.club; refreshPanel('meeting'); }catch(e){ toast(e.message); } }; }
+}
+
+// --- Members panel: everyone, where they are, ratings, RSVP ---
+function panelMembers(c){
+  if(!c.current) return `<div class="muted" style="margin-bottom:6px">No book picked yet, so there is no progress to show.</div>` + c.members.map(m=>memberRow(c,m)).join('');
+  return c.members.map(m=>memberRow(c,m)).join('');
+}
+function memberRow(c, m){
+  const p = memberProgress(c, m);
+  const rsvp = c.meeting && c.meeting.date ? (c.rsvps||{})[m.userId] : null;
+  return `<div class="memrow">${avatarHtml(m, c)}<div class="grow"><b>${esc(m.name)}</b>${m.userId===user.id?'<span class="badge">You</span>':''}${m.role==='admin'?'<span class="badge">Admin</span>':''}
+  <div class="muted">${rsvp==='going'?'Going to the meeting':rsvp==='notgoing'?'Not going':(c.meeting && c.meeting.date ? 'No answer yet' : '')}</div></div>
+  <div style="text-align:right;flex:none"><b>${p ? progLabel(p) : 'Not set'}</b>${p && p.finished && p.rating ? `<div class="stars">★ ${p.rating}</div>` : ''}</div></div>`;
+}
+
+// --- Library panel ---
+function panelLibrary(c){
+  if(!c.library.length) return `<div class="muted">No books yet. Add the first ones.</div><button data-addbooks style="margin-top:14px;width:100%">Add books</button>`;
+  return c.library.map(b=>{
+    const cur = c.current && c.current.key===b.key;
+    return `<div class="book">${coverHtml(b)}<div class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>${ratingsLine(b)}${b.memberCount?`<div class="muted">Members ★ ${b.memberAverage} (${b.memberCount})</div>`:''}</div>
+    <select class="rate" data-rate="${b.key}">${halfOptions(b.myRating)}</select>
+    ${cur?'<span class="badge">Reading now</span>':(c.role==='admin'?`<button class="small ghost" data-setbook="${b.key}">Reading now</button>`:'')}</div>`;
+  }).join('') + `<button data-addbooks style="margin-top:14px;width:100%">Add books</button>`;
+}
+function wireLibrary(c){
+  document.querySelectorAll('#modal [data-rate]').forEach(s=>s.onchange=async()=>{ await api('rate',{bookKey:s.dataset.rate, rating:Number(s.value)}); toast('Saved'); await reloadClub(c.id); renderHome(); });
+  wireSetBook(c);
+  const ab = document.querySelector('[data-addbooks]'); if(ab) ab.onclick = ()=>{ closeModal(); viewAdd(c.id); };
+}
+
+// --- Settings sheet: members/invites/frequency/leave/delete (existing scope) ---
+function panelSettings(c){
+  const admin = c.role==='admin';
+  const admins = c.members.filter(m=>m.role==='admin').length;
+  let h = '';
+  if(admin){
+    h += `<div class="clubtag">Meeting rhythm</div>
+    <div class="row" style="margin-top:6px"><select id="setFreq" class="grow" style="margin:0">${[1,2,3,4,5,6,7,8].map(w=>`<option value="${w}" ${c.meetingFrequencyWeeks===w?'selected':''}>Every ${w} week${w>1?'s':''}</option>`).join('')}</select>
+    <button class="small" id="setFreqSave">Save</button></div>
+    <label class="row" style="margin-top:8px"><input type="checkbox" id="setAuto" ${c.autoPoll?'checked':''} style="width:auto"><span>Run a vote automatically before each cycle ends</span></label>
+    <div class="clubtag" style="margin-top:18px">Members</div>
+    ${c.members.map(m=>`<div class="row" style="padding:4px 0"><span class="grow">${esc(m.name)}${m.role==='admin'?'<span class="badge">Admin</span>':''}</span>${m.role==='admin' ? (admins>1?`<button class="small ghost" data-demote="${m.userId}">Remove admin</button>`:'') : `<button class="small ghost" data-promote="${m.userId}">Make admin</button>`}</div>`).join('')}
+    <div class="clubtag" style="margin-top:18px">Invite</div>
+    <div class="row"><input type="email" id="invEmail" placeholder="Email to invite" class="grow"><button id="invBtn" class="small">Invite</button></div>
+    <div id="invOut"></div>`;
+  } else {
+    h += `<div class="muted">Only admins change club settings.</div>`;
+  }
+  h += `<div style="border-top:1px solid var(--line);margin-top:18px;padding-top:14px">
+    <div id="leaveBox"><button class="ghost small" id="leaveBtn">Leave club</button></div>
+    ${admin?'<div id="delClubBox" style="margin-top:10px"><button class="ghost small danger" id="delClubBtn">Delete club</button></div>':''}
+  </div>`;
+  return h;
+}
+function wireSettings(c){
+  const admin = c.role==='admin';
+  if(admin){
+    $('#setFreqSave').onclick = async ()=>{ const j = await api('clubSettings',{clubId:c.id, meetingFrequencyWeeks:Number($('#setFreq').value), autoPoll:$('#setAuto').checked}); details[c.id]=j.club; currentClub=j.club; toast('Saved'); refreshPanel('settings'); };
+    document.querySelectorAll('[data-promote]').forEach(b=>b.onclick=async()=>{ const j = await api('makeAdmin',{clubId:c.id, userId:b.dataset.promote}); details[c.id]=j.club; currentClub=j.club; refreshPanel('settings'); });
+    document.querySelectorAll('[data-demote]').forEach(b=>b.onclick=async()=>{ const j = await api('removeAdmin',{clubId:c.id, userId:b.dataset.demote}); details[c.id]=j.club; currentClub=j.club; if(currentClub.role!=='admin'){ closeModal(); renderHome(); } else refreshPanel('settings'); });
+    $('#invBtn').onclick = async ()=>{ try{ const j = await api('createInvite',{clubId:c.id, email:$('#invEmail').value}); const link = location.origin + location.pathname + '?invite=' + j.inviteToken; $('#invOut').innerHTML = `<div class="muted" style="margin-top:6px">Send this link to ${esc(j.email)} (works once):</div><input type="text" readonly value="${link}" onclick="this.select()">`; }catch(e){ toast(e.message); } };
+    const dc = $('#delClubBtn'); if(dc) dc.onclick = ()=>{
+      $('#delClubBox').innerHTML = `<div class="muted" style="margin-bottom:8px">Delete ${esc(c.name)} for everyone?</div><div class="row"><button id="delClubYes" class="danger small">Delete</button><button id="delClubNo" class="ghost small">Cancel</button></div>`;
+      $('#delClubNo').onclick = ()=>openPanel('settings');
+      $('#delClubYes').onclick = async ()=>{ try{ await api('deleteClub',{clubId:c.id}); closeModal(); await refreshClubs(); await loadDetails(); deckIdx = 0; toast('Club deleted'); renderHome(); }catch(e){ toast(e.message); } };
+    };
+  }
+  $('#leaveBtn').onclick = ()=>{
+    $('#leaveBox').innerHTML = `<div class="muted" style="margin-bottom:8px">Leave ${esc(c.name)}?</div><div class="row"><button id="leaveYes" class="danger small">Leave</button><button id="leaveNo" class="ghost small">Cancel</button></div>`;
+    $('#leaveNo').onclick = ()=>openPanel('settings');
+    $('#leaveYes').onclick = async ()=>{ try{ await api('leaveClub',{clubId:c.id}); closeModal(); await refreshClubs(); await loadDetails(); deckIdx = 0; renderHome(); }catch(e){ toast(e.message); } };
+  };
+}
+
+
+function tracksHtml(c, compact){
+  const mine = c.members.filter(m=>m.userId===user.id);
+  const rest = c.members.filter(m=>m.userId!==user.id);
+  return [...mine, ...rest].map(m=>{
+    const p = memberProgress(c, m);
+    const pct = p ? p.percent : 0;
+    const me = m.userId===user.id;
+    return `<div class="ptrack ${me?'me':''}" ${me?'data-mytrack tabindex="0" role="button" aria-label="Update my progress"':''} style="${compact?'padding:8px 10px 10px':''}">
+      <div class="row">${avatarHtml(m, c)}<b class="grow">${esc(m.name)}${me?'<span class="badge">You</span>':''}${m.role==='admin'?'<span class="badge">Admin</span>':''}</b><b>${p ? progLabel(p) : 'Not set'}</b></div>
+      <div class="tline"><i style="width:${pct}%"></i><b style="left:${pct}%;${p?'':'border-color:#d9c3ae'}"></b></div>
+    </div>`;
+  }).join('');
+}
+function wireTracks(c){
+  const t = document.querySelector('[data-mytrack]');
+  if(t) t.onclick = ()=>openPanel('book');
+}
+function clubHeadHtml(c){
+  return `<div class="row"><b style="font-size:21px" class="grow">${esc(c.name)}${c.private?'<span class="badge">Private</span>':''}</b></div>
+  <div class="muted">${c.members.length} member${c.members.length>1?'s':''} · meets every ${c.meetingFrequencyWeeks} week${c.meetingFrequencyWeeks>1?'s':''}</div>`;
+}
+function currentBookLine(c){
+  if(!c.current) return `<div style="margin-top:14px"><b style="font-size:19px">No book picked yet</b><div class="muted" style="margin-top:4px">${c.library.length ? 'Pick one from the library.' : 'Add books to the library first.'}</div></div>
+  <div class="avatarrow" style="margin-top:14px">${c.members.map(m=>avatarHtml(m,c)).join('')}</div>`;
+  const b = c.current;
+  return `<div class="row" style="margin-top:14px;align-items:flex-start">${coverHtml(b,'cover big')}<div class="grow"><div class="clubtag">Reading now</div><b style="font-size:19px">${esc(b.title)}</b><div class="muted">${esc(b.author)}</div>${ratingsLine(b)}</div></div>
+  <div style="margin-top:10px"><div class="metaline"><span class="muted">Next meeting</span><b>${meetingLine(c)}</b></div>
+  <div class="metaline"><span class="muted">Next book</span><b>${voteLine(c)}</b></div></div>`;
+}
+function ensureClub(render){
+  deckIdx = Math.min(deckIdx, myClubs.length - 1);
+  const cc = details[myClubs[deckIdx].id];
+  if(!cc){ (async()=>{ try{ await reloadClub(myClubs[deckIdx].id); }catch(e){} render(); })(); return null; }
+  currentClub = cc;
+  return cc;
+}
+
+
+// ---------- Concept C: LAYERED CARD ----------
+let layerIdx = 0;
+const LAYERS = ['Now', 'People', 'Next'];
+function startApp(){ renderHome(); }
+function onVerticalSwipe(dir){ layerIdx = Math.max(0, Math.min(2, layerIdx + dir)); renderHome(); }
+function renderHome(){
+  if(screen !== 'home') return;
+  if(!myClubs.length){ app.innerHTML = emptyDeckHtml(); wireEmpty(); return; }
+  const cc = ensureClub(renderHome); if(!cc) return;
+  let body = '';
+  if(layerIdx === 0){
+    const mine = cc.current ? myProgress(cc) : null;
+    body = `${currentBookLine(cc)}
+    ${cc.current ? `<div style="margin-top:14px"><div class="row"><b class="grow">My progress</b><b>${mine ? progLabel(mine) : 'Not set'}</b></div>
+    <div class="progbar" style="margin-top:8px"><i style="width:${mine ? mine.percent : 0}%"></i></div>
+    <button class="small" data-updatemy style="margin-top:12px">Update my progress</button></div>` : ''}`;
+  } else if(layerIdx === 1){
+    body = cc.current
+      ? `<div class="clubtag" style="margin-top:14px">People · where everyone is</div>${tracksHtml(cc, true)}`
+      : `<div class="clubtag" style="margin-top:14px">People</div><div class="avatarrow" style="margin-top:10px">${cc.members.map(m=>avatarHtml(m,cc)).join('')}</div><div class="muted" style="margin-top:10px">No book picked yet, so there is no progress to show.</div>`;
+  } else {
+    const topOpt = cc.poll ? [...cc.poll.options].sort((a,b)=>b.votes-a.votes)[0] : null;
+    const availTotal = Object.values(cc.availability||{}).reduce((n,days)=>n+days.length,0);
+    body = `<div class="clubtag" style="margin-top:14px">Next</div>
+    <div class="ptrack tappable" data-openpanel="vote"><div class="row"><span style="color:var(--accent)">${icon('vote',22)}</span><div class="grow"><b>Next book</b><div class="muted">${voteLine(cc)}${topOpt ? ` · ${esc(topOpt.book.title)} ahead` : ''}</div></div><span class="muted">›</span></div></div>
+    <div class="ptrack tappable" data-openpanel="meeting"><div class="row"><span style="color:var(--accent)">${icon('calendar',22)}</span><div class="grow"><b>Meeting</b><div class="muted">${cc.meeting.date ? fmtDate(cc.meeting.date) + ' · ' + meetingLine(cc) : 'No date yet · ' + availTotal + ' day picks so far'}</div></div><span class="muted">›</span></div></div>
+    <div class="ptrack tappable" data-openpanel="library"><div class="row"><span style="color:var(--accent)">${icon('lib',22)}</span><div class="grow"><b>Library</b><div class="muted">${cc.library.length} book${cc.library.length===1?'':'s'} in this club</div></div><span class="muted">›</span></div></div>`;
+  }
+  app.innerHTML = `${deckNavHtml()}
+  <div class="clubcard" id="clubCard">
+    ${clubHeadHtml(cc)}
+    <div class="layertabs">${LAYERS.map((l,i)=>`<button data-layer="${i}" class="${layerIdx===i?'on':''}">${l}</button>`).join('')}</div>
+    <div style="padding-right:16px">${body}</div>
+    <div class="updown"><button data-lup ${layerIdx<=0?'disabled':''}>▲ ${layerIdx>0 ? LAYERS[layerIdx-1] : ''}</button><button data-ldown ${layerIdx>=2?'disabled':''}>${layerIdx<2 ? LAYERS[layerIdx+1] : ''} ▼</button></div>
+    ${railHtml(cc)}
+  </div>
+  ${dotsHtml()}`;
+  wireDeck(renderHome);
+  wireRail(cc);
+  wireTracks(cc);
+  document.querySelectorAll('[data-layer]').forEach(b=>b.onclick=()=>{ layerIdx = Number(b.dataset.layer); renderHome(); });
+  const up = document.querySelector('[data-lup]'); if(up) up.onclick = ()=>{ if(layerIdx>0){ layerIdx--; renderHome(); } };
+  const dn = document.querySelector('[data-ldown]'); if(dn) dn.onclick = ()=>{ if(layerIdx<2){ layerIdx++; renderHome(); } };
+  const um = document.querySelector('[data-updatemy]'); if(um) um.onclick = ()=>openPanel('book');
+  document.querySelectorAll('[data-openpanel]').forEach(el=>el.onclick=()=>openPanel(el.dataset.openpanel));
+}
+
+if(token) boot(); else viewAuth();
+</script>
+</body>
+</html>
