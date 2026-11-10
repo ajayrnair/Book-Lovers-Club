@@ -115,6 +115,100 @@ function checkPw(pw, stored) {
   return crypto.timingSafeEqual(Buffer.from(h, 'hex'), crypto.scryptSync(pw, salt, 32));
 }
 const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const hasField = (obj, field) => Object.prototype.hasOwnProperty.call(obj || {}, field);
+function finiteNumber(value) {
+  if (typeof value !== 'number' && typeof value !== 'string') return NaN;
+  if (typeof value === 'string' && !value.trim()) return NaN;
+  return Number(value);
+}
+function clubIdentity(club) {
+  const format = club && club.format === 'in-person' ? 'in-person' : 'online';
+  return {
+    format,
+    location: format === 'in-person' ? (club.location || null) : null,
+    genres: club && Array.isArray(club.genres) ? club.genres : [],
+    audience: club && typeof club.audience === 'string' ? club.audience : '',
+    specialty: club && typeof club.specialty === 'string' ? club.specialty : '',
+  };
+}
+function parseClubLocation(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { error: 'Location needed for an in-person club' };
+  }
+  const lat = finiteNumber(value.lat);
+  const lng = finiteNumber(value.lng);
+  if (typeof value.label !== 'string' || !value.label.trim()) {
+    return { error: 'Location label needed' };
+  }
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+    return { error: 'Location latitude and longitude must be numeric' };
+  }
+  return { location: { ...value } };
+}
+function parseClubGenres(value) {
+  if (!Array.isArray(value)) return { error: 'Genres must be a list' };
+  const seen = new Set();
+  const genres = [];
+  for (const item of value) {
+    if (typeof item !== 'string') return { error: 'Genres must be text' };
+    const genre = item.trim();
+    const key = genre.toLowerCase();
+    if (!genre || seen.has(key)) continue;
+    seen.add(key);
+    genres.push(genre);
+    if (genres.length === 8) break;
+  }
+  return { genres };
+}
+function parseClubIdentity(body, base) {
+  const current = base || { format: 'online', location: null, genres: [], audience: '', specialty: '' };
+  let format = current.format;
+  if (hasField(body, 'format')) {
+    if (!['online', 'in-person'].includes(body.format)) {
+      return { error: 'Format must be online or in-person' };
+    }
+    format = body.format;
+  }
+
+  let location = format === 'in-person' ? current.location : null;
+  if (format === 'in-person' && hasField(body, 'location')) {
+    const parsed = parseClubLocation(body.location);
+    if (parsed.error) return parsed;
+    location = parsed.location;
+  }
+  if (format === 'in-person' && !location) {
+    return { error: 'Location needed for an in-person club' };
+  }
+
+  let genres = current.genres;
+  if (hasField(body, 'genres')) {
+    const parsed = parseClubGenres(body.genres);
+    if (parsed.error) return parsed;
+    genres = parsed.genres;
+  }
+
+  let audience = current.audience;
+  if (hasField(body, 'audience')) {
+    if (typeof body.audience !== 'string') return { error: 'Audience must be text' };
+    audience = body.audience.trim();
+  }
+
+  let specialty = current.specialty;
+  if (hasField(body, 'specialty')) {
+    if (typeof body.specialty !== 'string') return { error: 'Specialty must be text' };
+    specialty = body.specialty.trim();
+  }
+
+  return { identity: { format, location, genres, audience, specialty } };
+}
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const toRad = (d) => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 function bookKey(isbn, title, author) {
   const clean = (isbn || '').replace(/[^0-9Xx]/g, '').toUpperCase();
   if (clean.length >= 10) return 'isbn:' + clean;
@@ -186,9 +280,12 @@ function maybeAutoPoll(db, club) {
 }
 function publicClub(db, club, userId) {
   ensureAdmin(db, club);
+  const identity = clubIdentity(club);
   const me = club.members.find((m) => m.userId === userId);
   return {
     id: club.id, name: club.name, private: club.private,
+    format: identity.format, location: identity.location, genres: identity.genres,
+    audience: identity.audience, specialty: identity.specialty,
     memberCount: club.members.length, isMember: !!me, role: me ? me.role : null,
     members: club.members.map((m) => {
       const u = db.users.find((x) => x.id === m.userId);
@@ -494,8 +591,55 @@ module.exports = async (req, res) => {
       case 'me': return send(200, { user: { id: me.id, name: me.name, email: me.email } });
       case 'searchClubs': {
         const q = norm(body.q || '');
-        const list = db.clubs.filter((c) => !c.private && (!q || norm(c.name).includes(q)))
-          .map((c) => publicClub(db, c, me.id));
+        if (body.format !== undefined && !['online', 'in-person'].includes(body.format)) {
+          return send(400, { error: 'Format must be online or in-person' });
+        }
+        if (body.genre !== undefined && typeof body.genre !== 'string') {
+          return send(400, { error: 'Genre must be text' });
+        }
+        if (body.audience !== undefined && typeof body.audience !== 'string') {
+          return send(400, { error: 'Audience must be text' });
+        }
+        if (body.specialty !== undefined && typeof body.specialty !== 'string') {
+          return send(400, { error: 'Specialty must be text' });
+        }
+        const genre = body.genre ? body.genre.trim().toLowerCase() : '';
+        const audience = norm(body.audience || '');
+        const specialty = norm(body.specialty || '');
+        let near = null;
+        if (body.near !== undefined) {
+          if (!body.near || typeof body.near !== 'object' || Array.isArray(body.near)) {
+            return send(400, { error: 'Near must include latitude, longitude and radiusKm' });
+          }
+          near = {
+            lat: finiteNumber(body.near.lat),
+            lng: finiteNumber(body.near.lng),
+            radiusKm: finiteNumber(body.near.radiusKm),
+          };
+          if (!Number.isFinite(near.lat) || near.lat < -90 || near.lat > 90
+            || !Number.isFinite(near.lng) || near.lng < -180 || near.lng > 180
+            || !Number.isFinite(near.radiusKm) || near.radiusKm <= 0) {
+            return send(400, { error: 'Near must include latitude, longitude and radiusKm' });
+          }
+        }
+        const list = db.clubs.filter((c) => {
+          if (c.private) return false;
+          if (q && !norm(c.name).includes(q)) return false;
+          const identity = clubIdentity(c);
+          if (body.format && identity.format !== body.format) return false;
+          if (genre && !identity.genres.some((g) => typeof g === 'string' && g.trim().toLowerCase() === genre)) return false;
+          if (audience && norm(identity.audience) !== audience) return false;
+          if (specialty && !norm(identity.specialty).includes(specialty)) return false;
+          if (near) {
+            if (identity.format !== 'in-person' || !identity.location) return false;
+            const distance = haversineKm(
+              near.lat, near.lng,
+              finiteNumber(identity.location.lat), finiteNumber(identity.location.lng),
+            );
+            if (!Number.isFinite(distance) || distance > near.radiusKm) return false;
+          }
+          return true;
+        }).map((c) => publicClub(db, c, me.id));
         return send(200, { clubs: list });
       }
       case 'myClubs': {
@@ -503,8 +647,13 @@ module.exports = async (req, res) => {
       }
       case 'createClub': {
         if (!body.name) return send(400, { error: 'Club name needed' });
+        const parsedIdentity = parseClubIdentity(body);
+        if (parsedIdentity.error) return send(400, { error: parsedIdentity.error });
+        const identity = parsedIdentity.identity;
         const club = {
           id: uid(), name: body.name, private: !!body.private, createdBy: me.id,
+          format: identity.format, location: identity.location, genres: identity.genres,
+          audience: identity.audience, specialty: identity.specialty,
           members: [{ userId: me.id, role: 'admin', joinedAt: nowISO() }],
           library: [], current: null, meetingFrequencyWeeks: 2,
           cycleEnd: new Date(Date.now() + (2 * 7 + 7) * 864e5).toISOString(),
@@ -622,6 +771,13 @@ module.exports = async (req, res) => {
         if (!club) return send(404, { error: 'Club not found' });
         const mem = club.members.find((m) => m.userId === me.id);
         if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
+        let identity = null;
+        if (['format', 'location', 'genres', 'audience', 'specialty'].some((field) => hasField(body, field))) {
+          const parsedIdentity = parseClubIdentity(body, clubIdentity(club));
+          if (parsedIdentity.error) return send(400, { error: parsedIdentity.error });
+          identity = parsedIdentity.identity;
+        }
+        if (identity) Object.assign(club, identity);
         if (body.meetingFrequencyWeeks) {
           const w = Math.min(8, Math.max(1, Number(body.meetingFrequencyWeeks)));
           club.meetingFrequencyWeeks = w;
