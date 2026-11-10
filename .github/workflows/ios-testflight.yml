@@ -49,6 +49,7 @@ jobs:
             -workspace App.xcworkspace \
             -scheme App \
             -configuration Release \
+            -destination 'generic/platform=iOS'
             -archivePath "$RUNNER_TEMP/App.xcarchive" \
             -allowProvisioningUpdates \
             -authenticationKeyPath ~/private_keys/AuthKey_$ASC_KEY_ID.p8 \
