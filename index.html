@@ -1028,11 +1028,13 @@ function viewMembersPage(){
   $('#invBtn').onclick=async()=>{ try{ const j=await api('createInvite',{clubId:c.id, emailList:$('#invEmails').value});
     const parts=[];
     if(j.emailed===false) parts.push(`<div class="muted" style="margin-top:6px">Email sending isn't switched on yet. Send these links yourself:</div>`);
+    let sentAny=false;
     for(const r of (j.results||[])){
-      if(r.sent) parts.push(`<div style="margin-top:6px">✓ Invite sent to ${esc(r.email)}</div>`);
+      if(r.sent){ sentAny=true; parts.push(`<div style="margin-top:6px">✓ Invite sent to ${esc(r.email)}</div>`); }
       else if(r.inviteToken){ const link=location.origin+'/?invite='+r.inviteToken; parts.push(`<div class="muted" style="margin-top:6px">Couldn't email ${esc(r.email)} — send this link yourself:</div><input type="text" readonly value="${link}" onclick="this.select()">`); }
       else parts.push(`<div class="muted" style="margin-top:6px">${esc(r.email)}: ${esc(r.error||'not invited')}</div>`);
     }
+    if(sentAny) parts.push(`<div class="muted" style="margin-top:8px">The email comes from Reading Peeps (invites@readingpeeps.com), with the subject "You're invited to join ${esc(c.name)} on Reading Peeps". Tell them to look for that in their inbox, and to check spam if it is not there.</div>`);
     $('#invOut').innerHTML=parts.join(''); }catch(e){ toast(e.message); } };
 }
 function viewFrequencyPage(){
