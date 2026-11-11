@@ -28,7 +28,7 @@
   .row{display:flex;gap:12px;align-items:center}
   .grow{flex:1}
   input,select,button,textarea{font-size:17px;font-family:inherit}
-  input[type=text],input[type=email],input[type=password],input[type=url],input[type=date],select,textarea{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:6px 0;color:var(--ink)}
+  input[type=text],input[type=email],input[type=password],input[type=url],input[type=date],input[type=number],select,textarea{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:6px 0;color:var(--ink)}
   input:focus,select:focus,textarea:focus{outline:2px solid rgba(201,58,84,.5);outline-offset:0;border-color:transparent}
   button{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:12px 18px;min-height:48px;cursor:pointer;font-weight:600;font-size:16px;transition:transform .08s ease}
   button:active{transform:scale(.98)}
@@ -70,13 +70,24 @@
   .st .stbg{fill:#f3e0cd;stroke:#ddb995;stroke-width:1.4}
   .stf{position:absolute;left:0;top:0;height:100%;overflow:hidden}
   .st .stfg{fill:var(--accent);stroke:var(--accent);stroke-width:1.4}
-  .rateclear{background:none;border:0;color:var(--muted);min-height:34px;min-width:30px;padding:4px 2px;font-size:13px;font-weight:700;cursor:pointer}
+  .rateclear{background:none;border:0;color:var(--muted);min-height:34px;padding:4px 8px;font-size:13px;font-weight:600;cursor:pointer}
+  .prog{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+  .prog input[type=range]{width:100%;accent-color:var(--accent);height:36px;margin:0;cursor:pointer;background:none;border:0;padding:0}
+  .prog .pinputs{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:2px}
+  .prog .pfield{display:inline-flex;align-items:center;gap:6px}
+  .prog input[type=number]{width:82px;padding:9px 8px;margin:0;text-align:center}
+  .prow{display:flex;align-items:center;gap:10px;padding:3px 0}
+  .prow .pname{min-width:90px;max-width:38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
+  .progBar{height:5px;background:#f3ddc8;border-radius:3px;overflow:hidden;flex:1}
+  .progBar i{display:block;height:100%;background:var(--teal)}
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));background:#5b2144;color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:500;z-index:30;max-width:90%;box-shadow:0 8px 24px rgba(20,4,16,.35)}
   .overlay{position:fixed;inset:0;background:rgba(30,6,24,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20}
   .sheet{background:var(--card);border-radius:20px 20px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));width:100%;max-height:86vh;overflow:auto;animation:slideup .22s ease-out}
   @media(min-width:640px){.overlay{align-items:center}.sheet{width:380px;max-width:92%;border-radius:20px;padding:20px}}
   @keyframes slideup{from{transform:translateY(26px);opacity:.5}to{transform:none;opacity:1}}
   .setrow{cursor:pointer}
+  [data-open]{cursor:pointer}
+  .book{cursor:pointer}
   .setrow:active{background:rgba(201,58,84,.05)}
   .datefield{position:relative}
   .datefield input[type=date]{margin:0;padding-right:44px;cursor:pointer;min-height:48px}
@@ -141,6 +152,7 @@ async function api(action, body={}){
 }
 function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function fmtDate(ds){ if(!ds) return ''; const d=new Date(ds+'T12:00:00'); return d.toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'}); }
+function fmtDayShort(ds){ if(!ds) return ''; const d=new Date(ds+'T12:00:00'); return d.toLocaleDateString(undefined,{month:'short', day:'numeric'}); }
 function ratingsLine(b){
   const parts=[];
   if(b.google) parts.push(`Google ★ ${b.google.rating} (${b.google.count})`);
@@ -156,7 +168,7 @@ function starsHTML(v){
 }
 function rateStrip(b){
   const v = (b.myRating === null || b.myRating === undefined) ? 0 : b.myRating;
-  return `<span class="ratewrap"><span class="ratestars" data-rate="${b.key}" data-val="${v}" tabindex="0" role="slider" aria-label="Your rating for ${esc(b.title)}" aria-valuemin="0" aria-valuemax="5" aria-valuenow="${v}">${starsHTML(v)}</span>${v > 0 ? `<button class="rateclear" data-clear="${b.key}" aria-label="Clear your rating" title="Clear rating">✕</button>` : ''}</span>`;
+  return `<span class="ratewrap"><span class="ratestars" data-rate="${b.key}" data-val="${v}" tabindex="0" role="slider" aria-label="Your rating for ${esc(b.title)}" aria-valuemin="0" aria-valuemax="5" aria-valuenow="${v}">${starsHTML(v)}</span>${v > 0 ? `<button class="rateclear" data-clear="${b.key}" aria-label="Clear rating" title="Clear rating">Clear</button>` : ''}</span>`;
 }
 function paintStars(el, v){
   el.querySelectorAll('.stf').forEach((f, i)=>{ f.style.width = Math.max(0, Math.min(100, (v - i) * 100)) + '%'; });
@@ -171,8 +183,8 @@ function viewAuth(msg=''){
   <div class="brand"><img src="/icon.svg" alt=""><div class="bname">Reading Peeps</div></div>
   <div class="card" id="formIn">
     <h2 style="margin-top:2px">Sign in</h2>
-    <input type="email" id="inEmail" placeholder="Email" autocomplete="email">
-    <input type="password" id="inPw" placeholder="Password" autocomplete="current-password">
+    <input type="email" id="inEmail" data-enter="signin" placeholder="Email" autocomplete="email">
+    <input type="password" id="inPw" data-enter="signin" placeholder="Password" autocomplete="current-password">
     <div class="err" id="inErr">${esc(msg)}</div>
     <button id="signin" style="width:100%">Sign in</button>
     <div class="ordiv">or</div>
@@ -181,9 +193,9 @@ function viewAuth(msg=''){
   </div>
   <div class="card hide" id="formUp">
     <h2 style="margin-top:2px">Create account</h2>
-    <input type="text" id="upName" placeholder="Your name" autocomplete="name">
-    <input type="email" id="upEmail" placeholder="Email" autocomplete="email">
-    <input type="password" id="upPw" placeholder="Password" autocomplete="new-password">
+    <input type="text" id="upName" data-enter="signup" placeholder="Your name" autocomplete="name">
+    <input type="email" id="upEmail" data-enter="signup" placeholder="Email" autocomplete="email">
+    <input type="password" id="upPw" data-enter="signup" placeholder="Password" autocomplete="new-password">
     <div class="err" id="upErr"></div>
     <button id="signup" style="width:100%">Create account</button>
     <div style="text-align:center;margin-top:12px"><a href="#" id="toSignin">Sign in</a></div>
@@ -201,6 +213,16 @@ async function afterAuth(j){
   boot();
 }
 
+// Enter in a text field triggers that field's primary action.
+document.addEventListener('keydown', (e)=>{
+  if(e.key !== 'Enter') return;
+  const t = e.target;
+  if(!t || t.tagName !== 'INPUT') return;
+  const target = t.getAttribute('data-enter');
+  if(target){ e.preventDefault(); const b = document.getElementById(target); if(b) b.click(); }
+  else if(t.id === 'progPage' || t.id === 'progPct'){ t.blur(); }
+});
+
 // ---------- shell ----------
 async function boot(){
   try{ const j = await api('me'); user = j.user; }catch(e){ return viewAuth(authMsg); }
@@ -216,11 +238,11 @@ function setTab(t){ tab=t; document.querySelectorAll('#tabs button').forEach(x=>
 // ---------- home ----------
 async function viewHome(){
   app.innerHTML = `<h2>My clubs</h2><div id="mine"></div>
-  <div class="card"><input type="text" id="newName" placeholder="New club name"><div class="row" style="margin-top:8px">
+  <div class="card"><input type="text" id="newName" data-enter="create" placeholder="New club name"><div class="row" style="margin-top:8px">
   <select id="newVis" class="grow" style="margin:0"><option value="private" selected>Private</option><option value="public">Public</option></select>
   <button id="create">Create</button></div></div>
   <h2>Find a club</h2>
-  <div class="row"><input type="text" id="q" placeholder="Search clubs" class="grow"><button id="go" class="small">Search</button></div>
+  <div class="row"><input type="text" id="q" data-enter="go" placeholder="Search clubs" class="grow"><button id="go" class="small">Search</button></div>
   <div id="found"></div>`;
   const renderMine = ()=>{ $('#mine').innerHTML = myClubs.length ? myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b>${c.private?'<span class="badge">Private</span>':''}<div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div></div><span>›</span></div>`).join('') : '<div class="muted">No clubs yet</div>';
     app.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openClub(el.dataset.open)); };
@@ -300,6 +322,69 @@ function nextBookSection(c){
   if(!inner) return '';
   return `<div class="card a-violet"><h3 style="margin-top:0">${c.current?'Next book':'Pick a book'}</h3>${inner}</div>`;
 }
+function myProgressHTML(c){
+  const total = c.current.pageCount ? Math.max(1, Math.round(Number(c.current.pageCount))) : null;
+  const mine = (c.progress || []).find(p=>p.userId===user.id);
+  const pct = mine ? mine.percent : (c.myFinished ? 100 : 0);
+  const page = (mine && mine.page !== null && mine.page !== undefined) ? mine.page : (total ? Math.round(pct / 100 * total) : null);
+  let h = `<div class="prog" id="myProg">
+    <div style="font-size:15px"><b>You</b></div>
+    <input type="range" id="progSlider" min="0" max="100" step="1" value="${pct}" aria-label="Your reading progress">
+    <div class="pinputs">`;
+  if(total){
+    h += `<span class="pfield"><span class="muted">Page</span><input type="number" id="progPage" min="0" max="${total}" step="1" value="${page}" aria-label="Current page"><span class="muted">/ ${total}</span></span>`;
+  }
+  h += `<span class="pfield"><input type="number" id="progPct" min="0" max="100" step="1" value="${pct}" aria-label="Percent read"><span class="muted">%</span></span>
+    </div></div>`;
+  return h;
+}
+function memberProgressHTML(c){
+  const byId = {};
+  (c.progress || []).forEach(p=>{ byId[p.userId] = p; });
+  const fin = c.finishedBy || [];
+  const ordered = [...c.members].sort((a, b)=>((a.userId===user.id ? 0 : 1) - (b.userId===user.id ? 0 : 1)));
+  return `<div style="margin-top:10px">${ordered.map(m=>{
+    const p = byId[m.userId];
+    const isFin = (p && p.percent >= 100) || fin.includes(m.userId);
+    let txt, w, cls = '', style = 'font-size:14px';
+    if(p){ w = p.percent; txt = isFin ? 'Finished' : ((p.page !== null && p.page !== undefined) ? `p. ${p.page} · ${p.percent}%` : `${p.percent}%`); }
+    else if(isFin){ w = 100; txt = 'Finished'; }
+    else { w = 0; txt = 'Not started'; cls = 'muted'; }
+    if(isFin) style += ';color:var(--good);font-weight:600';
+    return `<div class="prow"><span class="pname">${m.userId===user.id ? 'You' : esc(m.name)}</span><span class="progBar"><i style="width:${w}%"></i></span><span class="${cls}" style="${style}">${txt}</span></div>`;
+  }).join('')}</div>`;
+}
+function wireProgress(){
+  const sl = $('#progSlider');
+  if(!sl || !currentClub || !currentClub.current) return;
+  const c = currentClub;
+  const total = c.current.pageCount ? Math.max(1, Math.round(Number(c.current.pageCount))) : null;
+  const pageIn = $('#progPage'), pctIn = $('#progPct');
+  const paint = (pct)=>{
+    sl.value = pct;
+    if(pctIn) pctIn.value = pct;
+    if(total && pageIn) pageIn.value = Math.round(pct / 100 * total);
+  };
+  const commit = async (body)=>{
+    const go = ()=>api('setProgress', {clubId: c.id, bookKey: c.current.key, ...body});
+    try{ const j = await go(); currentClub = j.club; toast('Saved'); viewClub(); }
+    catch(e1){ await new Promise(r=>setTimeout(r, 900)); try{ const j = await go(); currentClub = j.club; toast('Saved'); viewClub(); }catch(e2){ toast(e2.message); } }
+  };
+  sl.addEventListener('input', ()=>paint(Number(sl.value)));
+  sl.addEventListener('change', ()=>commit({ percent: Number(sl.value) }));
+  if(pageIn) pageIn.addEventListener('change', ()=>{
+    let p = Math.round(Number(pageIn.value));
+    if(isNaN(p)) return viewClub();
+    p = Math.min(total, Math.max(0, p));
+    commit({ page: p });
+  });
+  if(pctIn) pctIn.addEventListener('change', ()=>{
+    let p = Math.round(Number(pctIn.value));
+    if(isNaN(p)) return viewClub();
+    p = Math.min(100, Math.max(0, p));
+    commit({ percent: p });
+  });
+}
 function currentSection(c){
   let h = `<div class="card a-coral"><h3 style="margin-top:0">Current book</h3>`;
   if(c.current){
@@ -307,6 +392,8 @@ function currentSection(c){
     const rated = c.currentRatings.filter(r=>r.rating!==null&&r.rating!==undefined);
     const avg = rated.length ? Math.round(rated.reduce((a,r)=>a+r.rating,0)/rated.length*10)/10 : null;
     h += bookRow(c.current);
+    h += myProgressHTML(c);
+    h += memberProgressHTML(c);
     h += `<div class="row" style="margin-top:8px"><button class="small ic ${c.myFinished?'':'ghost'}" id="finBtn">${c.myFinished?icon('check',16)+' Finished':'I finished reading'}</button>
       <span class="muted">${fin.length} of ${c.members.length} finished</span></div>
       <div class="row" id="rateSummary" style="margin-top:8px;cursor:pointer"><span class="grow muted">${rated.length?`Average ★ ${avg} (${rated.length} rating${rated.length>1?'s':''})`:'No ratings yet'}</span><span class="muted">Ratings ›</span></div>
@@ -322,6 +409,9 @@ function meetingSection(c){
   Object.values(c.availability||{}).forEach(days=>days.forEach(d=>overlap[d]=(overlap[d]||0)+1));
   let h = `<div class="card a-violet"><h3 style="margin-top:0">Group meeting</h3>
   <div class="muted">Meets every ${c.meetingFrequencyWeeks} week${c.meetingFrequencyWeeks>1?'s':''}</div>`;
+  if(c.week && c.week.length){
+    h += `<div class="row" style="margin-top:4px"><span class="muted grow">Meeting week · ${fmtDayShort(c.week[0])} – ${fmtDayShort(c.week[c.week.length-1])}</span>${isAdmin?`<button class="small ghost" id="shiftPrev">‹ Week</button><button class="small ghost" id="shiftNext">Week ›</button>`:''}</div>`;
+  }
   if(c.meeting.date){
     const going = c.members.filter(m=>(c.rsvps||{})[m.userId]==='going');
     const myR = (c.rsvps||{})[user.id];
@@ -343,8 +433,8 @@ function meetingSection(c){
     <div class="datefield"><input type="date" id="pickDate" value="${esc(c.meeting.date||'')}"><span class="cal">${icon('calendar',18)}</span></div>
     <div class="row" style="margin-top:6px"><select id="mtype" style="width:auto"><option value="online" ${c.meeting.type==='online'?'selected':''}>Online</option><option value="inperson" ${c.meeting.type==='inperson'?'selected':''}>In person</option></select>
     <button id="saveMeet" class="small">Save</button></div>
-    <input type="url" id="mlink" placeholder="Meeting link" value="${esc(c.meeting.link||'')}" class="${c.meeting.type==='online'?'':'hide'}">
-    <input type="text" id="maddr" placeholder="Address" value="${esc(c.meeting.address||'')}" class="${c.meeting.type==='inperson'?'':'hide'}">
+    <input type="url" id="mlink" data-enter="saveMeet" placeholder="Meeting link" value="${esc(c.meeting.link||'')}" class="${c.meeting.type==='online'?'':'hide'}">
+    <input type="text" id="maddr" data-enter="saveMeet" placeholder="Address" value="${esc(c.meeting.address||'')}" class="${c.meeting.type==='inperson'?'':'hide'}">
     </div>`;
   }
   return h + '</div>';
@@ -366,14 +456,15 @@ function viewClub(){
   <div class="row"><button class="ghost small" id="back">‹ Clubs</button><span class="grow"></span>${isAdmin?`<button class="iconbtn" id="gear" aria-label="Settings">${icon('gear',22)}</button>`:''}</div>
   <h2>${esc(c.name)}${c.private?'<span class="badge">Private</span>':''}</h2>
   ${currentSection(c)}
-  ${meetingSection(c)}
   ${nextBookSection(c)}
+  ${meetingSection(c)}
   <div class="card row setrow a-teal" id="libRow"><span style="color:#17a398">${icon('book',20)}</span><b class="grow">Library</b><span class="muted">${c.library.length} book${c.library.length===1?'':'s'}</span><span class="muted">›</span></div>
   <div style="margin-top:10px"><button id="leave" class="ghost small">Leave club</button></div>`;
   $('#back').onclick = ()=>{ currentClub=null; viewHome(); };
   if(isAdmin) $('#gear').onclick = ()=>viewSettings();
   $('#libRow').onclick = ()=>viewLibrary();
   wireRates(()=>viewClub());
+  wireProgress();
   if($('#pollRow')) $('#pollRow').onclick=()=>viewPoll();
   if($('#startPoll')) $('#startPoll').onclick=()=>viewPoll();
   if($('#addBooksBtn')) $('#addBooksBtn').onclick=()=>viewLibrary();
@@ -383,6 +474,8 @@ function viewClub(){
   if($('#goingCount')) $('#goingCount').onclick=()=>rsvpPopup(currentClub);
   app.querySelectorAll('[data-day]').forEach(d=>d.onclick=async()=>{ const mine=new Set((currentClub.availability[user.id]||[])); const day=d.dataset.day; mine.has(day)?mine.delete(day):mine.add(day); const j=await api('availability',{clubId:c.id, days:[...mine]}); currentClub=j.club; viewClub(); });
   if(isAdmin){
+    if($('#shiftPrev')) $('#shiftPrev').onclick=async()=>{ try{ const j=await api('shiftMeetingWeek',{clubId:c.id, weeks:-1}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
+    if($('#shiftNext')) $('#shiftNext').onclick=async()=>{ try{ const j=await api('shiftMeetingWeek',{clubId:c.id, weeks:1}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
     $('#saveMeet').onclick=async()=>{ const j=await api('clubSettings',{clubId:c.id, meeting:{type:$('#mtype').value, link:$('#mlink').value, address:$('#maddr').value}}); currentClub=j.club; toast('Saved'); viewClub(); };
     $('#mtype').onchange=()=>{ const online=$('#mtype').value==='online'; $('#mlink').classList.toggle('hide', !online); $('#maddr').classList.toggle('hide', online); };
     const pd=$('#pickDate');
@@ -473,7 +566,7 @@ function viewMembersPage(){
     : `<button class="small ghost" data-promote="${m.userId}">Make admin</button>`}</div>`).join('')}
   </div>
   <div class="card"><h3 style="margin-top:0">Invite</h3>
-  <div class="row"><input type="email" id="invEmail" placeholder="Email to invite" class="grow"><button id="invBtn" class="small">Invite</button></div>
+  <div class="row"><input type="email" id="invEmail" data-enter="invBtn" placeholder="Email to invite" class="grow"><button id="invBtn" class="small">Invite</button></div>
   <div id="invOut"></div></div>`;
   $('#back').onclick = ()=>viewSettings();
   app.querySelectorAll('[data-promote]').forEach(b=>b.onclick=async()=>{ const j=await api('makeAdmin',{clubId:c.id, userId:b.dataset.promote}); currentClub=j.club; viewMembersPage(); });
@@ -515,11 +608,11 @@ function viewAdd(preClub){
   app.innerHTML = `<h2>Add books</h2>
   <div class="card"><h3 style="margin-top:0">To</h3><div id="clubPick">${myClubs.map(c=>`<span class="chip ${chosen.has(c.id)?'on':''}" data-club="${c.id}">${esc(c.name)}</span>`).join('')||'<span class="muted">Join or create a club first</span>'}</div></div>
   <div class="card"><h3 style="margin-top:0">Search</h3>
-    <div class="row"><input type="text" id="sq" placeholder="Title or author" class="grow"><button id="sgo" class="small">Search</button></div>
+    <div class="row"><input type="text" id="sq" data-enter="sgo" placeholder="Title or author" class="grow"><button id="sgo" class="small">Search</button></div>
     <div id="sres"></div>
     <button id="addSel" class="hide" style="width:100%;margin-top:8px">Add selected</button></div>
   <div class="card"><h3 style="margin-top:0">Paste a link</h3>
-    <input type="url" id="link" placeholder="Amazon, Goodreads, Google Books or Open Library link">
+    <input type="url" id="link" data-enter="linkGo" placeholder="Amazon, Goodreads, Google Books or Open Library link">
     <button id="linkGo" style="width:100%">Add from link</button><div class="err" id="lerr"></div></div>`;
   const clubs = ()=>[...app.querySelectorAll('#clubPick .chip.on')].map(x=>x.dataset.club);
   app.querySelectorAll('#clubPick .chip').forEach(ch=>ch.onclick=()=>ch.classList.toggle('on'));
