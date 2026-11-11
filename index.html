@@ -79,8 +79,8 @@
   .person{display:flex;align-items:center;gap:10px;padding:7px 0}
   .avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;letter-spacing:.02em;flex:none}
   .person .pname{font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .pill{background:#f7e3ee;color:var(--plum);border-radius:999px;padding:2px 10px;font-size:14px;font-weight:700;white-space:nowrap}
-  .pill .st{color:var(--accent)}
+  .pill{display:inline-flex;align-items:center;gap:4px;flex:none;background:#f7e3ee;color:var(--plum);border-radius:999px;padding:2px 10px;font-size:14px;font-weight:700;white-space:nowrap}
+  .pill .pstar{color:var(--accent)}
   .notrated{color:var(--muted);font-size:14px}
   .prow{padding:7px 0}
   .prow .prow-top{display:flex;align-items:center;gap:10px}
@@ -779,7 +779,7 @@ function currentSection(c){
     h += `<div class="row" style="margin-top:8px"><button class="small ic ${c.myFinished?'':'ghost'}" id="finBtn">${c.myFinished?icon('check',16)+' Finished':'I finished reading'}</button>
       <span class="muted">${fin.length} of ${c.members.length} finished</span></div>
       <div class="row" id="rateSummary" style="margin-top:8px;cursor:pointer"><span class="grow muted">${rated.length?`Average ★ ${avg} (${rated.length} rating${rated.length>1?'s':''})`:'No ratings yet'}</span><span class="muted">Ratings ›</span></div>
-      <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div><div class="person">${avatarHTML(r.name, r.userId)}<span class="pname">${esc(r.name)}</span>${r.rating===null||r.rating===undefined?'<span class="notrated">Not rated</span>':`<span class="pill"><span class="st">★</span> ${r.rating}</span>`}</div>${(r.rating!==null&&r.rating!==undefined&&r.userId!==user.id)?`<div style="margin:1px 0 4px 44px">${reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`)}</div>`:''}</div>`).join('')}</div>`;
+      <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div><div class="person">${avatarHTML(r.name, r.userId)}<span class="pname">${esc(r.name)}</span>${r.rating===null||r.rating===undefined?'<span class="notrated">Not rated</span>':`<span class="pill"><span class="pstar">★</span>${r.rating}</span>`}</div>${(r.rating!==null&&r.rating!==undefined&&r.userId!==user.id)?`<div style="margin:1px 0 4px 44px">${reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`)}</div>`:''}</div>`).join('')}</div>`;
   } else {
     h += '<div class="muted">No book picked yet</div>';
   }
