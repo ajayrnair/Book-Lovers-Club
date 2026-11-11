@@ -20,15 +20,18 @@ export interface Book {
   author?: string;
   cover?: string;
   year?: string;
+  pageCount?: number | null;
   google?: BookRatings | null;
   hardcover?: BookRatings | null;
   openlibrary?: BookRatings | null;
   myRating?: number | null;
   memberAverage?: number | null;
   memberCount?: number;
+  finishedBy?: string[];
 }
 export interface SearchBook {
   isbn?: string; title: string; author?: string; cover?: string; year?: string;
+  pageCount?: number | null;
   google?: BookRatings | null; hardcover?: BookRatings | null; openlibrary?: BookRatings | null;
 }
 export interface Member { userId: string; name: string; role: 'admin' | 'member'; joinedAt: string }
@@ -37,10 +40,18 @@ export interface PollOption { book: Book; votes: number }
 export interface Poll {
   id: string; runoff: boolean; closesAt: string; auto: boolean;
   options: PollOption[]; totalVotes: number;
+  myVote: string | null;
 }
-export interface Meeting { type: 'online' | 'inperson'; link: string; address: string; date: string }
+export interface Meeting { type: 'online' | 'inperson'; link: string; address: string; date: string; time?: string }
+export interface ClubLocation { label: string; lat: number; lng: number; placeId?: string }
+export interface ProgressEntry { userId: string; percent: number; page: number | null; totalPages: number | null; updatedAt: string }
 export interface Club {
   id: string; name: string; private: boolean;
+  format?: 'online' | 'in-person';
+  location?: ClubLocation | null;
+  genres?: string[];
+  audience?: string;
+  specialty?: string;
   memberCount: number; isMember: boolean; role: 'admin' | 'member' | null;
   members: Member[];
   library: Book[];
@@ -54,7 +65,8 @@ export interface Club {
   availability: Record<string, string[]>;
   finishedBy: string[];
   myFinished: boolean;
-  rsvps: Record<string, 'going' | 'notgoing'>;
+  progress?: ProgressEntry[];
+  rsvps: Record<string, 'going' | 'maybe' | 'notgoing'>;
   poll: Poll | null;
   lastResult: { winner: string | null; tie: string[] | null; at: string } | null;
 }

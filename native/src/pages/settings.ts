@@ -1,6 +1,7 @@
 // Settings: one entry per page — Members, Frequency & auto-poll, Delete club.
 import { api, type Club } from '../api';
 import { back, esc, errText, go, resetTo, scaffold, toast } from '../ui';
+import { sessionUser } from '../store';
 import { ClubsPage } from './clubs';
 
 async function loadClub(clubId: string): Promise<Club> {
@@ -36,6 +37,8 @@ export async function MembersPage(root: HTMLElement, clubId: string) {
   try { club = await loadClub(clubId); }
   catch (e) { body.innerHTML = `<div class="empty-note">${esc(errText(e))}</div>`; return; }
   const reload = () => go((r) => MembersPage(r, clubId), { replace: true });
+  const myId = sessionUser()?.id || '';
+  const admins = club.members.filter((m) => m.role === 'admin').length;
 
   body.innerHTML = `
     <ion-list inset="true">
@@ -43,9 +46,12 @@ export async function MembersPage(root: HTMLElement, clubId: string) {
         <ion-item>
           <ion-icon name="person-circle-outline" slot="start" color="medium"></ion-icon>
           <ion-label>${esc(m.name)}${m.role === 'admin' ? ' <ion-badge color="primary">Admin</ion-badge>' : ''}</ion-label>
-          ${m.role === 'admin'
-            ? `<ion-button slot="end" fill="outline" size="small" data-remove-admin="${m.userId}">Remove admin</ion-button>`
-            : `<ion-button slot="end" fill="outline" size="small" data-make-admin="${m.userId}">Make admin</ion-button>`}
+          <span slot="end" id="mact-${m.userId}">
+            ${m.role === 'admin'
+              ? (admins > 1 ? `<ion-button fill="outline" size="small" data-remove-admin="${m.userId}">Remove admin</ion-button>` : '')
+              : `<ion-button fill="outline" size="small" data-make-admin="${m.userId}">Make admin</ion-button>`}
+            ${m.userId !== myId ? `<ion-button fill="outline" size="small" color="danger" data-remove="${m.userId}" data-name="${esc(m.name)}">Remove</ion-button>` : ''}
+          </span>
         </ion-item>`).join('')}
     </ion-list>
 
@@ -69,17 +75,37 @@ export async function MembersPage(root: HTMLElement, clubId: string) {
       catch (e) { await toast(errText(e), 'danger'); }
     });
   });
+  // Remove member: quiet danger button swaps inline to a two-step confirm (web parity, no modal).
+  body.querySelectorAll('[data-remove]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const el = b as HTMLElement;
+      const box = body.querySelector('#mact-' + el.dataset.remove) as HTMLElement | null;
+      if (!box) return;
+      box.innerHTML = `<span style="color:var(--ion-color-medium);font-size:14px">Remove ${esc(el.dataset.name || '')}?</span>
+        <ion-button size="small" color="danger" id="rmYes">Remove</ion-button>
+        <ion-button size="small" fill="outline" id="rmNo">Cancel</ion-button>`;
+      box.querySelector('#rmNo')?.addEventListener('click', () => reload());
+      box.querySelector('#rmYes')?.addEventListener('click', async () => {
+        try {
+          await api('removeMember', { clubId, userId: el.dataset.remove });
+          await toast('Removed');
+          reload();
+        } catch (e) { await toast(errText(e), 'danger'); }
+      });
+    });
+  });
   (body.querySelector('#invCreate') as any).addEventListener('click', async () => {
     const err = body.querySelector('#invErr') as HTMLElement;
     err.textContent = '';
     const email = ((body.querySelector('#invEmail') as any).value || '').trim();
     try {
       const r = await api<{ inviteToken: string; email: string }>('createInvite', { clubId, email });
+      const link = 'https://www.readingpeeps.com/?invite=' + r.inviteToken;
       (body.querySelector('#invOut') as HTMLElement).innerHTML = `
         <ion-list inset="true"><ion-item><ion-label class="ion-text-wrap">
           <h3>Invite for ${esc(r.email)}</h3>
-          <p>Share this code with them — it works once, only for that email:</p>
-          <p style="font-family:monospace;word-break:break-all">${esc(r.inviteToken)}</p>
+          <p>Send this link to ${esc(r.email)} (works once):</p>
+          <p style="font-family:monospace;word-break:break-all">${esc(link)}</p>
         </ion-label></ion-item></ion-list>`;
     } catch (e) { err.textContent = errText(e); }
   });

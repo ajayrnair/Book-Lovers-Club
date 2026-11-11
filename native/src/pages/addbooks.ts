@@ -1,7 +1,11 @@
-// Add Books: pick target clubs, search with a per-row Add (Spotify style), or add by link.
+// Add Books (web parity): pick target clubs, search results as library-grammar
+// rows with tap-to-select (violet ring + check) and a sticky "Add N books" bar,
+// or add by link. Default targets: the preset club from Library, else ALL clubs.
 import { api, type Club, type SearchBook } from '../api';
-import { esc, errText, refreshPage, scaffold, toast } from '../ui';
-import { ratingsLine } from '../ui';
+import { back, esc, errText, go, ratingsLine, scaffold, toast } from '../ui';
+import { loadUsage, usageOrder } from '../store';
+import { ClubPage } from './club';
+import { ClubsPage } from './clubs';
 
 interface Opts { presetClubId?: string }
 
@@ -24,8 +28,9 @@ export async function AddBooksPage(root: HTMLElement, opts: Opts) {
     return;
   }
 
-  const selected = new Set<string>(opts.presetClubId ? [opts.presetClubId] : [clubs[0].id]);
-  const addedTo = new Map<string, Set<string>>(); // book identity -> club ids added
+  const selected = new Set<string>(opts.presetClubId ? [opts.presetClubId] : clubs.map((c) => c.id));
+  let searchResults: SearchBook[] = [];
+  const addSel = new Map<number, SearchBook>();
 
   body.innerHTML = `
     <div class="section-label">To</div>
@@ -45,48 +50,65 @@ export async function AddBooksPage(root: HTMLElement, opts: Opts) {
     <ion-button id="linkGo" expand="block" fill="outline" style="margin:10px 16px">Add from link</ion-button>
     <p id="lErr" style="color:var(--ion-color-danger);min-height:16px;margin:2px 16px;font-size:14px"></p>`;
 
+  // Sticky action bar: appended to the page host (outside ion-content) so
+  // position:fixed anchors to the viewport, as on the web.
+  const bar = document.createElement('div');
+  bar.className = 'addbar hide';
+  bar.id = 'addBar';
+  bar.innerHTML = '<ion-button id="addSel" expand="block">Add 1 book</ion-button>';
+  root.appendChild(bar);
+
   const res = body.querySelector('#sres') as HTMLElement;
-  const ident = (b: SearchBook) => (b.isbn ? 'isbn:' + b.isbn.replace(/[^0-9Xx]/gi, '') : 'ta:' + (b.title || '').toLowerCase() + '|' + (b.author || '').toLowerCase());
-  const allAdded = (b: SearchBook) => {
-    const s = addedTo.get(ident(b));
-    return !!s && [...selected].every((id) => s.has(id));
+  const clubIds = () => [...selected];
+
+  const updateBar = () => {
+    bar.classList.toggle('hide', !addSel.size);
+    if (addSel.size) (bar.querySelector('#addSel') as HTMLElement).textContent = `Add ${addSel.size} book${addSel.size === 1 ? '' : 's'}`;
   };
 
-  function renderResults(results: SearchBook[]) {
-    if (!results.length) { res.innerHTML = '<div class="empty-note">No results.</div>'; return; }
-    res.innerHTML = `<ion-list inset="true">${results.map((b, i) => `
-      <div style="display:flex;align-items:center">
-        <div class="book-row" style="flex:1">
-          ${b.cover ? `<img class="book-cover" src="${esc(b.cover)}" alt="">` : '<div class="book-cover-ph"><ion-icon name="book-outline"></ion-icon></div>'}
-          <div class="grow">
-            <div class="book-title">${esc(b.title)}</div>
-            <div class="book-sub">${esc(b.author || '')}${b.year ? ' · ' + esc(b.year) : ''}</div>
-            ${ratingsLine(b)}
-          </div>
+  function renderResults() {
+    if (!searchResults.length) { res.innerHTML = '<div class="empty-note">Nothing found</div>'; return; }
+    res.innerHTML = `<ion-list inset="true">${searchResults.map((b, i) => {
+      const sel = addSel.has(i);
+      return `<div class="book ${sel ? 'picks' : ''}" data-pick="${i}" role="button" aria-pressed="${sel}" aria-label="${esc(b.title)}" style="display:flex;gap:12px;padding:10px 16px;align-items:flex-start;cursor:pointer">
+        ${b.cover ? `<img class="book-cover" src="${esc(b.cover)}" alt="">` : '<div class="book-cover-ph"><ion-icon name="book-outline"></ion-icon></div>'}
+        <div class="grow">
+          <div class="book-title">${esc(b.title)}</div>
+          <div class="book-sub">${esc(b.author || '')}${b.year ? ' · ' + esc(b.year) : ''}</div>
+          ${ratingsLine(b)}
         </div>
-        ${allAdded(b)
-          ? '<ion-button size="small" fill="clear" disabled style="margin-right:10px"><ion-icon slot="start" name="checkmark"></ion-icon>Added</ion-button>'
-          : `<ion-button size="small" style="margin-right:10px" data-add="${i}"><ion-icon slot="start" name="plus"></ion-icon>Add</ion-button>`}
-      </div>`).join('')}</ion-list>`;
-    res.querySelectorAll('[data-add]').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const b = results[Number((btn as HTMLElement).dataset.add)];
-        if (!selected.size) { (body.querySelector('#sErr') as HTMLElement).textContent = 'Pick a club first'; return; }
-        (btn as any).disabled = true;
-        try {
-          await api('addBooks', { clubIds: [...selected], books: [b] });
-          const s = addedTo.get(ident(b)) || new Set<string>();
-          selected.forEach((id) => s.add(id));
-          addedTo.set(ident(b), s);
-          await toast('Added to library');
-          renderResults(results);
-        } catch (e) {
-          (btn as any).disabled = false;
-          (body.querySelector('#sErr') as HTMLElement).textContent = errText(e);
-        }
+        ${sel ? '<span class="selcheck"><ion-icon name="checkmark"></ion-icon></span>' : ''}
+      </div>`;
+    }).join('')}</ion-list>`;
+    updateBar();
+    res.querySelectorAll('[data-pick]').forEach((row) => {
+      row.addEventListener('click', () => {
+        const i = Number((row as HTMLElement).dataset.pick);
+        if (addSel.has(i)) addSel.delete(i); else addSel.set(i, searchResults[i]);
+        renderResults();
       });
     });
   }
+
+  const afterAdd = async () => {
+    // Preset entry points (Library, club page) sit directly below on the stack:
+    // pop back to them instead of stacking a duplicate page.
+    if (opts.presetClubId) { back(); return; }
+    const usage = await loadUsage().catch(() => ({}));
+    const first = usageOrder(clubs, usage)[0];
+    if (first) go((r) => ClubPage(r, first.id), { replace: true });
+    else go((r) => ClubsPage(r), { replace: true });
+  };
+
+  (bar.querySelector('#addSel') as HTMLElement).addEventListener('click', async () => {
+    if (!clubIds().length) { await toast('Pick a club first', 'danger'); return; }
+    try {
+      await api('addBooks', { clubIds: clubIds(), books: [...addSel.values()] });
+      await toast('Added');
+      addSel.clear();
+      await afterAdd();
+    } catch (e) { await toast(errText(e), 'danger'); }
+  });
 
   body.querySelectorAll('.tochip').forEach((chip) => {
     chip.addEventListener('click', () => {
@@ -99,17 +121,17 @@ export async function AddBooksPage(root: HTMLElement, opts: Opts) {
     });
   });
 
-  let lastResults: SearchBook[] = [];
   async function doSearch() {
     const q = ((body.querySelector('#sq') as any).value || '').trim();
     const err = body.querySelector('#sErr') as HTMLElement;
     err.textContent = '';
-    if (!q) { res.innerHTML = ''; return; }
+    if (!q) { res.innerHTML = ''; searchResults = []; addSel.clear(); updateBar(); return; }
     res.innerHTML = '<div class="empty-note">Searching…</div>';
     try {
       const r = await api<{ results: SearchBook[] }>('searchBooks', { q });
-      lastResults = r.results;
-      renderResults(lastResults);
+      searchResults = r.results;
+      addSel.clear();
+      renderResults();
     } catch (e) {
       res.innerHTML = '';
       err.textContent = errText(e);
@@ -127,9 +149,9 @@ export async function AddBooksPage(root: HTMLElement, opts: Opts) {
     if (!url) { err.textContent = 'Paste a link'; return; }
     if (!selected.size) { err.textContent = 'Pick a club first'; return; }
     try {
-      const r = await api('addByLink', { url, clubIds: [...selected] });
+      const r = await api<{ book?: SearchBook }>('addByLink', { url, clubIds: [...selected] });
       await toast('Added ' + (r.book?.title || 'book'));
-      if (opts.presetClubId) refreshPage();
+      if (opts.presetClubId) back();
     } catch (e) { err.textContent = errText(e); }
   });
 }

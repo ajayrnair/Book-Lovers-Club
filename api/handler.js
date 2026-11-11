@@ -531,11 +531,18 @@ async function googleAuth(req, res, u) {
     auth.searchParams.set('state', state);
     auth.searchParams.set('access_type', 'online');
     auth.searchParams.set('prompt', 'select_account');
-    return redirectTo(res, auth.toString(), `gstate=${state}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`);
+    // Native app sign-in (?native=1): a parallel cookie carries the flag through
+    // the Google round-trip (state keeps its CSRF purpose, untouched), so the
+    // callback can return to the app's booklovers:// deep link instead of the web.
+    const startCookies = [`gstate=${state}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`];
+    if (u.searchParams.get('native') === '1') startCookies.push('gnative=1; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600');
+    return redirectTo(res, auth.toString(), startCookies);
   }
-  const fail = () => redirectTo(res, '/?auth=failed', 'gstate=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0');
+  const cookies = parseCookies(req);
+  const isNative = cookies.gnative === '1';
+  const clearCookies = ['gstate=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0', 'gnative=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0'];
+  const fail = () => redirectTo(res, isNative ? 'booklovers://auth?auth=failed' : '/?auth=failed', clearCookies);
   try {
-    const cookies = parseCookies(req);
     const state = u.searchParams.get('state');
     if (!state || !cookies.gstate || state !== cookies.gstate) return fail();
     const tr = await fetch('https://oauth2.googleapis.com/token', {
@@ -561,7 +568,7 @@ async function googleAuth(req, res, u) {
     const t = uid() + uid();
     db.sessions[t] = gu.id;
     await writeDB(db);
-    return redirectTo(res, '/#t=' + t, 'gstate=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0');
+    return redirectTo(res, isNative ? 'booklovers://auth#t=' + t : '/#t=' + t, clearCookies);
   } catch (e) { return fail(); }
 }
 

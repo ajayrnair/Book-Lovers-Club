@@ -23,26 +23,27 @@ import './theme.css';
 import { defineCustomElements } from '@ionic/core/loader';
 import { addIcons } from 'ionicons';
 import {
-  addCircleOutline, book, bookOutline, calendarOutline, checkmark, chevronBack, chevronForward,
-  close, linkOutline, lockClosedOutline, peopleOutline, personCircleOutline, add, searchOutline,
-  settingsOutline, star, trashOutline,
+  addCircleOutline, barChartOutline, book, bookOutline, calendarOutline, checkmark, chevronBack, chevronForward,
+  close, compassOutline, linkOutline, listOutline, lockClosedOutline, peopleOutline, personCircleOutline, add, searchOutline,
+  settingsOutline, star, timeOutline, trashOutline,
 } from 'ionicons/icons';
 import { App } from '@capacitor/app';
 
 import { initRouter, resetTo, toast } from './ui';
-import { loadSession, saveSession } from './store';
-import { api, setTokenCache, type User } from './api';
+import { loadSession, loadUsage, saveSession, usageOrder } from './store';
+import { api, setTokenCache, type Club, type User } from './api';
 import { AuthPage } from './pages/auth';
 import { ClubsPage } from './pages/clubs';
+import { ClubPage } from './pages/club';
 import { AddBooksPage } from './pages/addbooks';
 import { MePage } from './pages/me';
 
 addIcons({
-  'add-circle-outline': addCircleOutline, 'book-outline': bookOutline, book, 'calendar-outline': calendarOutline,
-  checkmark, 'chevron-back': chevronBack, 'chevron-forward': chevronForward, close, 'link-outline': linkOutline,
-  'lock-closed-outline': lockClosedOutline, 'people-outline': peopleOutline,
+  'add-circle-outline': addCircleOutline, 'bar-chart-outline': barChartOutline, 'book-outline': bookOutline, book, 'calendar-outline': calendarOutline,
+  checkmark, 'chevron-back': chevronBack, 'chevron-forward': chevronForward, close, 'compass-outline': compassOutline, 'link-outline': linkOutline,
+  'list-outline': listOutline, 'lock-closed-outline': lockClosedOutline, 'people-outline': peopleOutline,
   'person-circle-outline': personCircleOutline, plus: add, 'search-outline': searchOutline,
-  'settings-outline': settingsOutline, star, 'trash-outline': trashOutline,
+  'settings-outline': settingsOutline, star, 'time-outline': timeOutline, 'trash-outline': trashOutline,
 });
 
 export function goTab(tab: string) {
@@ -51,22 +52,43 @@ export function goTab(tab: string) {
   else if (tab === 'me') resetTo(MePage, 'me');
 }
 
+// Landing (web parity): entering the app opens the most-used club directly;
+// the clubs list is one tap away (strip list icon, or the Clubs tab).
+export async function enterApp() {
+  try {
+    const { clubs } = await api<{ clubs: Club[] }>('myClubs');
+    if (clubs.length) {
+      const usage = await loadUsage().catch(() => ({}));
+      const first = usageOrder(clubs, usage)[0];
+      resetTo((r) => ClubPage(r, first.id), 'clubs');
+      return;
+    }
+  } catch { /* fall through to the list */ }
+  resetTo(ClubsPage, 'clubs');
+}
+
 // Google sign-in return path (app side).
-// The OAuth flow runs in the system browser. When the web backend is pointed at the
-// app (signing-phase step, see README), it redirects to booklovers://auth#t=<token>;
-// this listener catches that deep link, stores the session, and signs the user in.
+// The OAuth flow runs in the system browser. The app opens the backend's Google
+// endpoint with ?native=1, so on success the backend redirects to
+// booklovers://auth#t=<token> and on failure to booklovers://auth?auth=failed;
+// this listener catches both, stores the session, and signs the user in.
 async function handleAuthDeepLink(url: string) {
   try {
     const frag = url.split('#')[1] || '';
     const qs = url.split('?')[1]?.split('#')[0] || '';
     const params = new URLSearchParams(frag || qs);
     const t = params.get('t');
-    if (!t) return;
+    if (!t) {
+      if (params.get('auth') === 'failed' || qs.includes('auth=failed') || frag.includes('auth=failed')) {
+        await toast('Google sign in did not work', 'danger');
+      }
+      return;
+    }
     setTokenCache(t);
     const { user } = await api<{ user: User }>('me');
     await saveSession(t, user);
     await toast('Signed in with Google');
-    goTab('clubs');
+    await enterApp();
   } catch {
     await toast('Google sign in did not finish', 'danger');
   }
@@ -90,7 +112,7 @@ async function boot() {
   if (token) {
     try {
       await api('me');
-      goTab('clubs');
+      await enterApp();
       return;
     } catch {
       // stale session; fall through to auth

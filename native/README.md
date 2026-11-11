@@ -47,22 +47,19 @@ therefore go through **CapacitorHttp** (the native networking layer), enabled in
 ## Google sign-in — status
 
 - The "Sign in with Google" button opens
-  `https://booklovers-lemon.vercel.app/api/auth/google` in the system browser
-  (`@capacitor/browser`) — verified: the endpoint 302s to accounts.google.com
-  with the correct redirect URI.
-- The app listens for the return deep link **`booklovers://auth#t=<token>`**
-  (registered in the iOS Info.plist and the Android manifest; handled via
-  Capacitor App `appUrlOpen` in `src/main.ts`): on arrival it stores the token,
-  loads the user and lands on the Clubs tab.
-- **Remaining for the signing phase:** the production OAuth endpoint currently
-  redirects to `/#t=<token>` on the web origin, not to the app scheme. Landing
-  back inside the app needs one of:
-  1. a small change to the web handler (out of scope for this pass — it would
-     touch the live web app) to redirect to `booklovers://auth#t=...` when a
-     `state`/flag marks the native flow, or
-  2. an Associated Domain universal link (apple-app-site-association file +
-     entitlement), which requires the Apple Developer team ID — available once
-     Ajay hands over App Store Connect access.
+  `https://booklovers-lemon.vercel.app/api/auth/google?native=1` in the system
+  browser (`@capacitor/browser`).
+- The backend threads the `native=1` flag through the OAuth round trip (a
+  parallel `gnative` cookie next to the CSRF `gstate` cookie) and returns the
+  app to **`booklovers://auth#t=<token>`** on success, or
+  **`booklovers://auth?auth=failed`** on failure. The web flow is unchanged
+  when the flag is absent. (Implemented in the web handler Nov 10, 2026;
+  branch behavior verified with a local stub harness — the success branch
+  itself needs live Google credentials to exercise end to end.)
+- The app listens for those deep links (registered in the iOS Info.plist;
+  handled via Capacitor App `appUrlOpen` in `src/main.ts`): on success it
+  stores the token, loads the user and lands on the most-used club; on failure
+  it shows "Google sign in did not work".
   Email sign-in/sign-up is fully in-app and unaffected.
 
 ## Binary files (.b64)

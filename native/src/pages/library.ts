@@ -1,6 +1,8 @@
-// Library page: stacked book rows — cover+title block, then Rate + Reading now line.
-import { api, type Club } from '../api';
-import { esc, errText, go, ratingChips, scaffold, toast } from '../ui';
+// Library page (web parity): three groups — Current book, To read, Read —
+// with "Your rating" star strips. No set-current here: choosing the club's book
+// happens in the Next book / poll flow on the club page.
+import { api, type Book, type Club } from '../api';
+import { esc, errText, go, scaffold, starStripHTML, toast, wireStarStrips } from '../ui';
 import { bookTextHtml, coverHtml } from './club';
 import { AddBooksPage } from './addbooks';
 
@@ -24,47 +26,40 @@ export async function LibraryPage(root: HTMLElement, clubId: string) {
 
   if (!club.library.length) {
     body.innerHTML = `
-      <div class="empty-note">No books in this library yet.</div>
+      <div class="empty-note">No books yet</div>
       <ion-button id="libAdd2" expand="block" style="margin:0 16px"><ion-icon slot="start" name="plus"></ion-icon>Add books</ion-button>`;
     body.querySelector('#libAdd2')?.addEventListener('click', () =>
       go((r) => AddBooksPage(r, { presetClubId: clubId })));
     return;
   }
 
-  body.innerHTML = `<ion-list inset="true">
-    ${club.library.map((b, i) => `
-      <div class="lib-book" style="${i ? 'border-top:1px solid var(--ion-color-light)' : ''}">
-        <div class="book-row">${coverHtml(b)}${bookTextHtml(b)}</div>
-        <div class="book-ctl">
-          ${ratingChips(b.myRating ?? null, `data-rate-for="${esc(b.key)}"`)}
-          ${club.current?.key === b.key
-            ? '<ion-badge color="primary">Reading now</ion-badge>'
-            : `<ion-button size="small" fill="outline" data-setcurrent="${esc(b.key)}">Reading now</ion-button>`}
-        </div>
-      </div>`).join('')}
-  </ion-list>`;
+  const curKey = club.current ? club.current.key : null;
+  const cur = curKey ? club.library.find((b) => b.key === curKey) : null;
+  const rest = club.library.filter((b) => b.key !== curKey);
+  const read = rest.filter((b) => (b.finishedBy || []).length > 0);
+  const toread = rest.filter((b) => !(b.finishedBy || []).length);
+  const memberTotal = club.members.length;
 
-  // Per-row rating wiring: each chips row knows its book via the wrapper attribute.
-  body.querySelectorAll('[data-rate-for]').forEach((row) => {
-    const key = (row as HTMLElement).dataset.rateFor!;
-    row.querySelectorAll('.rchip').forEach((chip) => {
-      chip.addEventListener('click', async () => {
-        row.querySelectorAll('.rchip').forEach((c) => c.classList.remove('sel'));
-        chip.classList.add('sel');
-        const raw = (chip as HTMLElement).dataset.r;
-        if (raw === '' || raw === undefined) return;
-        try { await api('rate', { bookKey: key, rating: Number(raw) }); await toast('Rated ' + raw + '★'); }
-        catch (e) { await toast(errText(e), 'danger'); }
-      });
-    });
-  });
-  body.querySelectorAll('[data-setcurrent]').forEach((b) => {
-    b.addEventListener('click', async () => {
-      try {
-        await api('setCurrent', { clubId, bookKey: (b as HTMLElement).dataset.setcurrent });
-        await toast('Now reading');
-        go((r) => LibraryPage(r, clubId), { replace: true });
-      } catch (e) { await toast(errText(e), 'danger'); }
-    });
+  const row = (b: Book, opts: { badge?: string; subline?: string } = {}) => `
+    <div class="lib-book">
+      <div class="book-row">${coverHtml(b)}${bookTextHtml(b)}${opts.badge ? `<span class="cs-badge" style="align-self:flex-start">${esc(opts.badge)}</span>` : ''}</div>
+      ${opts.subline ? `<div style="padding:0 16px 2px 74px;color:var(--ion-color-medium);font-size:13px">${esc(opts.subline)}</div>` : ''}
+      <div class="book-ctl">
+        <span style="color:var(--ion-color-medium);font-size:13px">Your rating</span>
+        ${starStripHTML(b.key, b.myRating ?? null, b.title)}
+      </div>
+    </div>`;
+
+  const groups: string[] = [];
+  if (cur) groups.push(`<div class="section-label">Current book</div><ion-list inset="true">${row(cur, { badge: 'Current book' })}</ion-list>`);
+  if (toread.length) groups.push(`<div class="section-label">To read</div><ion-list inset="true">${toread.map((b) => row(b)).join('')}</ion-list>`);
+  if (read.length) groups.push(`<div class="section-label">Read</div><ion-list inset="true">${read.map((b) => row(b, { subline: `Finished by ${(b.finishedBy || []).length} of ${memberTotal}` })).join('')}</ion-list>`);
+
+  body.innerHTML = groups.join('');
+
+  const reload = () => go((r) => LibraryPage(r, clubId), { replace: true });
+  wireStarStrips(body, async (key, v) => {
+    try { await api('rate', { bookKey: key, rating: v }); await toast('Saved'); reload(); }
+    catch (e) { await toast(errText(e), 'danger'); }
   });
 }
