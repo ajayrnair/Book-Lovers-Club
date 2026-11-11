@@ -1099,14 +1099,36 @@ function viewMe(){
   disarmClubNav();
   app.innerHTML = `<div class="card"><h3 style="margin-top:0">${esc(user.name)}</h3><div class="muted">${esc(user.email)}</div></div>
   <h2>My clubs</h2>${myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b></div><span>›</span></div>`).join('')||'<div class="muted">No clubs yet</div>'}
+  ${user.email==='ajay.r.nair@gmail.com'?'<div class="card row" id="statsRow"><div class="grow"><b>Stats</b></div><span>›</span></div>':''}
   <div class="card"><div id="delAcctBox"><button id="delAcct" class="ghost small danger">Delete account</button></div></div>`;
   app.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openClub(el.dataset.open));
+  const sr = $('#statsRow'); if(sr) sr.onclick = ()=>viewStats();
   $('#delAcct').onclick = ()=>{
     $('#delAcctBox').innerHTML = `<div class="muted" style="margin-bottom:8px">Delete your account and all your data?</div>
     <div class="row"><button id="delAcctYes" class="danger small">Delete account</button><button id="delAcctNo" class="ghost small">Cancel</button></div>`;
     $('#delAcctNo').onclick = ()=>viewMe();
     $('#delAcctYes').onclick = async ()=>{ try{ await api('deleteAccount'); token=''; user=null; currentClub=null; myClubs=[]; localStorage.removeItem('blc_token'); viewAuth(); }catch(e){ toast(e.message); } };
   };
+}
+async function viewStats(){
+  disarmClubNav();
+  app.innerHTML = `<button class="ghost small" id="back">‹ Me</button><h2>Stats</h2><div class="muted">Loading…</div>`;
+  $('#back').onclick = ()=>viewMe();
+  try{
+    const j = await api('stats');
+    const day = (iso)=>{ try{ return new Date(iso).toLocaleDateString('en-US',{month:'short', day:'numeric', year:'numeric'}); }catch(e){ return ''; } };
+    const real = (j.users.list||[]).filter(u=>!u.isTest), test = (j.users.list||[]).filter(u=>u.isTest);
+    app.innerHTML = `<button class="ghost small" id="back">‹ Me</button><h2>Stats</h2>
+    <div class="card"><div><b>${j.users.real}</b> real accounts · <b>${j.users.test}</b> test accounts · <b>${j.users.total}</b> total</div>
+    <div style="margin-top:4px"><b>${j.clubs.total}</b> clubs</div></div>
+    <h3>Clubs</h3>
+    ${j.clubs.list.map(c=>`<div class="card"><div class="row"><b class="grow">${esc(c.name)}</b><span class="muted">${c.private?'Private':'Public'} · ${c.memberCount} member${c.memberCount===1?'':'s'}</span></div>${(c.members||[]).map(m=>`<div class="muted" style="margin-top:2px">${esc(m.name||'')} ${m.email?'· '+esc(m.email):''}${m.role==='admin'?' · admin':''}</div>`).join('')}</div>`).join('')||'<div class="muted">No clubs</div>'}
+    <h3>Real accounts</h3>
+    ${real.map(u=>`<div class="card"><b>${esc(u.name)}</b><div class="muted">${esc(u.email)} · joined ${day(u.createdAt)}</div></div>`).join('')||'<div class="muted">None</div>'}
+    <h3>Test accounts</h3>
+    ${test.map(u=>`<div class="card"><b>${esc(u.name)}</b><div class="muted">${esc(u.email)} · joined ${day(u.createdAt)}</div></div>`).join('')||'<div class="muted">None</div>'}`;
+    $('#back').onclick = ()=>viewMe();
+  }catch(e){ toast(e.message); }
 }
 
 // invite deep link

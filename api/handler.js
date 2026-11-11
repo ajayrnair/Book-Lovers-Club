@@ -774,6 +774,34 @@ module.exports = async (req, res) => {
       }
       case 'signout': { delete db.sessions[token]; await writeDB(db); return send(200, { ok: true }); }
       case 'me': return send(200, { user: { id: me.id, name: me.name, email: me.email } });
+      case 'stats': {
+        const OWNER_EMAIL = 'ajay.r.nair@gmail.com';
+        const isTestUser = (u) => {
+          const e = (u.email || '').toLowerCase();
+          const local = e.split('@')[0]; const domain = e.split('@')[1] || '';
+          return /^(rp\.smoke\.|rp\.xp\.|blc\.dbg\.)/.test(local)
+            || local.includes('smoke')
+            || ['example.com', 'example.org', 'example.net', 'test.com'].includes(domain)
+            || /^(smoke|test|debug|ship)/.test(local);
+        };
+        const full = me.email === OWNER_EMAIL;
+        const byId = {}; db.users.forEach((u) => { byId[u.id] = u; });
+        const userList = db.users.map((u) => ({ name: u.name, email: u.email, createdAt: u.createdAt, isTest: isTestUser(u) }));
+        const clubList = db.clubs.map((c) => ({
+          name: c.name, private: !!c.private, memberCount: (c.members || []).length,
+          ...(full ? { members: (c.members || []).map((m) => { const u = byId[m.userId]; return u ? { name: u.name, email: u.email, role: m.role } : { userId: m.userId, role: m.role, missing: true }; }) } : {}),
+        }));
+        return send(200, {
+          scope: full ? 'full' : 'counts',
+          users: {
+            total: userList.length,
+            real: userList.filter((u) => !u.isTest).length,
+            test: userList.filter((u) => u.isTest).length,
+            ...(full ? { list: userList } : {}),
+          },
+          clubs: { total: clubList.length, list: clubList },
+        });
+      }
       case 'searchClubs': {
         const q = norm(body.q || '');
         if (body.format !== undefined && !['online', 'in-person'].includes(body.format)) {
