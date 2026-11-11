@@ -202,3 +202,44 @@ struct InviteResponse: Decodable {
     let emailed: Bool
     let results: [InviteResult]
 }
+
+/// Stats payload (super admin only; the server enforces who gets an answer).
+struct StatsResponse: Codable, Equatable {
+    let scope: String
+    let users: StatsUsers
+    let clubs: StatsClubs
+}
+
+struct StatsUsers: Codable, Equatable {
+    let total: Int
+    let real: Int
+    let test: Int
+    let list: [StatsUser]
+}
+
+struct StatsUser: Codable, Equatable, Identifiable {
+    var id: String { email }
+    let name: String
+    let email: String
+    let createdAt: String
+    let isTest: Bool
+    let isSuperAdmin: Bool
+}
+
+struct StatsClubs: Codable, Equatable {
+    let total: Int
+    let list: [StatsClub]
+}
+
+struct StatsClub: Codable, Equatable {
+    let name: String
+    let `private`: Bool
+    let memberCount: Int
+    let members: [StatsMember]?
+}
+
+struct StatsMember: Codable, Equatable {
+    let name: String?
+    let email: String?
+    let role: String?
+}

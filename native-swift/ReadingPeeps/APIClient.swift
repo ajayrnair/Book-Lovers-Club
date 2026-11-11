@@ -111,6 +111,10 @@ extension APIClient {
         return r.book
     }
 
+    func stats() async throws -> StatsResponse {
+        try await call("stats")
+    }
+
     func searchClubs(_ params: [String: Any]) async throws -> [Club] {
         let r: ClubsResponse = try await call("searchClubs", params)
         return r.clubs

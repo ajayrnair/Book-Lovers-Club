@@ -7,6 +7,8 @@ enum Route: Hashable {
     case poll(String)
     case settings(String)
     case members(String)
+    case findClubs
+    case createClub
 }
 
 struct RootView: View {
@@ -29,8 +31,6 @@ struct RootView: View {
                         .tabItem { Label("Clubs", systemImage: "books.vertical") }
                     AddBooksView()
                         .tabItem { Label("Add Books", systemImage: "plus.circle") }
-                    ExploreView()
-                        .tabItem { Label("Explore", systemImage: "safari") }
                     MeView()
                         .tabItem { Label("Me", systemImage: "person.circle") }
                 }

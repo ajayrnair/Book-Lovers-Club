@@ -1,30 +1,7 @@
 import SwiftUI
 
-/// Explore: find a public club with the same facets the API supports, or
-/// create a club. Finding and creating live here, not on the home screen.
-struct ExploreView: View {
-    @EnvironmentObject var app: AppState
-    @State private var tab = 0  // 0 = find, 1 = create
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                Picker("Explore", selection: $tab) {
-                    Text("Find a club").tag(0)
-                    Text("Create a club").tag(1)
-                }
-                .pickerStyle(.segmented)
-                .padding()
-                if tab == 0 {
-                    FindClubsView()
-                } else {
-                    CreateClubView()
-                }
-            }
-            .navigationTitle("Explore")
-        }
-    }
-}
+/// Find a club and Create a club. These live under the Clubs tab
+/// (Clubs -> Find and create), not in a tab of their own.
 
 // MARK: - genre multi-select sheet
 
@@ -78,7 +55,7 @@ struct GenrePickerSheet: View {
 
 // MARK: - find
 
-private struct FindClubsView: View {
+struct FindClubsView: View {
     @EnvironmentObject var app: AppState
     @State private var name = ""
     @State private var format = "any"  // any | online | in-person
@@ -302,7 +279,7 @@ private struct FindClubsView: View {
 
 // MARK: - create
 
-private struct CreateClubView: View {
+struct CreateClubView: View {
     @EnvironmentObject var app: AppState
     @State private var name = ""
     @State private var isPrivate = true

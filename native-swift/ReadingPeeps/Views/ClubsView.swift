@@ -8,7 +8,7 @@ struct ClubsView: View {
             List {
                 Section("My clubs") {
                     if app.orderedClubs.isEmpty {
-                        Text("No clubs yet. Find one or start your own in Explore.")
+                        Text("No clubs yet. Find one or start your own below.")
                             .foregroundStyle(.secondary)
                     }
                     ForEach(app.orderedClubs) { club in
@@ -31,6 +31,14 @@ struct ClubsView: View {
                         }
                     }
                 }
+                Section("Find and create") {
+                    NavigationLink(value: Route.findClubs) {
+                        Label("Find a club", systemImage: "magnifyingglass")
+                    }
+                    NavigationLink(value: Route.createClub) {
+                        Label("Create a club", systemImage: "plus.circle")
+                    }
+                }
             }
             .navigationTitle("Clubs")
             .navigationDestination(for: Route.self) { route in
@@ -40,6 +48,8 @@ struct ClubsView: View {
                 case .poll(let id): PollView(clubId: id)
                 case .settings(let id): ClubSettingsView(clubId: id)
                 case .members(let id): MembersView(clubId: id)
+                case .findClubs: FindClubsView().navigationTitle("Find a club")
+                case .createClub: CreateClubView().navigationTitle("Create a club")
                 }
             }
             .refreshable {

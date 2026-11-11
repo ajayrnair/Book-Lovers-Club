@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// The club screen, in Ajay's settled order:
-/// Current book, Next book, Group meeting, Library, Settings (admin), Leave.
+/// Current book, Next book, Group meeting, Library. Settings is the
+/// gear in the toolbar (admins); Leave club sits in the toolbar menu.
 struct ClubView: View {
     let clubId: String
     @EnvironmentObject var app: AppState
@@ -43,14 +44,6 @@ struct ClubView: View {
                         NavigationLink(value: Route.library(clubId)) {
                             Label("Library", systemImage: "books.vertical")
                         }
-                        if club.isAdmin {
-                            NavigationLink(value: Route.settings(clubId)) {
-                                Label("Settings", systemImage: "gearshape")
-                            }
-                        }
-                    }
-                    Section {
-                        Button("Leave club", role: .destructive) { confirmLeave = true }
                     }
                 }
                 .refreshable { await load() }
@@ -62,6 +55,22 @@ struct ClubView: View {
         }
         .navigationTitle(club?.name ?? "Club")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let club {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if club.isAdmin {
+                        NavigationLink(value: Route.settings(clubId)) {
+                            Image(systemName: "gearshape")
+                        }
+                    }
+                    Menu {
+                        Button("Leave club", role: .destructive) { confirmLeave = true }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
+            }
+        }
         .task {
             app.trackUsage(clubId: clubId)
             await load()
