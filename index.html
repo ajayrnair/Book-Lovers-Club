@@ -262,7 +262,7 @@ document.addEventListener('keydown', (e)=>{
   if(!t || t.tagName !== 'INPUT') return;
   const target = t.getAttribute('data-enter');
   if(target){ e.preventDefault(); const b = document.getElementById(target); if(b) b.click(); }
-  else if(t.id === 'progPage' || t.id === 'progPct'){ t.blur(); }
+  else if(t.id === 'progPage' || t.id === 'progPct' || t.id === 'mlink' || t.id === 'maddr'){ t.blur(); }
 });
 
 // ---------- shell ----------
@@ -637,9 +637,9 @@ function meetingSection(c){
   if(c.week && c.week.length){
     const wFirst = c.week[0], wLast = c.week[c.week.length-1];
     if(isAdmin){
-      h += `<div class="row" style="margin-top:6px;align-items:center"><button class="small ghost" id="shiftPrev" aria-label="Previous week">‹ ${fmtRangeShort(shiftDayStr(wFirst,-7), shiftDayStr(wLast,-7))}</button><span class="muted grow" style="text-align:center">Meeting week · ${fmtDayShort(wFirst)} – ${fmtDayShort(wLast)}</span><button class="small ghost" id="shiftNext" aria-label="Next week">${fmtRangeShort(shiftDayStr(wFirst,7), shiftDayStr(wLast,7))} ›</button></div>`;
+      h += `<div class="row" style="margin-top:6px;align-items:center"><button class="small ghost" id="shiftPrev" aria-label="Previous week" style="white-space:nowrap">‹ ${fmtRangeShort(shiftDayStr(wFirst,-7), shiftDayStr(wLast,-7))}</button><span class="grow" id="weekLabel" style="text-align:center;white-space:nowrap;font-weight:600">${fmtRangeShort(wFirst, wLast)}</span><button class="small ghost" id="shiftNext" aria-label="Next week" style="white-space:nowrap">${fmtRangeShort(shiftDayStr(wFirst,7), shiftDayStr(wLast,7))} ›</button></div>`;
     } else {
-      h += `<div class="row" style="margin-top:4px"><span class="muted grow">Meeting week · ${fmtDayShort(wFirst)} – ${fmtDayShort(wLast)}</span></div>`;
+      h += `<div class="row" style="margin-top:4px"><span class="muted grow" id="weekLabel" style="text-align:center;white-space:nowrap">${fmtRangeShort(wFirst, wLast)}</span></div>`;
     }
   }
   if(c.meeting.date){
@@ -660,11 +660,12 @@ function meetingSection(c){
   }
   if(isAdmin){
     h += `<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px">
-    <div class="row" style="align-items:flex-start"><div class="datefield grow"><input type="date" id="pickDate" value="${esc(c.meeting.date||'')}"><span class="cal">${icon('calendar',18)}</span></div><input type="time" id="mtime" aria-label="Meeting time" value="${esc(c.meeting.time||'')}" style="width:132px;flex:none;margin:0"></div>
-    <div class="row" style="margin-top:6px"><div class="seg" role="radiogroup" aria-label="Meeting type"><label><input type="radio" name="mtype" value="online" ${c.meeting.type==='online'?'checked':''}><span>Online</span></label><label><input type="radio" name="mtype" value="inperson" ${c.meeting.type==='inperson'?'checked':''}><span>In person</span></label></div>
-    <button id="saveMeet" class="small">Save</button></div>
-    <input type="url" id="mlink" data-enter="saveMeet" placeholder="Meeting link" value="${esc(c.meeting.link||'')}" class="${c.meeting.type==='online'?'':'hide'}">
-    <input type="text" id="maddr" data-enter="saveMeet" placeholder="Address" value="${esc(c.meeting.address||'')}" class="${c.meeting.type==='inperson'?'':'hide'}">
+    <div class="datefield"><input type="date" id="pickDate" value="${esc(c.meeting.date||'')}"><span class="cal">${icon('calendar',18)}</span></div>
+    <input type="time" id="mtime" aria-label="Meeting time" value="${esc(c.meeting.time||'')}" style="margin-top:8px">
+    <div class="row" style="margin-top:8px"><div class="seg" role="radiogroup" aria-label="Meeting type"><label><input type="radio" name="mtype" value="online" ${c.meeting.type==='online'?'checked':''}><span>Online</span></label><label><input type="radio" name="mtype" value="inperson" ${c.meeting.type==='inperson'?'checked':''}><span>In person</span></label></div>
+    <span class="muted" id="meetSaved" style="opacity:0;transition:opacity .3s">Saved</span></div>
+    <input type="url" id="mlink" placeholder="Meeting link" value="${esc(c.meeting.link||'')}" class="${c.meeting.type==='online'?'':'hide'}">
+    <input type="text" id="maddr" placeholder="Address" value="${esc(c.meeting.address||'')}" class="${c.meeting.type==='inperson'?'':'hide'}">
     </div>`;
   }
   return h + '</div>';
@@ -706,8 +707,27 @@ function viewClub(){
   if(isAdmin){
     if($('#shiftPrev')) $('#shiftPrev').onclick=async()=>{ try{ const j=await api('shiftMeetingWeek',{clubId:c.id, weeks:-1}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
     if($('#shiftNext')) $('#shiftNext').onclick=async()=>{ try{ const j=await api('shiftMeetingWeek',{clubId:c.id, weeks:1}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
-    $('#saveMeet').onclick=async()=>{ try{ const mt=document.querySelector('input[name="mtype"]:checked'); const j=await api('clubSettings',{clubId:c.id, meeting:{type:mt?mt.value:'online', link:$('#mlink').value, address:$('#maddr').value, time:$('#mtime').value}}); currentClub=j.club; toast('Saved'); viewClub(); }catch(e){ toast(e.message); } };
-    document.querySelectorAll('input[name="mtype"]').forEach(r=>r.onchange=()=>{ const cur=document.querySelector('input[name="mtype"]:checked'); const on=cur?cur.value==='online':true; $('#mlink').classList.toggle('hide', !on); $('#maddr').classList.toggle('hide', on); });
+    let meetSaving = false, meetDirty = false;
+    const flashSaved = ()=>{ const s = $('#meetSaved'); if(!s) return; s.style.opacity = '1'; setTimeout(()=>{ const s2 = $('#meetSaved'); if(s2) s2.style.opacity = '0'; }, 1600); };
+    const saveMeeting = async (rerender) => {
+      if(meetSaving){ meetDirty = true; return; }
+      meetSaving = true;
+      try {
+        do {
+          meetDirty = false;
+          const mt = document.querySelector('input[name="mtype"]:checked');
+          const j = await api('clubSettings', { clubId: c.id, meeting: { type: mt ? mt.value : 'online', link: $('#mlink') ? $('#mlink').value : '', address: $('#maddr') ? $('#maddr').value : '', time: $('#mtime') ? $('#mtime').value : '' } });
+          currentClub = j.club;
+        } while(meetDirty);
+        flashSaved();
+        if(rerender) viewClub();
+      } catch(e){ toast(e.message); }
+      meetSaving = false;
+    };
+    document.querySelectorAll('input[name="mtype"]').forEach(r=>r.onchange=()=>{ const cur=document.querySelector('input[name="mtype"]:checked'); const on=cur?cur.value==='online':true; $('#mlink').classList.toggle('hide', !on); $('#maddr').classList.toggle('hide', on); saveMeeting(true); });
+    if($('#mtime')) $('#mtime').onchange = ()=>saveMeeting(true);
+    if($('#mlink')) $('#mlink').onchange = ()=>saveMeeting(false);
+    if($('#maddr')) $('#maddr').onchange = ()=>saveMeeting(false);
     const pd=$('#pickDate');
     const pdf=pd.closest('.datefield');
     if(pdf) pdf.onclick=()=>{ try{ pd.focus(); if(pd.showPicker) pd.showPicker(); }catch(e){} };
