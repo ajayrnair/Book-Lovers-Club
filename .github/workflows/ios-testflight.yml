@@ -5,31 +5,22 @@ on:
   push:
     branches: [main]
     paths:
-      - 'native/**'
+      - 'native-swift/**'
       - '.github/workflows/ios-testflight.yml'
 
 jobs:
   build:
     runs-on: macos-26
     steps:
+
       - uses: actions/checkout@v4
 
-      - name: Restore binary assets (icons and splash screens are stored base64-encoded)
-        run: bash native/scripts/restore-binaries.sh
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install dependencies
-        working-directory: native
-        run: npm ci
-
-      - name: Build web assets and sync iOS shell
-        working-directory: native
+      - name: Restore binary assets (app icon is stored base64-encoded)
         run: |
-          npm run build
-          npx cap sync ios
+          for f in $(find native-swift -name '*.b64'); do
+            openssl base64 -d -in "$f" -out "${f%.b64}"
+          done
+
 
       - name: Write App Store Connect API key
         env:
@@ -63,25 +54,21 @@ jobs:
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
 
       - name: Archive
-        working-directory: native/ios/App
         run: |
           xcodebuild archive \
-            -workspace App.xcworkspace \
-            -scheme App \
+            -project native-swift/ReadingPeeps.xcodeproj \
+            -scheme ReadingPeeps \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/App.xcarchive" \
-            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            DEVELOPMENT_TEAM=E5FB8K783X
+            -archivePath "$RUNNER_TEMP/ReadingPeeps.xcarchive" \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }}
 
       - name: Export IPA
         run: |
           xcodebuild -exportArchive \
-            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -archivePath "$RUNNER_TEMP/ReadingPeeps.xcarchive" \
             -exportPath "$RUNNER_TEMP/export" \
-            -exportOptionsPlist native/ci/ExportOptions.plist
+            -exportOptionsPlist native-swift/ci/ExportOptions.plist
 
       - name: Upload to TestFlight
         env:
@@ -89,6 +76,6 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
           xcrun altool --upload-app -t ios \
-            -f "$RUNNER_TEMP/export/App.ipa" \
+            -f "$RUNNER_TEMP/export/ReadingPeeps.ipa" \
             --apiKey "$ASC_KEY_ID" \
             --apiIssuer "$ASC_ISSUER_ID"
