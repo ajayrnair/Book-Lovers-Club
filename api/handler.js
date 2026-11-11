@@ -1,7 +1,11 @@
-// Book Lovers Club — single-file API. State is one JSON document.
-// Storage priority: (1) BLC_LOCAL_STORE local JSON file (test seam), (2) Upstash
-// Redis via its REST API when its env vars are present (key rp:state), (3) the
-// private Vercel Blob store. Whole-document semantics are identical on all three.
+// Book Lovers Club — single-file API.
+// Storage priority: (1) BLC_LOCAL_STORE local JSON file (test seam),
+// (2) Upstash Redis via its REST API when its env vars are present — state is
+// split into one key per top-level collection (rp:col:<name>) marked by an
+// rp:meta key; the legacy single-document key rp:state is migrated on first
+// read and then left untouched as a backup — (3) the private Vercel Blob
+// store (whole document). Actions always work on one assembled state object
+// via readDB/writeDB; only this persistence layer knows how it is stored.
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
@@ -9,7 +13,48 @@ const path = require('path');
 const BLOB_PATH = 'state/db.json';
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN || '';
 const LOCAL_STORE = process.env.BLC_LOCAL_STORE || '';
-const REDIS_KEY = 'rp:state';
+const REDIS_KEY = 'rp:state';            // legacy single-document key; never written by the split layout
+const REDIS_COL_PREFIX = 'rp:col:';      // rp:col:<collection> — one key per top-level collection
+const REDIS_META_KEY = 'rp:meta';
+const SPLIT_MARKER = 'split1';
+
+// The whole top-level state shape: [name, empty value]. The default state is
+// built from this list, and the Redis split stores exactly one key per entry.
+const COLLECTIONS = [
+  ['users', []],
+  ['sessions', {}],
+  ['books', {}],
+  ['clubs', []],
+  ['invites', []],
+  ['ratings', {}],
+  ['progress', {}],
+];
+const COLLECTION_NAMES = COLLECTIONS.map(([n]) => n);
+function emptyCollection(name) {
+  const found = COLLECTIONS.find(([n]) => n === name);
+  return JSON.parse(JSON.stringify(found ? found[1] : {}));
+}
+function defaultDB() {
+  const db = {};
+  for (const name of COLLECTION_NAMES) db[name] = emptyCollection(name);
+  return db;
+}
+// Fill any missing collection with its empty value and repair club subfields,
+// exactly as the assembled state has always been normalized after a read.
+function normalizeDB(db) {
+  for (const name of COLLECTION_NAMES) {
+    if (db[name] === undefined || db[name] === null) db[name] = emptyCollection(name);
+  }
+  db.progress = db.progress || {};
+  (db.clubs || []).forEach((club) => {
+    club.finished = club.finished || {};
+    club.rsvps = club.rsvps || {};
+    club.availability = club.availability || {};
+    club.library = club.library || [];
+    club.meeting = { type: 'online', link: '', address: '', date: '', ...(club.meeting || {}) };
+  });
+  return db;
+}
 
 // Upstash REST credentials: accept either env-name pair, whichever is fully set.
 function redisConfig() {
@@ -22,73 +67,128 @@ function redisConfig() {
   }
   return null;
 }
-async function redisGetState(rc) {
-  const r = await fetch(rc.url + '/get/' + encodeURIComponent(REDIS_KEY), {
-    headers: { authorization: `Bearer ${rc.token}` },
-  });
-  if (!r.ok) throw new Error('Redis read failed: HTTP ' + r.status);
-  const j = await r.json();
-  if (!j || j.result === null || j.result === undefined) return null; // missing key = fresh state
-  return JSON.parse(j.result);
-}
-async function redisSetState(rc, db) {
-  const r = await fetch(rc.url + '/set/' + encodeURIComponent(REDIS_KEY), {
+// One HTTP round trip per load/save regardless of collection count: commands
+// are sent through the Upstash pipeline endpoint as [verb, key, value?].
+async function redisPipeline(rc, commands) {
+  const r = await fetch(rc.url + '/pipeline', {
     method: 'POST',
-    headers: { authorization: `Bearer ${rc.token}`, 'content-type': 'text/plain' },
-    body: JSON.stringify(db),
+    headers: { authorization: `Bearer ${rc.token}`, 'content-type': 'application/json' },
+    body: JSON.stringify(commands),
   });
-  if (!r.ok) throw new Error('Redis write failed: HTTP ' + r.status);
+  if (!r.ok) throw new Error('Redis request failed: HTTP ' + r.status);
+  const j = await r.json();
+  if (!Array.isArray(j) || j.length !== commands.length) throw new Error('Redis pipeline reply malformed');
+  for (const item of j) if (item && item.error) throw new Error('Redis command failed: ' + item.error);
+  return j.map((item) => (item ? item.result : null));
+}
+function parseCollection(raw, name) {
+  if (raw === null || raw === undefined) return emptyCollection(name);
+  const v = JSON.parse(raw);
+  return v === null || v === undefined ? emptyCollection(name) : v;
+}
+
+// Redis split-layout state for this instance: whether the rp:meta marker has
+// been confirmed, and the per-collection JSON this instance last read or
+// wrote (the baseline that makes write-back dirty-only).
+let redisSplitKnown = false;
+let savedJson = null;
+function snapshot(db) {
+  savedJson = {};
+  for (const name of COLLECTION_NAMES) savedJson[name] = JSON.stringify(db[name]);
+}
+
+async function redisLoad(rc) {
+  if (redisSplitKnown) {
+    const results = await redisPipeline(rc, COLLECTION_NAMES.map((n) => ['GET', REDIS_COL_PREFIX + n]));
+    const db = {};
+    COLLECTION_NAMES.forEach((n, i) => { db[n] = parseCollection(results[i], n); });
+    return db;
+  }
+  // Split not yet confirmed on this instance: probe the marker, the legacy
+  // document and every collection key in a single pipeline.
+  const probes = [['GET', REDIS_META_KEY], ['GET', REDIS_KEY],
+    ...COLLECTION_NAMES.map((n) => ['GET', REDIS_COL_PREFIX + n])];
+  const results = await redisPipeline(rc, probes);
+  if (results[0] === SPLIT_MARKER) {
+    redisSplitKnown = true;
+    const db = {};
+    COLLECTION_NAMES.forEach((n, i) => { db[n] = parseCollection(results[i + 2], n); });
+    return db;
+  }
+  const legacyRaw = results[1];
+  if (legacyRaw !== null && legacyRaw !== undefined) {
+    // Migration: split the legacy document into collection keys. rp:state is
+    // never written or deleted — it stays as the pre-split backup. The marker
+    // is written LAST, so a crash mid-migration leaves the marker absent and
+    // the next read simply re-runs the same split of the same document
+    // (idempotent; two instances doing it write identical data).
+    const legacy = JSON.parse(legacyRaw);
+    const db = {};
+    for (const n of COLLECTION_NAMES) {
+      db[n] = legacy[n] === undefined || legacy[n] === null ? emptyCollection(n) : legacy[n];
+    }
+    const cmds = COLLECTION_NAMES.map((n) => ['SET', REDIS_COL_PREFIX + n, JSON.stringify(db[n])]);
+    cmds.push(['SET', REDIS_META_KEY, SPLIT_MARKER]);
+    await redisPipeline(rc, cmds);
+    redisSplitKnown = true;
+    return db;
+  }
+  // Fresh store: no marker, no legacy document. Serve whatever the collection
+  // keys hold (normally nothing yet) WITHOUT marking the split known, so a
+  // legacy document appearing later (e.g. an older instance still draining
+  // during a deploy) would still be migrated instead of shadowed.
+  const db = {};
+  COLLECTION_NAMES.forEach((n, i) => { db[n] = parseCollection(results[i + 2], n); });
+  return db;
+}
+
+async function redisSave(rc, db) {
+  // Dirty-only write-back: a collection is SET only when its JSON differs
+  // from what this instance last read or wrote. A save from an instance
+  // holding a stale assembled state therefore cannot clobber collections it
+  // never touched — the pre-split whole-document write could and did.
+  const cmds = [];
+  for (const n of COLLECTION_NAMES) {
+    const s = JSON.stringify(db[n]);
+    if (!savedJson || savedJson[n] !== s) cmds.push(['SET', REDIS_COL_PREFIX + n, s]);
+  }
+  if (!redisSplitKnown) cmds.push(['SET', REDIS_META_KEY, SPLIT_MARKER]); // marker last
+  if (cmds.length) await redisPipeline(rc, cmds);
+  redisSplitKnown = true;
+  snapshot(db);
 }
 
 // ---------- persistence ----------
-let cache = null, cacheAt = 0;
-async function readDB() {
-  if (cache && Date.now() - cacheAt < 3000) return cache;
-  let db = null;
-  const rc = LOCAL_STORE ? null : redisConfig();
-  if (LOCAL_STORE) {
-    try { db = JSON.parse(fs.readFileSync(LOCAL_STORE, 'utf8')); } catch (e) { /* fall through to fresh db */ }
-  } else if (rc) {
-    db = await redisGetState(rc);
-  } else if (TOKEN) {
-    try {
-      const list = await fetch('https://blob.vercel-storage.com/?prefix=state/', {
-        headers: { authorization: `Bearer ${TOKEN}` },
-      });
-      if (list.ok) {
-        const j = await list.json();
-        const b = (j.blobs || []).find((x) => x.pathname === BLOB_PATH);
-        if (b) {
-          const r = await fetch(b.downloadUrl || b.url, { headers: { authorization: `Bearer ${TOKEN}` } });
-          if (r.ok) db = await r.json();
-        }
-      }
-    } catch (e) { /* fall through to fresh db */ }
-  }
-  if (!db) db = { users: [], sessions: {}, books: {}, clubs: [], invites: [], ratings: {}, progress: {} };
-  db.progress = db.progress || {};
-  (db.clubs || []).forEach((club) => {
-    club.finished = club.finished || {};
-    club.rsvps = club.rsvps || {};
-    club.availability = club.availability || {};
-    club.library = club.library || [];
-    club.meeting = { type: 'online', link: '', address: '', date: '', ...(club.meeting || {}) };
-  });
-  cache = db; cacheAt = Date.now();
-  return db;
+// Backend adapters behind readDB/writeDB. Selection is unchanged: local file
+// seam first, then Redis, then Blob. Only the Redis adapter uses the
+// per-collection layout; the file seam and the Blob fallback keep their
+// whole-document behavior.
+function fileLoad() {
+  try { return JSON.parse(fs.readFileSync(LOCAL_STORE, 'utf8')); } catch (e) { return null; }
 }
-async function writeDB(db) {
-  cache = db; cacheAt = Date.now();
-  if (LOCAL_STORE) {
-    try {
-      fs.mkdirSync(path.dirname(LOCAL_STORE), { recursive: true });
-      fs.writeFileSync(LOCAL_STORE, JSON.stringify(db));
-    } catch (e) { }
-    return;
-  }
-  const rc = redisConfig();
-  if (rc) { await redisSetState(rc, db); return; }
-  if (!TOKEN) return;
+function fileSave(db) {
+  try {
+    fs.mkdirSync(path.dirname(LOCAL_STORE), { recursive: true });
+    fs.writeFileSync(LOCAL_STORE, JSON.stringify(db));
+  } catch (e) { }
+}
+async function blobLoad() {
+  try {
+    const list = await fetch('https://blob.vercel-storage.com/?prefix=state/', {
+      headers: { authorization: `Bearer ${TOKEN}` },
+    });
+    if (list.ok) {
+      const j = await list.json();
+      const b = (j.blobs || []).find((x) => x.pathname === BLOB_PATH);
+      if (b) {
+        const r = await fetch(b.downloadUrl || b.url, { headers: { authorization: `Bearer ${TOKEN}` } });
+        if (r.ok) return await r.json();
+      }
+    }
+  } catch (e) { /* fall through to fresh db */ }
+  return null;
+}
+async function blobSave(db) {
   await fetch('https://blob.vercel-storage.com/' + BLOB_PATH, {
     method: 'PUT',
     headers: {
@@ -102,9 +202,69 @@ async function writeDB(db) {
   });
 }
 
+let cache = null, cacheAt = 0;
+async function readDB() {
+  if (cache && Date.now() - cacheAt < 3000) return cache;
+  let db = null;
+  const rc = LOCAL_STORE ? null : redisConfig();
+  if (LOCAL_STORE) db = fileLoad();
+  else if (rc) db = await redisLoad(rc);
+  else if (TOKEN) db = await blobLoad();
+  if (!db) db = defaultDB();
+  normalizeDB(db);
+  if (rc) snapshot(db); // dirty-detection baseline for the Redis write-back
+  cache = db; cacheAt = Date.now();
+  return db;
+}
+async function writeDB(db) {
+  cache = db; cacheAt = Date.now();
+  if (LOCAL_STORE) { fileSave(db); return; }
+  const rc = redisConfig();
+  if (rc) { await redisSave(rc, db); return; }
+  if (!TOKEN) return;
+  await blobSave(db);
+}
+
 // ---------- helpers ----------
 const uid = () => crypto.randomBytes(9).toString('hex');
 const nowISO = () => new Date().toISOString();
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const escHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+// Sends one club-invite email via Resend. Only called when RESEND_API_KEY is
+// configured; returns {sent} or {sent:false, error} — a failed send never
+// throws, so it can never fail the createInvite request itself.
+async function sendInviteEmail(apiKey, { to, inviterLabel, clubName, link }) {
+  const base = process.env.RESEND_API_BASE || 'https://api.resend.com';
+  const subject = `You're invited to join ${clubName} on Reading Peeps`;
+  const text = [
+    `${inviterLabel} invited you to join ${clubName} on Reading Peeps.`,
+    '',
+    `Join the club here: ${link}`,
+    '',
+    'This link works once, and only for the email address it was sent to.',
+  ].join('\n');
+  const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#fff9f1;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#3a1b2e">
+  <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;padding:28px;border:1px solid #f0e2d4">
+    <p style="margin:0 0 12px;font-size:18px"><strong>${escHtml(inviterLabel)}</strong> invited you to join <strong>${escHtml(clubName)}</strong> on Reading Peeps.</p>
+    <p style="margin:20px 0"><a href="${escHtml(link)}" style="display:inline-block;background:#c93a54;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600">Join the club</a></p>
+    <p style="margin:0 0 8px;font-size:14px">Or open this link: <a href="${escHtml(link)}" style="color:#c93a54">${escHtml(link)}</a></p>
+    <p style="margin:0;font-size:13px;color:#8a6d7d">This link works once, and only for the email address it was sent to.</p>
+  </div>
+</body></html>`;
+  try {
+    const r = await fetch(base + '/emails', {
+      method: 'POST',
+      headers: { authorization: 'Bearer ' + apiKey, 'content-type': 'application/json' },
+      body: JSON.stringify({ from: 'Reading Peeps <invites@readingpeeps.com>', to: [to], subject, text, html }),
+    });
+    if (r.ok) return { sent: true };
+    let msg = 'Email service returned ' + r.status;
+    try { const j = await r.json(); if (j && (j.message || j.error)) msg = String(j.message || j.error); } catch (e) { }
+    return { sent: false, error: msg };
+  } catch (e) {
+    return { sent: false, error: 'Email send failed: ' + (e && e.message ? e.message : 'network error') };
+  }
+}
 function hashPw(pw, salt) {
   salt = salt || crypto.randomBytes(16).toString('hex');
   return salt + ':' + crypto.scryptSync(pw, salt, 32).toString('hex');
@@ -716,10 +876,59 @@ module.exports = async (req, res) => {
         if (!club) return send(404, { error: 'Club not found' });
         const mem = club.members.find((m) => m.userId === me.id);
         if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
-        if (!body.email) return send(400, { error: 'Email needed' });
-        const inv = { id: uid(), clubId: club.id, email: body.email.toLowerCase(), token: uid() + uid(), used: false, createdBy: me.id, createdAt: nowISO() };
-        db.invites.push(inv); await writeDB(db);
-        return send(200, { inviteToken: inv.token, email: inv.email });
+        // Accept a list in any of three shapes: body.emails (array),
+        // body.emailList (comma-separated string), or legacy body.email.
+        let rawList = [];
+        if (Array.isArray(body.emails)) rawList = body.emails.flatMap((x) => String(x == null ? '' : x).split(','));
+        else if (typeof body.emailList === 'string') rawList = body.emailList.split(',');
+        else if (body.email) rawList = [String(body.email)];
+        const MAX_INVITES = 20;
+        const seen = new Set();
+        const valid = [], invalid = [], overLimit = [];
+        for (const piece of rawList) {
+          const email = piece.trim().toLowerCase();
+          if (!email) continue;
+          if (seen.has(email)) continue;
+          seen.add(email);
+          if (!EMAIL_RE.test(email)) { invalid.push({ email, error: 'invalid email' }); continue; }
+          if (valid.length >= MAX_INVITES) { overLimit.push(email); continue; }
+          valid.push(email);
+        }
+        if (!valid.length && !invalid.length && !overLimit.length) return send(400, { error: 'No valid emails' });
+        if (!valid.length && invalid.length) {
+          return send(200, { emailed: !!process.env.RESEND_API_KEY, results: invalid.map((x) => ({ email: x.email, sent: false, error: x.error })) });
+        }
+        const created = valid.map((email) => {
+          const inv = { id: uid(), clubId: club.id, email, token: uid() + uid(), used: false, createdBy: me.id, createdAt: nowISO() };
+          db.invites.push(inv);
+          return inv;
+        });
+        await writeDB(db);
+        const apiKey = process.env.RESEND_API_KEY || '';
+        const origin = 'https://' + (req.headers['x-forwarded-host'] || req.headers.host || 'www.readingpeeps.com');
+        const inviterLabel = me.name || me.email;
+        const outcomes = apiKey
+          ? await Promise.allSettled(created.map((inv) => sendInviteEmail(apiKey, {
+              to: inv.email, inviterLabel, clubName: club.name, link: `${origin}/?invite=${inv.token}`,
+            })))
+          : created.map(() => ({ status: 'fulfilled', value: { sent: false } }));
+        const results = [];
+        created.forEach((inv, i) => {
+          const o = outcomes[i];
+          if (!apiKey) results.push({ email: inv.email, inviteToken: inv.token, sent: false });
+          else if (o.status === 'fulfilled' && o.value.sent) results.push({ email: inv.email, inviteToken: inv.token, sent: true });
+          else {
+            const err = o.status === 'fulfilled' ? o.value.error : (o.reason && o.reason.message) || 'Email send failed';
+            results.push({ email: inv.email, inviteToken: inv.token, sent: false, error: err });
+          }
+        });
+        for (const x of invalid) results.push({ email: x.email, sent: false, error: x.error });
+        for (const email of overLimit) results.push({ email, sent: false, error: 'over the 20-invite limit' });
+        const payload = { emailed: !!apiKey, results };
+        // Legacy single-email callers (older native builds) read the token at
+        // the top level; keep that working when exactly one invite was made.
+        if (created.length === 1) { payload.inviteToken = created[0].token; payload.email = created[0].email; }
+        return send(200, payload);
       }
       case 'acceptInvite': {
         const inv = db.invites.find((i) => i.token === body.inviteToken);

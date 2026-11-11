@@ -1012,7 +1012,8 @@ function viewMembersPage(){
     : `<button class="small ghost" data-promote="${m.userId}">Make admin</button>`}${m.userId!==user.id?` <button class="small ghost danger" data-remove="${m.userId}" data-name="${esc(m.name)}">Remove</button>`:''}</span></div>`).join('')}
   </div>
   <div class="card"><h3 style="margin-top:0">Invite</h3>
-  <div class="row"><input type="email" id="invEmail" data-enter="invBtn" placeholder="Email to invite" class="grow"><button id="invBtn" class="small">Invite</button></div>
+  <textarea id="invEmails" rows="3" placeholder="Emails to invite, separated by commas"></textarea>
+  <div style="margin-top:8px"><button id="invBtn" class="small">Send invites</button></div>
   <div id="invOut"></div></div>`;
   $('#back').onclick = ()=>viewSettings();
   app.querySelectorAll('[data-promote]').forEach(b=>b.onclick=async()=>{ const j=await api('makeAdmin',{clubId:c.id, userId:b.dataset.promote}); currentClub=j.club; viewMembersPage(); });
@@ -1024,7 +1025,15 @@ function viewMembersPage(){
     document.getElementById('rmNo').onclick = ()=>viewMembersPage();
     document.getElementById('rmYes').onclick = async ()=>{ try{ const j=await api('removeMember',{clubId:c.id, userId:b.dataset.remove}); currentClub=j.club; await refreshClubs(); toast('Removed'); if(currentClub.role!=='admin') return viewClub(); viewMembersPage(); }catch(e){ toast(e.message); } };
   });
-  $('#invBtn').onclick=async()=>{ try{ const j=await api('createInvite',{clubId:c.id, email:$('#invEmail').value}); const link=location.origin+'/?invite='+j.inviteToken; $('#invOut').innerHTML=`<div class="muted" style="margin-top:6px">Send this link to ${esc(j.email)} (works once):</div><input type="text" readonly value="${link}" onclick="this.select()">`; }catch(e){ toast(e.message); } };
+  $('#invBtn').onclick=async()=>{ try{ const j=await api('createInvite',{clubId:c.id, emailList:$('#invEmails').value});
+    const parts=[];
+    if(j.emailed===false) parts.push(`<div class="muted" style="margin-top:6px">Email sending isn't switched on yet. Send these links yourself:</div>`);
+    for(const r of (j.results||[])){
+      if(r.sent) parts.push(`<div style="margin-top:6px">✓ Invite sent to ${esc(r.email)}</div>`);
+      else if(r.inviteToken){ const link=location.origin+'/?invite='+r.inviteToken; parts.push(`<div class="muted" style="margin-top:6px">Couldn't email ${esc(r.email)} — send this link yourself:</div><input type="text" readonly value="${link}" onclick="this.select()">`); }
+      else parts.push(`<div class="muted" style="margin-top:6px">${esc(r.email)}: ${esc(r.error||'not invited')}</div>`);
+    }
+    $('#invOut').innerHTML=parts.join(''); }catch(e){ toast(e.message); } };
 }
 function viewFrequencyPage(){
   const c = currentClub; if(!c || c.role!=='admin') return viewClub();
