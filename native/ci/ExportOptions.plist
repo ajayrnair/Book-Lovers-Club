@@ -7,7 +7,12 @@
 	<key>teamID</key>
 	<string>E5FB8K783X</string>
 	<key>signingStyle</key>
-	<string>automatic</string>
+	<string>manual</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.ajayrnair.readingpeeps</key>
+		<string>Reading Peeps App Store</string>
+	</dict>
 	<key>stripSwiftSymbols</key>
 	<true/>
 	<key>manageAppVersionAndBuildNumber</key>
