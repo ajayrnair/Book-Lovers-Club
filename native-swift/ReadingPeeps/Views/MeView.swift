@@ -76,7 +76,7 @@ struct StatsView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 ForEach(Array((club.members ?? []).enumerated()), id: \.offset) { _, m in
-                                    Text("\(m.name ?? "") \u00b7 \(m.email ?? "")\(m.role == "admin" ? " \u00b7 admin" : "")")
+                                    Text("\(m.name ?? "") · \(m.email ?? "")\(m.role == "admin" ? " · admin" : "")")
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                 }
@@ -87,7 +87,7 @@ struct StatsView: View {
                         ForEach(stats.users.list.filter { !$0.isTest }) { u in
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(u.name)
-                                Text(u.email + (u.isSuperAdmin ? " \u00b7 super admin" : ""))
+                                Text(u.email + (u.isSuperAdmin ? " · super admin" : ""))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
