@@ -29,6 +29,7 @@ const COLLECTIONS = [
   ['ratings', {}],
   ['progress', {}],
   ['notifications', []],
+  ['events', []],
 ];
 const COLLECTION_NAMES = COLLECTIONS.map(([n]) => n);
 function emptyCollection(name) {
@@ -58,7 +59,9 @@ function normalizeDB(db) {
     club.reactions = club.reactions || [];
     club.meeting = { type: 'online', link: '', address: '', date: '', ...(club.meeting || {}) };
   });
-  (db.notifications || []).forEach((n) => {
+  const userIds = new Set((db.users || []).map((u) => u.id));
+  db.notifications = (db.notifications || []).filter((n) => userIds.has(n.userId));
+  db.notifications.forEach((n) => {
     if (!n.dedupeKey) n.dedupeKey = 'legacy:' + n.id;
     if (n.readVia === undefined) n.readVia = null;
     if (!n.channels) {
@@ -974,7 +977,7 @@ module.exports = async (req, res) => {
   const SUPER_ADMIN_EMAILS = ['ajay.r.nair@gmail.com', 'hazel@readingpeeps.com'];
   const isSuperAdmin = !!me && SUPER_ADMIN_EMAILS.includes(me.email);
   const action = body.action || '';
-  const needAuth = !['signup', 'signin'].includes(action);
+  const needAuth = !['signup', 'signin', 'track'].includes(action);
   if (needAuth && !me) return send(401, { error: 'Sign in first' });
   if (me) {
     let dirty = false;
@@ -1006,6 +1009,21 @@ module.exports = async (req, res) => {
       }
       case 'signout': { delete db.sessions[token]; await writeDB(db); return send(200, { ok: true }); }
       case 'me': return send(200, { user: { id: me.id, name: me.name, email: me.email } });
+      case 'track': {
+        const name = String(body.name || '');
+        if (!/^[a-z0-9][a-z0-9_.-]{0,39}$/.test(name)) return send(400, { error: 'Event name must be a short identifier' });
+        const clean = (v, max) => (typeof v === 'string' ? v.slice(0, max) : undefined);
+        const ev = {
+          id: uid(), userId: me ? me.id : null, name,
+          page: clean(body.page, 40), feature: clean(body.feature, 40),
+          clubId: clean(body.clubId, 64), at: nowISO(),
+        };
+        Object.keys(ev).forEach((k) => { if (ev[k] === undefined) delete ev[k]; });
+        db.events.push(ev);
+        if (db.events.length > 5000) db.events.splice(0, db.events.length - 5000);
+        await writeDB(db);
+        return send(200, { ok: true });
+      }
       case 'notifications': {
         const mine = db.notifications.filter((n) => n.userId === me.id)
           .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
@@ -1049,9 +1067,31 @@ module.exports = async (req, res) => {
             }),
           };
         })();
+        const telemetryStats = (() => {
+          const all = db.events || [];
+          const byName = {}; const byPage = {}; const byFeature = {}; const perUser = {};
+          const nowMs = Date.now(); let last7 = 0; let last30 = 0; const active = new Set();
+          all.forEach((e) => {
+            byName[e.name] = (byName[e.name] || 0) + 1;
+            if (e.page) byPage[e.page] = (byPage[e.page] || 0) + 1;
+            if (e.feature) byFeature[e.feature] = (byFeature[e.feature] || 0) + 1;
+            const t = new Date(e.at).getTime();
+            if (!isNaN(t)) { if (nowMs - t < 7 * 864e5) last7++; if (nowMs - t < 30 * 864e5) last30++; }
+            if (e.userId) { active.add(e.userId); perUser[e.userId] = (perUser[e.userId] || 0) + 1; }
+          });
+          return {
+            total: all.length, last7Days: last7, last30Days: last30, activeUsers: active.size,
+            byName, byPage, byFeature,
+            byUser: Object.keys(perUser).map((userId) => {
+              const u = byId[userId];
+              return { name: u ? u.name : '(deleted account)', email: u ? u.email : '', events: perUser[userId] };
+            }),
+          };
+        })();
         return send(200, {
           scope: full ? 'full' : 'counts',
           notifications: notifStats,
+          telemetry: telemetryStats,
           users: {
             total: userList.length,
             real: userList.filter((u) => !u.isTest).length,
@@ -1079,6 +1119,7 @@ module.exports = async (req, res) => {
         Object.keys(db.ratings).forEach((k) => { if (k.startsWith(target.id + '|')) delete db.ratings[k]; });
         Object.keys(db.progress || {}).forEach((k) => { if (k.startsWith(target.id + '|')) delete db.progress[k]; });
         Object.keys(db.sessions).forEach((t) => { if (db.sessions[t] === target.id) delete db.sessions[t]; });
+        db.notifications = db.notifications.filter((n) => n.userId !== target.id);
         db.invites = db.invites.filter((i) => i.email !== target.email && i.createdBy !== target.id);
         db.users = db.users.filter((u) => u.id !== target.id);
         await writeDB(db);
@@ -1681,6 +1722,7 @@ module.exports = async (req, res) => {
         Object.keys(db.ratings).forEach((k) => { if (k.startsWith(me.id + '|')) delete db.ratings[k]; });
         Object.keys(db.progress || {}).forEach((k) => { if (k.startsWith(me.id + '|')) delete db.progress[k]; });
         Object.keys(db.sessions).forEach((t) => { if (db.sessions[t] === me.id) delete db.sessions[t]; });
+        db.notifications = db.notifications.filter((n) => n.userId !== me.id);
         db.invites = db.invites.filter((i) => i.email !== me.email && i.createdBy !== me.id);
         db.users = db.users.filter((u) => u.id !== me.id);
         await writeDB(db);
