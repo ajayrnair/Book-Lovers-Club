@@ -811,6 +811,28 @@ module.exports = async (req, res) => {
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
+      case 'shiftMeetingWeek': {
+        const club = db.clubs.find((c) => c.id === body.clubId);
+        if (!club) return send(404, { error: 'Club not found' });
+        const mem = club.members.find((m) => m.userId === me.id);
+        if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
+        const weeks = Number(body.weeks);
+        if (weeks !== 1 && weeks !== -1) return send(400, { error: 'Weeks must be 1 or -1' });
+        const oldEnd = new Date(club.cycleEnd).getTime();
+        if (isNaN(oldEnd)) return send(400, { error: 'Meeting week is not set' });
+        const delta = weeks * 7 * 864e5;
+        const newEnd = oldEnd + delta;
+        if (newEnd - Date.now() < 7 * 864e5) return send(400, { error: 'The meeting week cannot be moved into the next 7 days' });
+        club.cycleEnd = new Date(newEnd).toISOString();
+        club.meeting = { ...(club.meeting || {}), date: '' };
+        club.availability = {};
+        if (club.poll && club.poll.closesAt) {
+          const closes = new Date(club.poll.closesAt).getTime();
+          if (!isNaN(closes)) club.poll.closesAt = new Date(closes + delta).toISOString();
+        }
+        await writeDB(db);
+        return send(200, { club: publicClub(db, club, me.id) });
+      }
       case 'startPoll': {
         const club = db.clubs.find((c) => c.id === body.clubId);
         if (!club) return send(404, { error: 'Club not found' });
