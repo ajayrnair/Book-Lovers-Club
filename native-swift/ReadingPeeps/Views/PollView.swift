@@ -19,6 +19,7 @@ struct PollView: View {
                     content(club)
                 }
                 .refreshable { await load() }
+                .brandScreen()
             } else if let loadError {
                 ContentUnavailableView("Could not load the poll", systemImage: "exclamationmark.triangle", description: Text(loadError))
             } else {
@@ -179,6 +180,7 @@ struct PollView: View {
     private func vote(bookKey: String) async {
         do {
             try await APIClient.shared.callDiscard("vote", ["clubId": clubId, "bookKey": bookKey])
+            APIClient.shared.track("vote", page: "poll", feature: "poll", clubId: clubId)
             await load()
         } catch { errorMessage = errorText(error) }
     }

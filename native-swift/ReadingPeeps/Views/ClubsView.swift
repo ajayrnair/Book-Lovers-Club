@@ -86,7 +86,8 @@ struct ClubsView: View {
                 await refreshUnread()
             }
             .task { await refreshUnread() }
-            .onAppear { Task { await refreshUnread() } }
+            .onAppear { APIClient.shared.track("page_view", page: "clubs"); Task { await refreshUnread() } }
+            .brandScreen()
             .confirmationDialog(
                 "Leave \(clubToLeave?.name ?? "this club")?",
                 isPresented: Binding(get: { clubToLeave != nil }, set: { if !$0 { clubToLeave = nil } }),
@@ -156,6 +157,7 @@ struct NotificationsView: View {
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+        .brandScreen()
     }
 
     private func load() async {
@@ -164,7 +166,7 @@ struct NotificationsView: View {
             items = r.notifications
             loaded = true
             loadError = nil
-            try? await APIClient.shared.callDiscard("markNotificationsRead")
+            try? await APIClient.shared.callDiscard("markNotificationsRead", ["via": "app"])
         } catch {
             loadError = errorText(error)
             loaded = true

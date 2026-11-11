@@ -159,6 +159,7 @@ struct FindClubsView: View {
         }
         .errorAlert($errorMessage)
         .task { await search() }
+        .brandScreen()
     }
 
     @ViewBuilder
@@ -362,6 +363,7 @@ struct CreateClubView: View {
             GenrePickerSheet(selected: $genres, cap: 8)
         }
         .errorAlert($errorMessage)
+        .brandScreen()
     }
 
     private func create() async {

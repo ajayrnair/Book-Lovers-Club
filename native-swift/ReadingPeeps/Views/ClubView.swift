@@ -50,6 +50,7 @@ struct ClubView: View {
                     }
                 }
                 .refreshable { await load() }
+                .brandScreen()
             } else if let loadError {
                 ContentUnavailableView("Could not load the club", systemImage: "exclamationmark.triangle", description: Text(loadError))
             } else {
@@ -76,6 +77,7 @@ struct ClubView: View {
         }
         .task {
             app.trackUsage(clubId: clubId)
+            APIClient.shared.track("page_view", page: "club", clubId: clubId)
             await load()
         }
         .errorAlert($errorMessage)
@@ -189,16 +191,31 @@ struct ClubView: View {
                     DisclosureGroup("Ratings") {
                         ForEach(c.currentRatings, id: \.userId) { r in
                             VStack(alignment: .leading, spacing: 3) {
-                                HStack {
+                                HStack(spacing: 10) {
+                                    AvatarView(name: r.name, userId: r.userId)
                                     Text(r.userId == myId ? "You" : r.name)
+                                        .font(.body.weight(.semibold))
+                                        .lineLimit(1)
+                                    if let rating = r.rating {
+                                        Text("★ \(trimNumber(rating))")
+                                            .font(.subheadline.weight(.bold))
+                                            .foregroundStyle(Color.rpInk)
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 2)
+                                            .background(Color.rpPill)
+                                            .clipShape(Capsule())
+                                    } else {
+                                        Text("Not rated")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
                                     Spacer()
-                                    Text(r.rating != nil ? "★ \(trimNumber(r.rating!))" : "—")
-                                        .foregroundStyle(.secondary)
                                 }
                                 if r.rating != nil && r.userId != myId {
                                     ReactionChipsView(chips: r.reactions ?? []) { emoji in
                                         Task { await react(type: "rating", bookKey: current.key, subject: r.userId, emoji: emoji) }
                                     }
+                                    .padding(.leading, 44)
                                 }
                             }
                         }
@@ -219,12 +236,13 @@ struct ClubView: View {
         let current = c.current!
         let total = current.pageCount
         Section("Reading progress") {
-            HStack {
+            HStack(spacing: 10) {
+                AvatarView(name: app.user?.name ?? "You", userId: myId)
                 Text("You")
                     .font(.body.weight(.semibold))
                 Spacer()
                 Text("\(max(serverPercent, 0))%")
-                    .foregroundStyle(.secondary)
+                    .font(.body.weight(.bold))
                 Button("Update") { showingProgressEditor = true }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
@@ -258,31 +276,45 @@ struct ClubView: View {
         let entry = c.progress?.first { $0.userId == member.userId }
         let finished = (entry?.percent ?? 0) >= 100 || c.finishedBy.contains(member.userId)
         let percent = entry?.percent ?? (finished ? 100 : 0)
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 10) {
+                AvatarView(name: member.name, userId: member.userId)
                 Text(member.userId == myId ? "You" : member.name)
-                    .frame(width: 92, alignment: .leading)
+                    .font(.body.weight(.semibold))
                     .lineLimit(1)
-                ProgressView(value: Double(percent), total: 100)
-                    .tint(finished ? .green : .rpTeal)
-                Text(progressLabel(entry: entry, finished: finished))
-                    .font(.caption)
-                    .foregroundStyle(finished ? .green : .secondary)
-                    .frame(width: 96, alignment: .trailing)
+                Spacer(minLength: 8)
+                progressStat(entry: entry, finished: finished)
             }
+            ProgressView(value: Double(percent), total: 100)
+                .tint(finished ? .green : .rpTeal)
             if finished && member.userId != myId, let current = c.current {
                 ReactionChipsView(chips: entry?.reactions ?? []) { emoji in
                     Task { await react(type: "finish", bookKey: current.key, subject: member.userId, emoji: emoji) }
                 }
+                .padding(.leading, 44)
             }
         }
     }
 
-    private func progressLabel(entry: ProgressEntry?, finished: Bool) -> String {
-        if finished { return "Finished" }
-        guard let entry else { return "Not started" }
-        if let page = entry.page { return "p. \(page) · \(entry.percent)%" }
-        return "\(entry.percent)%"
+    @ViewBuilder
+    private func progressStat(entry: ProgressEntry?, finished: Bool) -> some View {
+        if finished {
+            Text("Finished")
+                .font(.body.weight(.bold))
+                .foregroundStyle(.green)
+        } else if let entry {
+            HStack(spacing: 0) {
+                Text("\(entry.percent)%")
+                    .font(.body.weight(.bold))
+                if let page = entry.page {
+                    Text(" · p. \(page)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } else {
+            Text("Not started")
+                .foregroundStyle(.secondary)
+        }
     }
 
     // MARK: - next book
@@ -384,8 +416,17 @@ struct ClubView: View {
                 }
                 HStack {
                     TextField("Add a question for the group", text: $qGroupText)
-                    Button("Add") { Task { await addQuestion(scope: "group") } }
-                        .disabled(qGroupText.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button { Task { await addQuestion(scope: "group") } } label: {
+                        Image(systemName: "plus")
+                            .font(.body.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 36, height: 36)
+                            .background(Color.rpCoral)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(qGroupText.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .opacity(qGroupText.trimmingCharacters(in: .whitespaces).isEmpty ? 0.4 : 1)
                 }
                 Text("Yours, only you see these")
                     .font(.subheadline)
@@ -406,8 +447,17 @@ struct ClubView: View {
                 }
                 HStack {
                     TextField("Add a private question", text: $qMineText)
-                    Button("Add") { Task { await addQuestion(scope: "private") } }
-                        .disabled(qMineText.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button { Task { await addQuestion(scope: "private") } } label: {
+                        Image(systemName: "plus")
+                            .font(.body.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 36, height: 36)
+                            .background(Color.rpCoral)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(qMineText.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .opacity(qMineText.trimmingCharacters(in: .whitespaces).isEmpty ? 0.4 : 1)
                 }
             }
         }
@@ -722,6 +772,7 @@ struct ClubView: View {
             try await withRetry {
                 try await APIClient.shared.callDiscard("setProgress", ["clubId": c.id, "bookKey": current.key, "percent": clamped])
             }
+            APIClient.shared.track("progress_set", page: "club", feature: "progress", clubId: c.id)
             await load()
         } catch { present(error) }
     }
@@ -733,6 +784,7 @@ struct ClubView: View {
             try await withRetry {
                 try await APIClient.shared.callDiscard("setProgress", ["clubId": c.id, "bookKey": current.key, "page": clamped])
             }
+            APIClient.shared.track("progress_set", page: "club", feature: "progress", clubId: c.id)
             await load()
         } catch { present(error) }
     }

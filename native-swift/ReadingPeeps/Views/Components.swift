@@ -36,6 +36,55 @@ struct CoverView: View {
     }
 }
 
+// ---------- avatars + brand screen ----------
+
+/// Initials avatar in the shared palette. The color comes from the same
+/// stable hash of the user id the web app uses, so a person is the same
+/// color on the web and in the app.
+struct AvatarView: View {
+    let name: String
+    let userId: String
+    var size: CGFloat = 34
+
+    private var initials: String {
+        let parts = name.split(separator: " ")
+        guard let first = parts.first else { return "?" }
+        if parts.count > 1, let last = parts.last {
+            return (String(first.prefix(1)) + String(last.prefix(1))).uppercased()
+        }
+        return String(first.prefix(1)).uppercased()
+    }
+
+    private var color: Color {
+        var h: UInt32 = 0
+        for u in userId.unicodeScalars { h = h &* 31 &+ u.value }
+        return Color.rpAvatarColors[Int(h % UInt32(Color.rpAvatarColors.count))]
+    }
+
+    var body: some View {
+        Text(initials)
+            .font(.system(size: size * 0.38, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: size, height: size)
+            .background(color)
+            .clipShape(Circle())
+    }
+}
+
+/// The brand screen treatment: the web app's cream page behind white
+/// cards. Apply to a screen's root list or container.
+struct BrandScreen: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .scrollContentBackground(.hidden)
+            .background(Color.rpCream)
+    }
+}
+
+extension View {
+    func brandScreen() -> some View { modifier(BrandScreen()) }
+}
+
 // ---------- ratings text ----------
 
 private func fmtCount(_ n: Int) -> String {

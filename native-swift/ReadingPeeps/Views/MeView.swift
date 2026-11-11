@@ -33,6 +33,7 @@ struct MeView: View {
                 }
             }
             .navigationTitle("Me")
+            .brandScreen()
             .errorAlert($errorMessage)
             .confirmationDialog("Delete your account?", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Delete account", role: .destructive) {

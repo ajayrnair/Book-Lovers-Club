@@ -55,4 +55,16 @@ extension Color {
     static let rpViolet = Color(red: 139.0 / 255.0, green: 92.0 / 255.0, blue: 246.0 / 255.0)
     /// Teal accent (#17a398): reading progress.
     static let rpTeal = Color(red: 23.0 / 255.0, green: 163.0 / 255.0, blue: 152.0 / 255.0)
+    /// Cream page background (#fff9f1), the web app's page color.
+    static let rpCream = Color(red: 255.0 / 255.0, green: 249.0 / 255.0, blue: 241.0 / 255.0)
+    /// Ink text color (#3a1b2e), the web app's plum-brown text.
+    static let rpInk = Color(red: 58.0 / 255.0, green: 27.0 / 255.0, blue: 46.0 / 255.0)
+    /// Pale pink pill background (#f7e3ee) for rating pills.
+    static let rpPill = Color(red: 247.0 / 255.0, green: 227.0 / 255.0, blue: 238.0 / 255.0)
+    /// Avatar palette in the web app's order: coral, violet, teal, blue, rose.
+    static let rpAvatarColors: [Color] = [
+        rpCoral, rpViolet, rpTeal,
+        Color(red: 27.0 / 255.0, green: 143.0 / 255.0, blue: 168.0 / 255.0),
+        Color(red: 249.0 / 255.0, green: 93.0 / 255.0, blue: 106.0 / 255.0),
+    ]
 }

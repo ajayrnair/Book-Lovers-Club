@@ -83,7 +83,9 @@ struct AuthView: View {
                     .disabled(busy)
                 }
             }
+            .scrollContentBackground(.hidden)
         }
+        .background(Color.rpCream)
     }
 
     private var formValid: Bool {

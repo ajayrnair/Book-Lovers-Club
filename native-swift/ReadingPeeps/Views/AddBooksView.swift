@@ -43,6 +43,7 @@ struct AddBooksView: View {
                         }
                         resultsSection
                     }
+                    .brandScreen()
                 }
             }
             .navigationTitle("Add books")

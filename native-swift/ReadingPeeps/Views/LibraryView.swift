@@ -25,6 +25,7 @@ struct LibraryView: View {
                     }
                 }
                 .refreshable { await load() }
+                .brandScreen()
             } else if let loadError {
                 ContentUnavailableView("Could not load the library", systemImage: "exclamationmark.triangle", description: Text(loadError))
             } else {

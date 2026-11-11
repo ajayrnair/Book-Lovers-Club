@@ -62,6 +62,7 @@ struct ClubSettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .brandScreen()
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .errorAlert($errorMessage)
@@ -185,6 +186,7 @@ struct MembersView: View {
             }
         }
         .navigationTitle("Members")
+        .brandScreen()
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .errorAlert($errorMessage)
