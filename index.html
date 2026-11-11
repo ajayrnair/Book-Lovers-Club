@@ -768,7 +768,6 @@ function myProgressHTML(c){
   const pct = mine ? mine.percent : (c.myFinished ? 100 : 0);
   const page = (mine && mine.page !== null && mine.page !== undefined) ? mine.page : (total ? Math.round(pct / 100 * total) : null);
   let h = `<div class="prog" id="myProg">
-    <div style="font-size:15px"><b>You</b></div>
     <input type="range" id="progSlider" min="0" max="100" step="1" value="${pct}" aria-label="Your reading progress">
     <div class="pinputs">`;
   if(total){
@@ -794,6 +793,9 @@ function memberProgressHTML(c){
         ? `<span class="pstat">${p.percent}%${(p.page !== null && p.page !== undefined) ? ` <span class="pg">· p. ${p.page}</span>` : ''}</span>`
         : '<span class="pstat" style="color:var(--muted);font-weight:500">Not started</span>');
     const row = `<div class="prow"><div class="prow-top">${avatarHTML(m.name, m.userId)}<span class="pname">${m.userId===user.id ? 'You' : esc(m.name)}</span>${stat}</div><div class="progBar"><i style="width:${w}%"></i></div></div>`;
+    if(m.userId===user.id){
+      return row + myProgressHTML(c);
+    }
     if(isFin && m.userId!==user.id && p){
       return row + `<div style="margin:1px 0 5px 44px">${reactionHTML(p.reactions || [], `data-rtype="finish" data-rbook="${esc(c.current.key)}" data-rsubject="${m.userId}"`)}</div>`;
     }
@@ -841,7 +843,6 @@ function currentSection(c){
     if(c.lastResult && c.lastResult.winner && c.current && c.lastResult.winner === c.current.key){
       h += `<div style="margin-top:6px"><div class="muted">Won the club vote</div><div style="margin-top:2px">${reactionHTML(c.pollReactions || [], 'data-rtype="poll"')}</div></div>`;
     }
-    h += myProgressHTML(c);
     h += memberProgressHTML(c);
     h += `<div class="row" style="margin-top:8px"><button class="small ic ${c.myFinished?'':'ghost'}" id="finBtn">${c.myFinished?icon('check',16)+' Finished':'I finished reading'}</button>
       <span class="muted">${fin.length} of ${c.members.length} finished</span></div>

@@ -241,17 +241,6 @@ struct ClubView: View {
         let current = c.current!
         let total = current.pageCount
         Section {
-            HStack(spacing: 10) {
-                AvatarView(name: app.user?.name ?? "You", userId: myId)
-                Text("You")
-                    .font(.body.weight(.semibold))
-                Spacer()
-                Text("\(max(serverPercent, 0))%")
-                    .font(.body.weight(.bold))
-                Button("Update") { showingProgressEditor = true }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-            }
             ForEach(orderedMembers(c), id: \.userId) { member in
                 memberProgressRow(c, member: member)
             }
@@ -290,6 +279,11 @@ struct ClubView: View {
                     .lineLimit(1)
                 Spacer(minLength: 8)
                 progressStat(entry: entry, finished: finished)
+                if member.userId == myId {
+                    Button("Update") { showingProgressEditor = true }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
             }
             ProgressView(value: Double(percent), total: 100)
                 .tint(finished ? .green : .rpTeal)
