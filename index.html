@@ -143,7 +143,7 @@
   .reactions{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap}
   .rchip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:1px 8px;font-size:13px;line-height:1.5;cursor:pointer;color:inherit;font-family:inherit}
   .rchip.mine{background:#ffe3da;border-color:#ff8a66}
-  .rchip[data-radd]{font-size:15px;line-height:1.25;padding:2px 8px}
+  .rchip[data-radd]{line-height:1;padding:4px 8px}
   .bellbadge{background:#c93a54;color:#fff;border-radius:999px;padding:0 6px;font-size:12px;font-weight:700;margin-left:4px}
 </style>
 </head>
@@ -881,7 +881,7 @@ const REACTION_EMOJIS = ['❤️','👏','🔥','😮','😂','🎉'];
 function reactionHTML(chips, attrs){
   const chipsH = (chips||[]).map(ch=>`<button class="rchip ${ch.mine?'mine':''}" ${attrs} data-emoji="${ch.emoji}" title="${esc((ch.names||[]).join(', '))}">${ch.emoji} ${ch.count}</button>`).join('');
   const palette = REACTION_EMOJIS.map(e=>`<button class="rchip" ${attrs} data-emoji="${e}">${e}</button>`).join('');
-  return `<span class="reactions">${chipsH}<span class="rpal hide" style="display:none;gap:4px">${palette}</span><button class="rchip" data-radd aria-label="Add a reaction">🙂</button></span>`;
+  return `<span class="reactions">${chipsH}<span class="rpal hide" style="display:none;gap:4px">${palette}</span><button class="rchip" data-radd aria-label="Add a reaction"><svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:-2px" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="10" r="1.15" fill="currentColor"/><circle cx="15" cy="10" r="1.15" fill="currentColor"/><path d="M8 14.2 Q12 17.4 16 14.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></span>`;
 }
 function discussionSection(c){
   if(!c.current) return '';
