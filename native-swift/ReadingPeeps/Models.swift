@@ -271,6 +271,48 @@ struct StatsResponse: Codable, Equatable {
     let scope: String
     let users: StatsUsers
     let clubs: StatsClubs
+    let notifications: StatsNotifications?
+    let telemetry: StatsTelemetry?
+}
+
+struct StatsNotifications: Codable, Equatable {
+    let total: Int
+    let read: Int
+    let unread: Int
+    let byType: [String: Int]
+    let email: [String: Int]
+    let byUser: [StatsNotificationUser]
+}
+
+struct StatsNotificationUser: Codable, Equatable {
+    let name: String
+    let email: String
+    let delivered: Int
+    let read: Int
+}
+
+struct StatsTelemetry: Codable, Equatable {
+    let total: Int
+    let last7Days: Int
+    let last30Days: Int
+    let activeUsers: Int
+    let byName: [String: Int]
+    let byPage: [String: Int]
+    let byFeature: [String: Int]
+    let byDay: [StatsTelemetryDay]
+    let byUser: [StatsTelemetryUser]
+}
+
+struct StatsTelemetryDay: Codable, Equatable, Identifiable {
+    var id: String { day }
+    let day: String
+    let count: Int
+}
+
+struct StatsTelemetryUser: Codable, Equatable {
+    let name: String
+    let email: String
+    let events: Int
 }
 
 struct StatsUsers: Codable, Equatable {

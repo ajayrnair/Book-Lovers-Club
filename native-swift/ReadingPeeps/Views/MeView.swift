@@ -67,6 +67,19 @@ struct StatsView: View {
                         LabeledContent("Test accounts", value: "\(stats.users.test)")
                         LabeledContent("Clubs", value: "\(stats.clubs.total)")
                     }
+                    if let n = stats.notifications {
+                        Section("Notifications") {
+                            LabeledContent("Delivered", value: "\(n.total)")
+                            LabeledContent("Read", value: "\(n.read)")
+                            LabeledContent("Email sent", value: "\(n.email["sent"] ?? 0)")
+                            if (n.email["failed"] ?? 0) > 0 {
+                                LabeledContent("Email failed", value: "\(n.email["failed"] ?? 0)")
+                            }
+                        }
+                    }
+                    if let t = stats.telemetry {
+                        telemetrySection(t)
+                    }
                     Section("Clubs") {
                         ForEach(Array(stats.clubs.list.enumerated()), id: \.offset) { _, club in
                             VStack(alignment: .leading, spacing: 2) {
@@ -122,6 +135,71 @@ struct StatsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .errorAlert($errorMessage)
         .task { await load() }
+        .brandScreen()
+    }
+
+    @ViewBuilder
+    private func telemetrySection(_ t: StatsTelemetry) -> some View {
+        Section("Usage") {
+            LabeledContent("Events", value: "\(t.total)")
+            LabeledContent("Last 7 days", value: "\(t.last7Days)")
+            LabeledContent("Active people", value: "\(t.activeUsers)")
+        }
+        Section("Last 14 days") {
+            let maxDay = max(1, t.byDay.map(\.count).max() ?? 0)
+            HStack(alignment: .bottom, spacing: 4) {
+                ForEach(t.byDay) { d in
+                    VStack(spacing: 3) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.rpCoral)
+                            .frame(height: max(3, 44 * CGFloat(d.count) / CGFloat(maxDay)))
+                        Text(String(d.day.suffix(2)))
+                            .font(.system(size: 8))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        barSection("By page", t.byPage)
+        barSection("By feature", t.byFeature)
+        barSection("By event", t.byName)
+        if !t.byUser.isEmpty {
+            Section("People") {
+                ForEach(Array(t.byUser.enumerated()), id: \.offset) { _, u in
+                    LabeledContent(u.name, value: "\(u.events)")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func barSection(_ title: String, _ values: [String: Int]) -> some View {
+        if !values.isEmpty {
+            let sorted = values.sorted { $0.value > $1.value }
+            let maxV = max(1, sorted.first?.value ?? 0)
+            Section(title) {
+                ForEach(Array(sorted.enumerated()), id: \.offset) { _, pair in
+                    HStack(spacing: 8) {
+                        Text(pair.key)
+                            .font(.subheadline)
+                            .frame(width: 110, alignment: .leading)
+                            .lineLimit(1)
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Color.rpPill)
+                                Capsule().fill(Color.rpCoral)
+                                    .frame(width: geo.size.width * CGFloat(pair.value) / CGFloat(maxV))
+                            }
+                        }
+                        .frame(height: 10)
+                        Text("\(pair.value)")
+                            .font(.subheadline.weight(.bold))
+                    }
+                }
+            }
+        }
     }
 
     private func load() async {
