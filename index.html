@@ -48,6 +48,10 @@
   .book{display:flex;flex-wrap:wrap;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
   .book:last-child{border-bottom:0}
   .cover{width:50px;height:74px;object-fit:cover;border-radius:6px;background:#f3e2d3;flex:none}
+  .syn{margin-top:6px}
+  .syn p{margin:0;font-size:14px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .syn.open p{display:block}
+  .synbtn{background:none;border:0;padding:3px 0 0;color:#c93a54;font-size:13px;font-weight:600;cursor:pointer}
   .stars{color:var(--accent2);font-size:13px}
   nav{position:fixed;bottom:0;left:0;right:0;background:rgba(46,14,40,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid rgba(255,255,255,.09);display:flex;z-index:10;padding-bottom:env(safe-area-inset-bottom)}
   nav button{flex:1;background:none;color:#d9a8c2;border-radius:0;padding:8px 0 7px;min-height:52px;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:2px}
@@ -193,6 +197,53 @@ let addSel = new Map(); // bookKey-from-search index -> data
 let searchResults = [];
 let addReturn = null; // 'library' when Add Books was opened from a club library page
 
+// ---------- router ----------
+let routeNav = false; // true while rendering from the URL (deep link or back/forward)
+let navBoot = true;   // the boot landing replaces the initial entry instead of pushing
+let routeSeq = 0;
+function nav(path){
+  if(location.pathname === path) return;
+  if(routeNav || navBoot) history.replaceState({rpi: routeSeq}, '', path);
+  else history.pushState({rpi: ++routeSeq}, '', path);
+}
+function navReplace(path){ if(location.pathname !== path) history.replaceState({rpi: routeSeq}, '', path); }
+function backTo(fallback){ if(history.state && history.state.rpi > 0) history.back(); else fallback(); }
+async function ensureClub(id){
+  if(currentClub && currentClub.id === id) return true;
+  try{ await openClub(id); return true; }catch(e){ return false; }
+}
+async function dispatchRoute(){
+  const p = location.pathname;
+  routeNav = true;
+  try{
+    if(!user){ viewAuth(); return; }
+    let m;
+    if(p === '/' || p === '/clubs') viewHome();
+    else if(p === '/explore'){ xpTab = 'find'; viewExplore(); }
+    else if(p === '/explore/create'){ xpTab = 'create'; viewExplore(); }
+    else if(p === '/add'){ addReturn = null; setTab('add'); viewAdd(); }
+    else if(p === '/me') viewMe();
+    else if(p === '/me/stats') viewStats();
+    else if(p === '/notifications') viewNotifications();
+    else if(m = p.match(/^\/club\/([\w-]+)\/settings\/(members|frequency|discussion|delete)\/?$/)){
+      if(await ensureClub(m[1])) ({members: viewMembersPage, frequency: viewFrequencyPage, discussion: viewDiscussionTemplatePage, delete: viewDeleteClubPage})[m[2]]();
+      else viewHome();
+    }
+    else if(m = p.match(/^\/club\/([\w-]+)\/(library|poll|settings|add)\/?$/)){
+      if(await ensureClub(m[1])){
+        if(m[2] === 'library') viewLibrary();
+        else if(m[2] === 'poll') viewPoll();
+        else if(m[2] === 'settings') viewSettings();
+        else { addReturn = 'library'; setTab('add'); viewAdd(m[1]); }
+      }
+      else viewHome();
+    }
+    else if(m = p.match(/^\/club\/([\w-]+)\/?$/)){ if(await ensureClub(m[1])) viewClub(); else viewHome(); }
+    else viewHome();
+  } finally { routeNav = false; }
+}
+window.addEventListener('popstate', (e)=>{ routeSeq = (e.state && e.state.rpi) || 0; if(user) dispatchRoute(); });
+
 const GENRES = ['Fiction','Mystery','Thriller','Science Fiction','Fantasy','Romance','Horror','Classics','Poetry','History','Biography','Memoir','Science','Self Development','Young Adult','Comics and Graphic Novels'];
 const AUDIENCES = ['Kids','Teens','Young adults','Adults','Seniors'];
 const PLACES = [
@@ -285,6 +336,7 @@ function paintStars(el, v){
 function viewAuth(msg=''){
   track('page_view', {page:'auth'});
   disarmClubNav();
+  navReplace('/');
   $('#tabs').classList.add('hide'); $('#signOut').classList.add('hide'); $('#bell').classList.add('hide');
   const gLogo = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-.95.66-2.23 1.08-4.07 1.08-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.21c-.25-.66-.38-1.4-.38-2.21s.14-1.55.38-2.21V6.7H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.3l3.98-3.09z"/><path fill="#EA4335" d="M12 4.83c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.21 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.7l3.98 3.09C6.22 6.94 8.87 4.83 12 4.83z"/></svg>';
   app.innerHTML = `
@@ -337,10 +389,14 @@ async function boot(){
   $('#tabs').classList.remove('hide'); $('#signOut').classList.remove('hide'); $('#bell').classList.remove('hide');
   refreshBell();
   await refreshClubs();
-  if(currentClub) return viewClub();
-  const firstId = clubOrder[0];
-  if(firstId){ try{ return await openClub(firstId); }catch(e){ /* stale club: fall through to the list */ } }
-  viewHome();
+  history.replaceState({rpi: 0}, '', location.pathname);
+  try{
+    if(location.pathname !== '/') return await dispatchRoute();
+    if(currentClub) return viewClub();
+    const firstId = clubOrder[0];
+    if(firstId){ try{ return await openClub(firstId); }catch(e){ /* stale club: fall through to the list */ } }
+    return viewHome();
+  } finally { navBoot = false; }
 }
 async function refreshClubs(){ const j = await api('myClubs'); myClubs = j.clubs; clubOrder = usageOrder(myClubs).map(c=>c.id); }
 $('#signOut').onclick = async ()=>{ try{ await api('signout'); }catch(e){} token=''; user=null; currentClub=null; localStorage.removeItem('blc_token'); viewAuth(); };
@@ -355,13 +411,14 @@ async function refreshBell(){
 }
 async function viewNotifications(){
   track('page_view', {page:'notifications'});
+  nav('/notifications');
   let j;
   try{ j = await api('notifications'); }catch(e){ toast(e.message); return; }
   const list = j.notifications || [];
   app.innerHTML = `<button class="ghost small" id="nBack">‹ Back</button>
   <h2>Notifications</h2>
   ${list.length ? list.map(n=>`<div class="card" style="margin-bottom:8px"><b>${esc(n.title)}</b><div style="margin-top:2px">${esc(n.body)}</div><div class="muted" style="margin-top:4px;font-size:13px">${new Date(n.createdAt).toLocaleString(undefined,{month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})}</div></div>`).join('') : '<div class="card muted">Nothing yet. Voting and meeting updates will land here.</div>'}`;
-  $('#nBack').onclick = ()=>{ if(currentClub) viewClub(); else viewHome(); };
+  $('#nBack').onclick = ()=>backTo(()=>{ if(currentClub) viewClub(); else viewHome(); });
   try{ await api('markNotificationsRead', {via:'web'}); }catch(e){}
   paintBell(0);
 }
@@ -373,6 +430,7 @@ function setTab(t){ tab=t; document.querySelectorAll('#tabs button').forEach(x=>
 async function viewHome(){
   track('page_view', {page:'clubs'});
   disarmClubNav();
+  nav('/clubs');
   app.innerHTML = `<h2>My clubs</h2><div id="mine"></div>
   <div class="card row setrow" id="exploreRow"><div class="grow"><b>Explore clubs</b><div class="muted">Find a club or start your own</div></div><span class="muted">›</span></div>`;
   const renderMine = ()=>{ $('#mine').innerHTML = myClubs.length ? myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b>${c.private?'<span class="badge">Private</span>':''}<div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div></div><span>›</span></div>`).join('') : '<div class="muted">No clubs yet</div>';
@@ -437,6 +495,7 @@ function viewExplore(){
   track('page_view', {page:'explore'});
   disarmClubNav();
   currentClub = null;
+  nav(xpTab === 'create' ? '/explore/create' : '/explore');
   app.innerHTML = `
   <button class="ghost small" id="xpBack">‹ Clubs</button>
   <h2>Explore clubs</h2>
@@ -445,8 +504,8 @@ function viewExplore(){
     <label><input type="radio" name="xptab" value="create" ${xpTab==='create'?'checked':''}><span>Create a club</span></label>
   </div>
   <div id="xpBody"></div>`;
-  $('#xpBack').onclick = ()=>viewHome();
-  document.querySelectorAll('input[name="xptab"]').forEach(r=>r.onchange=()=>{ xpTab = r.value; renderXpBody(); });
+  $('#xpBack').onclick = ()=>backTo(()=>viewHome());
+  document.querySelectorAll('input[name="xptab"]').forEach(r=>r.onchange=()=>{ xpTab = r.value; nav(xpTab === 'create' ? '/explore/create' : '/explore'); renderXpBody(); });
   renderXpBody();
 }
 function renderXpBody(){ if(xpTab === 'create') xpCreateHTML(); else xpFindHTML(); }
@@ -613,6 +672,13 @@ async function openClub(id){ const j=await api('club',{clubId:id}); currentClub=
 async function reloadClub(){ if(!currentClub) return; const j=await api('club',{clubId:currentClub.id}); currentClub=j.club; }
 
 // ---------- club ----------
+function synHTML(b){
+  if(!b.synopsis) return '';
+  return `<div class="syn"><p>${esc(b.synopsis)}</p><button class="synbtn" data-synbtn aria-expanded="false">More</button></div>`;
+}
+function wireSyn(){
+  app.querySelectorAll('[data-synbtn]').forEach(btn=>btn.onclick=(e)=>{ e.stopPropagation(); const box = btn.closest('.syn'); const open = box.classList.toggle('open'); btn.textContent = open ? 'Less' : 'More'; btn.setAttribute('aria-expanded', String(open)); });
+}
 function bookRow(b, opts={}){
   return `<div class="book">
     ${b.cover?`<img class="cover" src="${esc(b.cover)}" alt="">`:'<div class="cover"></div>'}
@@ -620,6 +686,7 @@ function bookRow(b, opts={}){
     ${ratingsLine(b)}
     ${b.memberCount?`<div class="muted">Members ★ ${b.memberAverage} (${b.memberCount})</div>`:''}
     ${opts.subline?`<div class="muted">${esc(opts.subline)}</div>`:''}
+    ${synHTML(b)}
     </div>
     ${opts.rateLabel?'<span class="muted" style="font-size:13px;align-self:center">Your rating</span>':''}
     ${rateStrip(b)}
@@ -953,6 +1020,7 @@ function clubStripHTML(c){
 function viewClub(){
   track('page_view', {page:'club', clubId: currentClub ? currentClub.id : undefined});
   const c = currentClub; if(!c) return viewHome();
+  nav('/club/' + c.id);
   const isAdmin = c.role==='admin';
   app.innerHTML = `
   ${clubStripHTML(c)}
@@ -969,7 +1037,7 @@ function viewClub(){
   armClubNav(flipIds, flipIdx);
   if(isAdmin) $('#gear').onclick = ()=>viewSettings();
   $('#libRow').onclick = ()=>viewLibrary();
-  wireRates(()=>viewClub());
+  wireRates(()=>viewClub()); wireSyn();
   wireProgress();
   if($('#pollRow')) $('#pollRow').onclick=()=>viewPoll();
   if($('#startPoll')) $('#startPoll').onclick=()=>viewPoll();
@@ -1017,6 +1085,7 @@ function viewClub(){
 function viewLibrary(){
   track('page_view', {page:'library', clubId: currentClub ? currentClub.id : undefined});
   const c = currentClub; if(!c) return viewHome();
+  nav('/club/' + c.id + '/library');
   const curKey = c.current ? c.current.key : null;
   const cur = curKey ? c.library.find(b=>b.key===curKey) : null;
   const rest = c.library.filter(b=>b.key!==curKey);
@@ -1030,9 +1099,9 @@ function viewLibrary(){
   <button class="ghost small" id="back">‹ ${esc(c.name)}</button>
   <div class="row"><h2 class="grow">Library</h2><button class="small ic" id="addBtn">${icon('plus',16)} Add books</button></div>
   ${c.library.length ? groups.map(g=>`<div class="card"><h3 style="margin-top:0">${g.title}</h3>${g.books.map(b=>bookRow(b, g.opts(b))).join('')}</div>`).join('') : '<div class="card"><div class="muted">No books yet</div></div>'}`;
-  $('#back').onclick = ()=>viewClub();
+  $('#back').onclick = ()=>backTo(()=>viewClub());
   $('#addBtn').onclick = ()=>{ addReturn='library'; setTab('add'); viewAdd(c.id); };
-  wireRates(()=>viewLibrary());
+  wireRates(()=>viewLibrary()); wireSyn();
 }
 
 // ---------- poll page ----------
@@ -1047,6 +1116,7 @@ function pollDefaultEnd(c){
 function viewPoll(){
   track('page_view', {page:'poll', clubId: currentClub ? currentClub.id : undefined});
   const c = currentClub; if(!c) return viewHome();
+  nav('/club/' + c.id + '/poll');
   const isAdmin = c.role==='admin';
   let body = '';
   if(c.poll){
@@ -1059,7 +1129,7 @@ function viewPoll(){
       return `<div class="book" data-vote="${o.book.key}" role="button" tabindex="0" aria-pressed="${mine}" aria-label="Vote for ${esc(o.book.title)}" style="position:relative;overflow:hidden;border-radius:12px;padding-left:8px;padding-right:8px;${mine?'box-shadow:inset 0 0 0 2px #8b5cf6;':''}">
       <span style="position:absolute;top:0;bottom:0;left:0;width:${pct}%;background:rgba(139,92,246,.12)"></span>
       ${o.book.cover?`<img class="cover" src="${esc(o.book.cover)}" alt="" style="position:relative">`:'<div class="cover" style="position:relative"></div>'}
-      <div class="grow" style="position:relative"><b>${esc(o.book.title)}</b><div class="muted">${esc(o.book.author)}</div>${mine?'<div style="color:#8b5cf6;font-weight:600;font-size:13px">Your vote</div>':''}</div>
+      <div class="grow" style="position:relative"><b>${esc(o.book.title)}</b><div class="muted">${esc(o.book.author)}</div>${mine?'<div style="color:#8b5cf6;font-weight:600;font-size:13px">Your vote</div>':''}${synHTML(o.book)}</div>
       ${mine?`<span style="position:relative;flex:none;background:#8b5cf6;color:#fff;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center">${icon('check',14)}</span>`:''}
       <b style="position:relative;flex:none;min-width:20px;text-align:right">${o.votes}</b></div>`;
     }).join('')}
@@ -1077,7 +1147,7 @@ function viewPoll(){
   app.innerHTML = `
   <button class="ghost small" id="back">‹ ${esc(c.name)}</button>
   <div class="card" style="margin-top:8px">${body}</div>`;
-  $('#back').onclick = ()=>viewClub();
+  $('#back').onclick = ()=>backTo(()=>viewClub());
   app.querySelectorAll('[data-vote]').forEach(b=>{
     b.onclick = async ()=>{ try{ const j=await api('vote',{clubId:c.id, bookKey:b.dataset.vote}); track('vote', {feature:'poll', page:'poll', clubId:c.id}); currentClub=j.club; viewPoll(); }catch(e){ toast(e.message); } };
     b.onkeydown = (e)=>{ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); b.click(); } };
@@ -1086,12 +1156,14 @@ function viewPoll(){
   if($('#closePoll')) $('#closePoll').onclick=async()=>{ const j=await api('closePoll',{clubId:c.id}); currentClub=j.club; await refreshClubs(); viewClub(); };
   if($('#runoff')) $('#runoff').onclick=async()=>{ const j=await api('runoff',{clubId:c.id}); currentClub=j.club; viewPoll(); };
   if($('#pollEnd')) wireDatePicker('pollEnd');
+  wireSyn();
   if($('#doStartPoll')) $('#doStartPoll').onclick=async()=>{ try{ const j=await api('startPoll',{clubId:c.id, endDate:$('#pollEnd').value}); track('poll_start', {feature:'poll', page:'poll', clubId:c.id}); currentClub=j.club; viewPoll(); }catch(e){ toast(e.message); } };
 }
 
 // ---------- club settings ----------
 function viewSettings(){
   const c = currentClub; if(!c || c.role!=='admin') return viewClub();
+  nav('/club/' + c.id + '/settings');
   app.innerHTML = `
   <button class="ghost small" id="back">‹ ${esc(c.name)}</button>
   <h2>Settings</h2>
@@ -1099,7 +1171,7 @@ function viewSettings(){
   <div class="card row setrow" id="setFreq"><b class="grow">Frequency</b><span class="muted">›</span></div>
   <div class="card row setrow" id="setQuestions"><b class="grow">Discussion questions</b><span class="muted">›</span></div>
   <div class="card row setrow" id="setDelete"><b class="grow" style="color:var(--danger)">Delete club</b><span class="muted">›</span></div>`;
-  $('#back').onclick = ()=>viewClub();
+  $('#back').onclick = ()=>backTo(()=>viewClub());
   $('#setMembers').onclick = ()=>viewMembersPage();
   $('#setFreq').onclick = ()=>viewFrequencyPage();
   $('#setQuestions').onclick = ()=>viewDiscussionTemplatePage();
@@ -1107,6 +1179,7 @@ function viewSettings(){
 }
 function viewDiscussionTemplatePage(){
   const c = currentClub; if(!c || c.role!=='admin') return viewClub();
+  nav('/club/' + c.id + '/settings/discussion');
   const tpl = (c.discussion && c.discussion.template) || [];
   app.innerHTML = `
   <button class="ghost small" id="back">‹ Settings</button>
@@ -1116,7 +1189,7 @@ function viewDiscussionTemplatePage(){
   <textarea id="tplText" rows="8" placeholder="What stayed with you after the last chapter?">${esc(tpl.join('\n'))}</textarea>
   <div style="margin-top:8px"><button id="tplSave" class="small">Save template</button></div>
   <div id="tplOut"></div></div>`;
-  $('#back').onclick = ()=>viewSettings();
+  $('#back').onclick = ()=>backTo(()=>viewSettings());
   $('#tplSave').onclick = async ()=>{
     const questions = $('#tplText').value.split('\n').map(s=>s.trim()).filter(Boolean);
     try{ const j = await api('setDiscussionTemplate', { clubId: c.id, questions }); currentClub = j.club; $('#tplOut').innerHTML = '<div class="muted" style="margin-top:8px">Saved</div>'; }
@@ -1125,6 +1198,7 @@ function viewDiscussionTemplatePage(){
 }
 function viewMembersPage(){
   const c = currentClub; if(!c || c.role!=='admin') return viewClub();
+  nav('/club/' + c.id + '/settings/members');
   const admins = c.members.filter(m=>m.role==='admin').length;
   app.innerHTML = `
   <button class="ghost small" id="back">‹ Settings</button>
@@ -1138,7 +1212,7 @@ function viewMembersPage(){
   <textarea id="invEmails" rows="3" placeholder="Emails to invite, separated by commas"></textarea>
   <div style="margin-top:8px"><button id="invBtn" class="small">Send invites</button></div>
   <div id="invOut"></div></div>`;
-  $('#back').onclick = ()=>viewSettings();
+  $('#back').onclick = ()=>backTo(()=>viewSettings());
   app.querySelectorAll('[data-promote]').forEach(b=>b.onclick=async()=>{ const j=await api('makeAdmin',{clubId:c.id, userId:b.dataset.promote}); currentClub=j.club; viewMembersPage(); });
   app.querySelectorAll('[data-demote]').forEach(b=>b.onclick=async()=>{ const j=await api('removeAdmin',{clubId:c.id, userId:b.dataset.demote}); currentClub=j.club; if(currentClub.role!=='admin') return viewClub(); viewMembersPage(); });
   app.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{
@@ -1162,6 +1236,7 @@ function viewMembersPage(){
 }
 function viewFrequencyPage(){
   const c = currentClub; if(!c || c.role!=='admin') return viewClub();
+  nav('/club/' + c.id + '/settings/frequency');
   app.innerHTML = `
   <button class="ghost small" id="back">‹ Settings</button>
   <h2>Frequency</h2>
@@ -1170,17 +1245,18 @@ function viewFrequencyPage(){
   <label class="row" style="margin-top:8px"><input type="checkbox" id="autoPoll" ${c.autoPoll?'checked':''} style="width:auto"><span>Auto poll</span></label>
   <button id="saveFreq" class="small" style="margin-top:10px">Save</button>
   </div>`;
-  $('#back').onclick = ()=>viewSettings();
+  $('#back').onclick = ()=>backTo(()=>viewSettings());
   $('#saveFreq').onclick=async()=>{ const j=await api('clubSettings',{clubId:c.id, meetingFrequencyWeeks:Number($('#freq').value), autoPoll:$('#autoPoll').checked}); currentClub=j.club; toast('Saved'); viewFrequencyPage(); };
 }
 function viewDeleteClubPage(){
   const c = currentClub; if(!c || c.role!=='admin') return viewClub();
+  nav('/club/' + c.id + '/settings/delete');
   app.innerHTML = `
   <button class="ghost small" id="back">‹ Settings</button>
   <h2>Delete club</h2>
   <div class="card"><div style="margin-bottom:10px"><b>${esc(c.name)}</b></div>
   <div id="delBox"><button id="delBtn" class="danger small">Delete club</button></div></div>`;
-  $('#back').onclick = ()=>viewSettings();
+  $('#back').onclick = ()=>backTo(()=>viewSettings());
   $('#delBtn').onclick = ()=>{
     $('#delBox').innerHTML = `<div class="muted" style="margin-bottom:8px">Delete ${esc(c.name)} for everyone?</div>
     <div class="row"><button id="delYes" class="danger small">Delete</button><button id="delNo" class="ghost small">Cancel</button></div>`;
@@ -1193,6 +1269,7 @@ function viewDeleteClubPage(){
 function viewAdd(preClub){
   track('page_view', {page:'add_books'});
   disarmClubNav();
+  nav(preClub ? '/club/' + preClub + '/add' : '/add');
   const chosen = new Set(preClub?[preClub]: myClubs.map(c=>c.id));
   app.innerHTML = `<h2>Add books</h2>
   <div class="card"><h3 style="margin-top:0">To</h3><div id="clubPick">${myClubs.map(c=>`<span class="chip ${chosen.has(c.id)?'on':''}" data-club="${c.id}">${esc(c.name)}</span>`).join('')||'<span class="muted">Join or create a club first</span>'}</div></div>
@@ -1222,6 +1299,7 @@ function viewAdd(preClub){
 function viewMe(){
   track('page_view', {page:'me'});
   disarmClubNav();
+  nav('/me');
   app.innerHTML = `<div class="card"><h3 style="margin-top:0">${esc(user.name)}</h3><div class="muted">${esc(user.email)}</div></div>
   <h2>My clubs</h2>${myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b></div><span>›</span></div>`).join('')||'<div class="muted">No clubs yet</div>'}
   ${['ajay.r.nair@gmail.com','hazel@readingpeeps.com'].includes(user.email)?'<div class="card row" id="statsRow"><div class="grow"><b>Stats</b></div><span>›</span></div>':''}
@@ -1237,8 +1315,9 @@ function viewMe(){
 }
 async function viewStats(){
   disarmClubNav();
+  nav('/me/stats');
   app.innerHTML = `<button class="ghost small" id="back">‹ Me</button><h2>Stats</h2><div class="muted">Loading…</div>`;
-  $('#back').onclick = ()=>viewMe();
+  $('#back').onclick = ()=>backTo(()=>viewMe());
   try{
     const j = await api('stats');
     const tm = j.telemetry;
@@ -1264,7 +1343,7 @@ async function viewStats(){
     ${real.map(u=>`<div class="card"><b>${esc(u.name)}</b><div class="muted">${esc(u.email)} · joined ${day(u.createdAt)}${u.isSuperAdmin?' · super admin':''}</div></div>`).join('')||'<div class="muted">None</div>'}
     <h3>Test accounts</h3>
     ${test.map(u=>`<div class="card"><div class="row"><div class="grow"><b>${esc(u.name)}</b><div class="muted">${esc(u.email)} · joined ${day(u.createdAt)}</div></div><button class="ghost small danger" data-del="${esc(u.email)}">Delete</button></div></div>`).join('')||'<div class="muted">None</div>'}`;
-    $('#back').onclick = ()=>viewMe();
+    $('#back').onclick = ()=>backTo(()=>viewMe());
     app.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{ if(b.dataset.armed){ try{ await api('deleteTestUser',{email:b.dataset.del}); toast('Deleted'); viewStats(); }catch(e){ toast(e.message); } } else { b.dataset.armed='1'; b.textContent='Tap again to delete'; } });
   }catch(e){ toast(e.message); }
 }

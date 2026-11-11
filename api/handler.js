@@ -723,6 +723,7 @@ function bookView(db, key, userId) {
   const all = Object.keys(db.ratings).filter((k) => k.endsWith('|' + key)).map((k) => db.ratings[k]);
   return {
     key, isbn: b.isbn, title: b.title, author: b.author, cover: b.cover, year: b.year, pageCount: b.pageCount || null,
+    synopsis: b.synopsis || '',
     google: b.google || null, hardcover: b.hardcover || null, openlibrary: b.openlibrary || null,
     myRating: mine === undefined ? null : mine,
     memberAverage: all.length ? Math.round((all.reduce((a, c) => a + c, 0) / all.length) * 10) / 10 : null,
@@ -758,6 +759,38 @@ async function hardcover(isbn) {
     return b && b.rating ? { rating: Math.round(b.rating * 100) / 100, count: b.ratings_count || 0 } : null;
   } catch (e) { return null; }
 }
+function cleanSynopsis(s) {
+  if (!s) return '';
+  const t = String(s).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+  return t.slice(0, 2400);
+}
+async function fetchSynopsis(b) {
+  if (b.isbn) { const g = await lookupISBN(b.isbn); if (g) { if (g.synopsis) return g.synopsis; if (g.olWork && !b.olWork) b.olWork = g.olWork; } }
+  if (b.olWork) {
+    try {
+      const r = await fetch('https://openlibrary.org' + b.olWork + '.json');
+      if (r.ok) { const j = await r.json(); const d = typeof j.description === 'string' ? j.description : (j.description && j.description.value) || ''; const s = cleanSynopsis(d); if (s) return s; }
+    } catch (e) { }
+  }
+  if (b.title) {
+    try {
+      const r = await fetch('https://www.googleapis.com/books/v1/volumes?maxResults=3&q=' + encodeURIComponent(b.title + ' ' + (b.author || '')));
+      if (r.ok) { const j = await r.json(); for (const it of j.items || []) { const g = googleBook(it); if (g.synopsis) return g.synopsis; } }
+    } catch (e) { }
+  }
+  return '';
+}
+async function enrichSynopses(db, club) {
+  const keys = [...new Set([...(club.library || []), ...(club.current ? [club.current] : []), ...((club.poll && club.poll.options) || [])])];
+  let budget = 3;
+  for (const k of keys) {
+    if (!budget) break;
+    const b = db.books[k];
+    if (!b || b.synopsis || b.synopsisTried) continue;
+    budget--;
+    try { const s = await fetchSynopsis(b); if (s) b.synopsis = s; else b.synopsisTried = true; } catch (e) { b.synopsisTried = true; }
+  }
+}
 function googleBook(v) {
   const info = v.volumeInfo || {};
   const ids = info.industryIdentifiers || [];
@@ -767,6 +800,7 @@ function googleBook(v) {
     cover: info.imageLinks ? (info.imageLinks.thumbnail || '').replace('http:', 'https:') : '',
     year: (info.publishedDate || '').slice(0, 4),
     pageCount: info.pageCount ? Number(info.pageCount) : null,
+    synopsis: cleanSynopsis(info.description),
     google: info.averageRating ? { rating: info.averageRating, count: info.ratingsCount || 0 } : null,
     hardcover: null, openlibrary: null,
   };
@@ -778,6 +812,7 @@ function olBook(d) {
     cover: d.cover_i ? `https://covers.openlibrary.org/b/id/${d.cover_i}-M.jpg` : '',
     year: d.first_publish_year ? String(d.first_publish_year) : '',
     pageCount: d.number_of_pages || d.number_of_pages_median || null,
+    synopsis: '', olWork: d.key || '',
     google: null, hardcover: null,
     openlibrary: d.ratings_average ? { rating: Math.round(d.ratings_average * 100) / 100, count: d.ratings_count || 0 } : null,
   };
@@ -790,7 +825,7 @@ async function searchBooks(q) {
   } catch (e) { }
   if (out.length < 3) {
     try {
-      const r = await fetch('https://openlibrary.org/search.json?limit=20&fields=title,author_name,isbn,cover_i,first_publish_year,ratings_average,ratings_count,number_of_pages,number_of_pages_median&q=' + encodeURIComponent(q));
+      const r = await fetch('https://openlibrary.org/search.json?limit=20&fields=key,title,author_name,isbn,cover_i,first_publish_year,ratings_average,ratings_count,number_of_pages,number_of_pages_median&q=' + encodeURIComponent(q));
       if (r.ok) {
         const j = await r.json();
         const seen = new Set(out.map((b) => norm(b.title) + '|' + norm(b.author)));
@@ -823,7 +858,7 @@ async function lookupISBN(isbn) {
     if (r.ok) { const j = await r.json(); if (j.items && j.items[0]) return googleBook(j.items[0]); }
   } catch (e) { }
   try {
-    const r = await fetch('https://openlibrary.org/search.json?limit=1&fields=title,author_name,isbn,cover_i,first_publish_year,ratings_average,ratings_count,number_of_pages,number_of_pages_median&q=' + encodeURIComponent('isbn:' + clean));
+    const r = await fetch('https://openlibrary.org/search.json?limit=1&fields=key,title,author_name,isbn,cover_i,first_publish_year,ratings_average,ratings_count,number_of_pages,number_of_pages_median&q=' + encodeURIComponent('isbn:' + clean));
     if (r.ok) {
       const j = await r.json();
       if (j.docs && j.docs[0]) {
@@ -846,7 +881,7 @@ async function resolveLink(url) {
         const j = await r.json();
         const isbn = (j.isbn_13 && j.isbn_13[0]) || (j.isbn_10 && j.isbn_10[0]) || '';
         if (isbn) { const b = await lookupISBN(isbn); if (b) return b; }
-        return { isbn, title: j.title || '', author: '', cover: '', year: '', pageCount: j.number_of_pages || parsePagination(j.pagination), google: null, hardcover: null, openlibrary: null };
+        return { isbn, title: j.title || '', author: '', cover: '', year: '', pageCount: j.number_of_pages || parsePagination(j.pagination), synopsis: '', google: null, hardcover: null, openlibrary: null };
       }
     }
     if (u.hostname.includes('google')) {
@@ -870,6 +905,8 @@ function storeBook(db, data) {
     if (!b.cover && data.cover) b.cover = data.cover;
     if (!b.isbn && data.isbn) b.isbn = data.isbn;
     if (!b.pageCount && data.pageCount) b.pageCount = data.pageCount;
+    if (!b.synopsis && data.synopsis) b.synopsis = data.synopsis;
+    if (!b.olWork && data.olWork) b.olWork = data.olWork;
   }
   return key;
 }
@@ -1226,6 +1263,7 @@ module.exports = async (req, res) => {
         if (club.private && !club.members.some((m) => m.userId === me.id)) return send(403, { error: 'Private club' });
         const pollBefore = club.poll;
         maybeAutoPoll(db, club);
+        await enrichSynopses(db, club);
         if (!pollBefore && club.poll) {
           await notifyMembers(db, club, {
             type: 'poll', dedupeKey: 'poll-open:' + club.poll.id,
