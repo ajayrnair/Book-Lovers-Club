@@ -9,16 +9,6 @@ struct ClubsView: View {
         NavigationStack {
             List {
                 Section {
-                    HStack(spacing: 12) {
-                        LogoView(size: 40)
-                        Text("Reading Peeps")
-                            .font(.headline)
-                            .foregroundStyle(Color.rpInk)
-                        Spacer()
-                    }
-                    .listRowBackground(Color.rpCream)
-                }
-                Section {
                     if app.orderedClubs.isEmpty {
                         Text("No clubs yet. Find one or start your own below.")
                             .foregroundStyle(.secondary)
@@ -61,7 +51,16 @@ struct ClubsView: View {
                 .listRowBackground(Color.rpCream)
             }
             .navigationTitle("Clubs")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 7) {
+                        LogoView(size: 24)
+                        Text("Reading Peeps")
+                            .font(.headline)
+                            .foregroundStyle(Color.rpCream)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink(value: Route.notifications) {
                         ZStack(alignment: .topTrailing) {

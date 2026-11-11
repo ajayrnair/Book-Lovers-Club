@@ -92,7 +92,7 @@ struct PollView: View {
                 }
             }
         } header: {
-            Text(poll.runoff ? "Runoff" : (c.current != nil ? "Pick the next book" : "Pick a book"))
+            rpSectionHeader(poll.runoff ? "Runoff" : (c.current != nil ? "Pick the next book" : "Pick a book"))
         } footer: {
             let closes = Dates.shortDate(iso: poll.closesAt)
             Text("\(poll.totalVotes) vote\(poll.totalVotes == 1 ? "" : "s")\(closes.isEmpty ? "" : " · Closes \(closes)")")
@@ -163,11 +163,10 @@ struct PollView: View {
                     Task { await startPoll() }
                 }
             } header: { rpSectionHeader(c.current != nil ? "Pick the next book" : "Pick a book") }
+            footer: {
+                Text("Defaults to one day before the next meeting, and never runs past a week.")
+            }
             .listRowBackground(Color.rpCream)
-            Text("Defaults to one day before the next meeting, and never runs past a week.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .listRowBackground(Color.rpCream)
         }
     }
 

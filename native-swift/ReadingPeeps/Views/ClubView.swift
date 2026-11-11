@@ -148,15 +148,31 @@ struct ClubView: View {
     private func currentBookSection(_ c: Club) -> some View {
         Section {
             if let current = c.current {
-                BookRowView(title: current.title, author: current.author, year: current.year,
-                            cover: current.cover, ratings: ratingsText(for: current), coverWidth: 60)
+                VStack(alignment: .leading, spacing: 5) {
+                    BookRowView(title: current.title, author: current.author, year: current.year,
+                                cover: current.cover, ratings: ratingsText(for: current), coverWidth: 60)
+                    if let result = c.lastResult, let winner = result.winner, winner == current.key {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "checkmark")
+                                    .font(.caption2.weight(.bold))
+                                Text("Won the club vote")
+                                    .font(.caption.weight(.semibold))
+                            }
+                            .foregroundStyle(Color.rpInk)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 3)
+                            .background(Color.rpPill)
+                            .clipShape(Capsule())
+                            ReactionChipsView(chips: c.pollReactions ?? []) { emoji in
+                                Task { await react(type: "poll", bookKey: nil, subject: nil, emoji: emoji) }
+                            }
+                        }
+                        .padding(.leading, 72)
+                    }
+                }
                 if let s = current.synopsis, !s.isEmpty {
                     SynopsisView(text: s)
-                }
-                if let avg = current.memberAverage, let count = current.memberCount, count > 0 {
-                    Text("Members ★ \(trimNumber(avg)) (\(count) rating\(count == 1 ? "" : "s"))")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Your rating")
@@ -166,30 +182,10 @@ struct ClubView: View {
                         Task { await rate(bookKey: current.key, value: value) }
                     }
                 }
-                Toggle("I finished reading", isOn: Binding(
-                    get: { c.myFinished },
-                    set: { _ in Task { await toggleFinished() } }
-                ))
-                let rated = c.currentRatings.filter { $0.rating != nil }
-                let avg = rated.isEmpty ? nil : rated.reduce(0.0) { $0 + ($1.rating ?? 0) } / Double(rated.count)
-                HStack {
-                    Text("\(c.finishedBy.count) of \(c.members.count) finished")
-                    Spacer()
-                    if let avg {
-                        Text("Average ★ \(trimNumber(avg))")
-                    }
-                }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                if let result = c.lastResult, let winner = result.winner, winner == current.key {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Won the club vote")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        ReactionChipsView(chips: c.pollReactions ?? []) { emoji in
-                            Task { await react(type: "poll", bookKey: nil, subject: nil, emoji: emoji) }
-                        }
-                    }
+                if let avg = current.memberAverage, let count = current.memberCount, count > 0 {
+                    Text("Members ★ \(trimNumber(avg)) (\(count) rating\(count == 1 ? "" : "s"))")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
                 if !c.currentRatings.isEmpty {
                     DisclosureGroup("Ratings") {
@@ -225,6 +221,13 @@ struct ClubView: View {
                         }
                     }
                 }
+                Toggle("I finished reading", isOn: Binding(
+                    get: { c.myFinished },
+                    set: { _ in Task { await toggleFinished() } }
+                ))
+                Text("\(c.finishedBy.count) of \(c.members.count) finished")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             } else {
                 Text("No book picked yet")
                     .foregroundStyle(.secondary)

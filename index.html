@@ -841,13 +841,14 @@ function currentSection(c){
     const avg = rated.length ? Math.round(rated.reduce((a,r)=>a+r.rating,0)/rated.length*10)/10 : null;
     h += bookRow(c.current);
     if(c.lastResult && c.lastResult.winner && c.current && c.lastResult.winner === c.current.key){
-      h += `<div style="margin-top:6px"><div class="muted">Won the club vote</div><div style="margin-top:2px">${reactionHTML(c.pollReactions || [], 'data-rtype="poll"')}</div></div>`;
+      h += `<div style="margin-top:6px"><span class="pill">${icon('check',12)} Won the club vote</span><div style="margin-top:4px">${reactionHTML(c.pollReactions || [], 'data-rtype="poll"')}</div></div>`;
     }
+    h += `<div class="row" id="rateSummary" style="margin-top:8px;cursor:pointer"><span class="grow muted">${rated.length?`Average ★ ${avg} (${rated.length} rating${rated.length>1?'s':''})`:'No ratings yet'}</span><span class="muted">Ratings ›</span></div>
+      <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div><div class="person">${avatarHTML(r.name, r.userId)}<span class="pname">${esc(r.name)}</span>${r.rating===null||r.rating===undefined?'<span class="notrated">Not rated</span>':`<span class="pill"><span class="pstar">★</span>${r.rating}</span>`}</div>${(r.rating!==null&&r.rating!==undefined&&r.userId!==user.id)?`<div style="margin:1px 0 4px 44px">${reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`)}</div>`:''}</div>`).join('')}</div>`;
     h += memberProgressHTML(c);
     h += `<div class="row" style="margin-top:8px"><button class="small ic ${c.myFinished?'':'ghost'}" id="finBtn">${c.myFinished?icon('check',16)+' Finished':'I finished reading'}</button>
-      <span class="muted">${fin.length} of ${c.members.length} finished</span></div>
-      <div class="row" id="rateSummary" style="margin-top:8px;cursor:pointer"><span class="grow muted">${rated.length?`Average ★ ${avg} (${rated.length} rating${rated.length>1?'s':''})`:'No ratings yet'}</span><span class="muted">Ratings ›</span></div>
-      <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div><div class="person">${avatarHTML(r.name, r.userId)}<span class="pname">${esc(r.name)}</span>${r.rating===null||r.rating===undefined?'<span class="notrated">Not rated</span>':`<span class="pill"><span class="pstar">★</span>${r.rating}</span>`}</div>${(r.rating!==null&&r.rating!==undefined&&r.userId!==user.id)?`<div style="margin:1px 0 4px 44px">${reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`)}</div>`:''}</div>`).join('')}</div>`;
+      <span class="muted">${fin.length} of ${c.members.length} finished</span></div>`;
+
   } else {
     h += '<div class="muted">No book picked yet</div>';
   }
