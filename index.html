@@ -95,15 +95,47 @@
   .seg input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
   .book{cursor:pointer}
   .setrow:active{background:rgba(201,58,84,.05)}
-  .datefield{position:relative}
-  .datefield input[type=date]{margin:0;padding-right:44px;cursor:pointer;min-height:48px}
-  .datefield input[type=date]::-webkit-calendar-picker-indicator{opacity:0;position:absolute;right:0;top:0;width:44px;height:100%;cursor:pointer}
-  .datefield .cal{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:var(--accent);display:flex;pointer-events:none}
   .a-violet button{background:#8b5cf6}
   .a-violet button.ghost{background:var(--card);color:#8b5cf6;border-color:#8b5cf6}
   .a-violet button.danger{background:var(--danger);color:#fff}
   .a-violet .day.on{background:#8b5cf6;border-color:#8b5cf6}
-  .a-violet .datefield .cal{color:#8b5cf6}
+  .clubstrip{display:flex;align-items:flex-start;gap:2px;margin:16px 0 4px}
+  .clubstrip .cs-side{width:44px;flex:none;display:flex;justify-content:center}
+  .clubstrip .cs-main{flex:1;min-width:0;text-align:center}
+  .clubstrip .cs-title{margin:2px 0 0;font-size:22px;line-height:1.25}
+  .cs-dots{display:flex;gap:5px;justify-content:center;margin-top:6px}
+  .cs-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,233,210,.35)}
+  .cs-dot.on{background:#ff8a66}
+  .cs-count{font-size:12px;color:#d9a8c2;margin-top:4px}
+  .book.picks{box-shadow:inset 0 0 0 2px var(--accent2);border-radius:12px;padding-left:8px;padding-right:8px}
+  .selcheck{flex:none;align-self:center;background:var(--accent2);color:#fff;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center}
+  #addBar{position:fixed;left:50%;transform:translateX(-50%);width:100%;max-width:640px;bottom:calc(58px + env(safe-area-inset-bottom));padding:0 16px;z-index:9}
+  #addBar button{box-shadow:0 10px 28px rgba(20,4,16,.35)}
+  .dtfield{margin-top:8px}
+  .dtfield .dtrow{display:flex;align-items:center;gap:10px;width:100%;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:0 14px;min-height:50px;font-size:16px;font-weight:600;text-align:left}
+  .dtfield .dtic{color:var(--accent);display:flex;flex:none}
+  .a-violet .dtfield .dtic{color:#8b5cf6}
+  .dtfield .dtval{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dtfield .dtchev{color:#c08552;display:flex;flex:none}
+  .dtfield .dtchev svg{transition:transform .2s}
+  .dtrow[aria-expanded="true"] .dtchev svg{transform:rotate(90deg)}
+  .dtpanel{margin-top:8px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px}
+  .dtpanel .calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .dtpanel .calhead b{font-size:15px}
+  .dtpanel .calnav{background:none;color:var(--accent);min-height:40px;min-width:40px;padding:6px;display:inline-flex;align-items:center;justify-content:center}
+  .a-violet .dtpanel .calnav{color:#8b5cf6}
+  .dtpanel .calgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+  .dtpanel .calwd{text-align:center;font-size:11px;color:var(--muted);padding:2px 0}
+  .dtpanel .calday{aspect-ratio:1;min-height:0;border:1px solid var(--line);background:#fff;border-radius:10px;font-size:14px;font-weight:500;color:var(--ink);display:flex;align-items:center;justify-content:center;padding:0}
+  .dtpanel .calday.sel{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+  .a-violet .dtpanel .calday.sel{background:#8b5cf6;border-color:#8b5cf6}
+  .dtpanel .calday.off{opacity:.3}
+  .dtpanel .calday.blank{border:0;background:transparent}
+  .dtpanel .timegrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+  .dtpanel .minsgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px}
+  .dtpanel .tchip{min-height:42px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 0;text-align:center;font-size:15px;font-weight:500;color:var(--ink)}
+  .dtpanel .tchip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+  .a-violet .dtpanel .tchip.on{background:#8b5cf6;border-color:#8b5cf6}
   .brand{text-align:center;padding:30px 0 4px;color:var(--cream)}
   .brand img{width:78px;height:78px;border-radius:19px;box-shadow:0 10px 28px rgba(20,4,16,.35)}
   .brand .bname{font-size:27px;font-weight:800;letter-spacing:-.02em;margin-top:12px;color:#ffe9d2}
@@ -132,6 +164,7 @@ if(location.hash.startsWith('#t=')){ token = location.hash.slice(3); localStorag
 const authMsg = new URLSearchParams(location.search).get('auth') === 'failed' ? 'Google sign in did not work' : '';
 if(authMsg) history.replaceState(null, '', '/');
 let user = null, myClubs = [], currentClub = null, tab = 'home';
+let clubOrder = []; // club ids in flip order (usage order, snapshotted on refresh)
 let addSel = new Map(); // bookKey-from-search index -> data
 let searchResults = [];
 let addReturn = null; // 'library' when Add Books was opened from a club library page
@@ -176,7 +209,10 @@ const ICONS = {
   plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
   check: '<polyline points="20 6 9 17 4 12"/>',
   calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
-  chev: '<polyline points="9 18 15 12 9 6"/>'
+  clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  chev: '<polyline points="9 18 15 12 9 6"/>',
+  chevL: '<polyline points="15 18 9 12 15 6"/>',
+  list: '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>'
 };
 function icon(n, s=20){ return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`; }
 function showModal(html){ $('#modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet">${html}</div></div>`; $('#ovl').onclick = (e)=>{ if(e.target.id==='ovl') closeModal(); }; }
@@ -194,7 +230,7 @@ function fmtDate(ds){ if(!ds) return ''; const d=new Date(ds+'T12:00:00'); retur
 function fmtTime(t){ if(!t || !/^\d{2}:\d{2}$/.test(t)) return ''; const d=new Date('2000-01-01T'+t+':00'); return isNaN(d.getTime()) ? '' : d.toLocaleTimeString(undefined,{hour:'numeric', minute:'2-digit'}); }
 function fmtDayShort(ds){ if(!ds) return ''; const d=new Date(ds+'T12:00:00'); return d.toLocaleDateString(undefined,{month:'short', day:'numeric'}); }
 function shiftDayStr(ds, n){ const p = ds.split('-').map(Number); return new Date(Date.UTC(p[0], p[1]-1, p[2]+n)).toISOString().slice(0,10); }
-function fmtRangeShort(a, b){ const da=new Date(a+'T12:00:00'); const db=new Date(b+'T12:00:00'); return (da.getMonth()===db.getMonth() && da.getFullYear()===db.getFullYear()) ? fmtDayShort(a)+'–'+db.getDate() : fmtDayShort(a)+' – '+fmtDayShort(b); }
+function fmtRangeShort(a, b){ const da=new Date(a+'T12:00:00'); const db=new Date(b+'T12:00:00'); return (da.getMonth()===db.getMonth() && da.getFullYear()===db.getFullYear()) ? fmtDayShort(a)+'–'+db.getDate() : fmtDayShort(a)+'–'+fmtDayShort(b); }
 function ratingsLine(b){
   const parts=[];
   if(b.google) parts.push(`Google ★ ${b.google.rating} (${b.google.count})`);
@@ -219,6 +255,7 @@ function paintStars(el, v){
 
 // ---------- auth ----------
 function viewAuth(msg=''){
+  disarmClubNav();
   $('#tabs').classList.add('hide'); $('#signOut').classList.add('hide');
   const gLogo = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-.95.66-2.23 1.08-4.07 1.08-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.21c-.25-.66-.38-1.4-.38-2.21s.14-1.55.38-2.21V6.7H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.3l3.98-3.09z"/><path fill="#EA4335" d="M12 4.83c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.21 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.7l3.98 3.09C6.22 6.94 8.87 4.83 12 4.83z"/></svg>';
   app.innerHTML = `
@@ -270,15 +307,19 @@ async function boot(){
   try{ const j = await api('me'); user = j.user; }catch(e){ return viewAuth(authMsg); }
   $('#tabs').classList.remove('hide'); $('#signOut').classList.remove('hide');
   await refreshClubs();
-  currentClub ? viewClub() : viewHome();
+  if(currentClub) return viewClub();
+  const firstId = clubOrder[0];
+  if(firstId){ try{ return await openClub(firstId); }catch(e){ /* stale club: fall through to the list */ } }
+  viewHome();
 }
-async function refreshClubs(){ const j = await api('myClubs'); myClubs = j.clubs; }
+async function refreshClubs(){ const j = await api('myClubs'); myClubs = j.clubs; clubOrder = usageOrder(myClubs).map(c=>c.id); }
 $('#signOut').onclick = async ()=>{ try{ await api('signout'); }catch(e){} token=''; user=null; currentClub=null; localStorage.removeItem('blc_token'); viewAuth(); };
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{ tab=b.dataset.tab; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on', x===b)); if(tab==='home'){ currentClub=null; viewHome(); } if(tab==='add'){ addReturn=null; viewAdd(); } if(tab==='me') viewMe(); });
 function setTab(t){ tab=t; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on', x.dataset.tab===t)); }
 
 // ---------- home ----------
 async function viewHome(){
+  disarmClubNav();
   app.innerHTML = `<h2>My clubs</h2><div id="mine"></div>
   <div class="card row setrow" id="exploreRow"><div class="grow"><b>Explore clubs</b><div class="muted">Find a club or start your own</div></div><span class="muted">›</span></div>`;
   const renderMine = ()=>{ $('#mine').innerHTML = myClubs.length ? myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b>${c.private?'<span class="badge">Private</span>':''}<div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div></div><span>›</span></div>`).join('') : '<div class="muted">No clubs yet</div>';
@@ -340,6 +381,7 @@ function wirePlacePicker(p, store){
   if(store.place) showPicked(); else renderList();
 }
 function viewExplore(){
+  disarmClubNav();
   currentClub = null;
   app.innerHTML = `
   <button class="ghost small" id="xpBack">‹ Clubs</button>
@@ -462,7 +504,57 @@ function xpCreateHTML(){
     }catch(e){ toast(e.message); }
   };
 }
-async function openClub(id){ const j=await api('club',{clubId:id}); currentClub=j.club; viewClub(); }
+// ---------- club usage + flipping ----------
+function loadUsage(){ try{ return JSON.parse(localStorage.getItem('blc_usage') || '{}'); }catch(e){ return {}; } }
+function trackUsage(id){
+  const u = loadUsage();
+  const e = u[id] || { count: 0, last: 0 };
+  e.count++; e.last = Date.now(); u[id] = e;
+  try{ localStorage.setItem('blc_usage', JSON.stringify(u)); }catch(_){}
+}
+function usageOrder(clubs){
+  const u = loadUsage();
+  return clubs.map((c, i)=>({ c, i })).sort((a, b)=>{
+    const ua = u[a.c.id] || { count: 0, last: 0 }, ub = u[b.c.id] || { count: 0, last: 0 };
+    return (ub.count - ua.count) || (ub.last - ua.last) || (a.i - b.i);
+  }).map(x=>x.c);
+}
+function clubFlipIds(c){
+  let ids = clubOrder.filter(id=>myClubs.some(x=>x.id===id));
+  if(ids.length !== myClubs.length) ids = myClubs.map(x=>x.id); // stale snapshot (e.g. invite preset): use list order
+  if(c && !ids.includes(c.id)) ids.push(c.id);
+  return ids;
+}
+let clubNavOff = null;
+function disarmClubNav(){ if(clubNavOff){ clubNavOff(); clubNavOff = null; } }
+function armClubNav(ids, idx){
+  disarmClubNav();
+  let sx = null, sy = null, fromEl = null;
+  const onTS = (e)=>{ const t = e.changedTouches[0]; sx = t.clientX; sy = t.clientY; fromEl = e.target; };
+  const onTE = (e)=>{
+    if(sx === null) return;
+    const t = e.changedTouches[0]; const dx = t.clientX - sx, dy = t.clientY - sy; sx = null;
+    if(Math.abs(dx) < 60 || Math.abs(dx) <= Math.abs(dy)) return;
+    if(fromEl && fromEl.closest && fromEl.closest('input, textarea, select, button, a, .ratestars, .day, .seg')) return;
+    if(!document.getElementById('clubStrip')) return;
+    if(dx < 0 && idx < ids.length - 1) openClub(ids[idx + 1]);
+    else if(dx > 0 && idx > 0) openClub(ids[idx - 1]);
+  };
+  const onKey = (e)=>{
+    if(e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    if(!document.getElementById('clubStrip')) return;
+    if(document.querySelector('#modal .overlay')) return;
+    const a = document.activeElement;
+    if(a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable || (a.closest && a.closest('.ratestars')))) return;
+    if(e.key === 'ArrowRight' && idx < ids.length - 1) openClub(ids[idx + 1]);
+    else if(e.key === 'ArrowLeft' && idx > 0) openClub(ids[idx - 1]);
+  };
+  app.addEventListener('touchstart', onTS, { passive: true });
+  app.addEventListener('touchend', onTE, { passive: true });
+  document.addEventListener('keydown', onKey);
+  clubNavOff = ()=>{ app.removeEventListener('touchstart', onTS); app.removeEventListener('touchend', onTE); document.removeEventListener('keydown', onKey); };
+}
+async function openClub(id){ const j=await api('club',{clubId:id}); currentClub=j.club; trackUsage(id); viewClub(); }
 async function reloadClub(){ if(!currentClub) return; const j=await api('club',{clubId:currentClub.id}); currentClub=j.club; }
 
 // ---------- club ----------
@@ -628,6 +720,76 @@ function currentSection(c){
   }
   return h + '</div>';
 }
+// ---------- in-app date/time pickers (replace native inputs; inline expansion only) ----------
+let closeOpenPicker = null;
+function fmtDateLong(ds){ if(!ds) return ''; const d = new Date(ds + 'T12:00:00'); return isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }); }
+function todayStr(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function pickerFieldHTML(id, kind, value){
+  const label = kind === 'date'
+    ? (value ? esc(fmtDateLong(value)) : '<span class="muted">Pick a date</span>')
+    : (value ? esc(fmtTime(value)) : '<span class="muted">Pick a time</span>');
+  return `<div class="dtfield">
+    <button type="button" class="dtrow" id="${id}Btn" aria-expanded="false"><span class="dtic">${icon(kind === 'date' ? 'calendar' : 'clock', 18)}</span><span class="dtval" id="${id}Val">${label}</span><span class="dtchev">${icon('chev', 16)}</span></button>
+    <div class="dtpanel hide" id="${id}Panel"></div>
+    <input type="hidden" id="${id}" value="${esc(value || '')}">
+  </div>`;
+}
+function wireDatePicker(inputId, onCommit){
+  const btn = $('#' + inputId + 'Btn'), panel = $('#' + inputId + 'Panel'), input = $('#' + inputId), valEl = $('#' + inputId + 'Val');
+  if(!btn || !panel || !input) return;
+  const today = todayStr();
+  let view = (input.value || today).slice(0, 7);
+  const close = ()=>{ panel.classList.add('hide'); btn.setAttribute('aria-expanded', 'false'); if(closeOpenPicker === close) closeOpenPicker = null; };
+  const render = ()=>{
+    const [vy, vm] = view.split('-').map(Number);
+    const first = new Date(vy, vm - 1, 1);
+    const startOffset = (first.getDay() + 6) % 7; // weeks start on Monday
+    const dim = new Date(vy, vm, 0).getDate();
+    let cells = '';
+    for(let i = 0; i < startOffset; i++) cells += '<span class="calday blank"></span>';
+    for(let d = 1; d <= dim; d++){
+      const ds = vy + '-' + String(vm).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      const off = ds < today;
+      cells += `<button type="button" class="calday${input.value === ds ? ' sel' : ''}${off ? ' off' : ''}" data-calday="${ds}" ${off ? 'disabled' : ''}>${d}</button>`;
+    }
+    panel.innerHTML = `<div class="calhead"><button type="button" class="calnav" data-calnav="-1" aria-label="Previous month">${icon('chevL', 18)}</button><b>${first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</b><button type="button" class="calnav" data-calnav="1" aria-label="Next month">${icon('chev', 18)}</button></div>
+    <div class="calgrid">${['M','T','W','T','F','S','S'].map(w=>`<span class="calwd">${w}</span>`).join('')}${cells}</div>`;
+    panel.querySelectorAll('[data-calnav]').forEach(b=>b.onclick = ()=>{ const nv = new Date(vy, vm - 1 + Number(b.dataset.calnav), 1); view = nv.getFullYear() + '-' + String(nv.getMonth() + 1).padStart(2, '0'); render(); });
+    panel.querySelectorAll('[data-calday]').forEach(b=>b.onclick = ()=>{ input.value = b.dataset.calday; valEl.innerHTML = esc(fmtDateLong(input.value)); close(); if(onCommit) onCommit(input.value); });
+  };
+  btn.onclick = ()=>{
+    if(!panel.classList.contains('hide')){ close(); return; }
+    if(closeOpenPicker) closeOpenPicker();
+    render(); panel.classList.remove('hide'); btn.setAttribute('aria-expanded', 'true'); closeOpenPicker = close;
+  };
+}
+function wireTimePicker(inputId, onCommit){
+  const btn = $('#' + inputId + 'Btn'), panel = $('#' + inputId + 'Panel'), input = $('#' + inputId), valEl = $('#' + inputId + 'Val');
+  if(!btn || !panel || !input) return;
+  const m = /^(\d{2}):(\d{2})$/.exec(input.value || '');
+  const st = m ? { h24: Number(m[1]), min: Number(m[2]) } : { h24: 19, min: 0 };
+  let snapped = [0, 15, 30, 45].includes(st.min);
+  const close = ()=>{ panel.classList.add('hide'); btn.setAttribute('aria-expanded', 'false'); if(closeOpenPicker === close) closeOpenPicker = null; };
+  const render = ()=>{
+    const h12 = ((st.h24 + 11) % 12) + 1;
+    const ap = st.h24 < 12 ? 'AM' : 'PM';
+    panel.innerHTML = `
+    <div class="timegrid">${[1,2,3,4,5,6,7,8,9,10,11,12].map(h=>`<button type="button" class="tchip${h === h12 ? ' on' : ''}" data-th="${h}">${h}</button>`).join('')}</div>
+    <div class="minsgrid">${[0,15,30,45].map(mn=>`<button type="button" class="tchip${snapped && mn === st.min ? ' on' : ''}" data-tm="${mn}">:${String(mn).padStart(2, '0')}</button>`).join('')}</div>
+    <div class="row" style="margin-top:8px;justify-content:center"><div class="seg" role="radiogroup" aria-label="AM or PM"><label><input type="radio" name="${inputId}Ap" value="AM" ${ap === 'AM' ? 'checked' : ''}><span>AM</span></label><label><input type="radio" name="${inputId}Ap" value="PM" ${ap === 'PM' ? 'checked' : ''}><span>PM</span></label></div></div>`;
+    const commit = ()=>{ input.value = String(st.h24).padStart(2, '0') + ':' + String(st.min).padStart(2, '0'); valEl.textContent = fmtTime(input.value); if(onCommit) onCommit(input.value); };
+    const snap = ()=>{ if(!snapped){ st.min = [0, 15, 30, 45].reduce((a, b)=>Math.abs(b - st.min) < Math.abs(a - st.min) ? b : a, 0); snapped = true; } };
+    panel.querySelectorAll('[data-th]').forEach(b=>b.onclick = ()=>{ snap(); const apNow = st.h24 < 12 ? 'AM' : 'PM'; st.h24 = (Number(b.dataset.th) % 12) + (apNow === 'PM' ? 12 : 0); commit(); render(); });
+    panel.querySelectorAll('[data-tm]').forEach(b=>b.onclick = ()=>{ snapped = true; st.min = Number(b.dataset.tm); commit(); render(); });
+    panel.querySelectorAll(`input[name="${inputId}Ap"]`).forEach(r=>r.onchange = ()=>{ snap(); if(r.value === 'PM' && st.h24 < 12) st.h24 += 12; if(r.value === 'AM' && st.h24 >= 12) st.h24 -= 12; commit(); render(); });
+  };
+  btn.onclick = ()=>{
+    if(!panel.classList.contains('hide')){ close(); return; }
+    if(closeOpenPicker) closeOpenPicker();
+    render(); panel.classList.remove('hide'); btn.setAttribute('aria-expanded', 'true'); closeOpenPicker = close;
+  };
+}
+
 function meetingSection(c){
   const isAdmin = c.role==='admin';
   const overlap = {};
@@ -637,7 +799,7 @@ function meetingSection(c){
   if(c.week && c.week.length){
     const wFirst = c.week[0], wLast = c.week[c.week.length-1];
     if(isAdmin){
-      h += `<div class="row" style="margin-top:6px;align-items:center"><button class="small ghost" id="shiftPrev" aria-label="Previous week" style="white-space:nowrap">‹ ${fmtRangeShort(shiftDayStr(wFirst,-7), shiftDayStr(wLast,-7))}</button><span class="grow" id="weekLabel" style="text-align:center;white-space:nowrap;font-weight:600">${fmtRangeShort(wFirst, wLast)}</span><button class="small ghost" id="shiftNext" aria-label="Next week" style="white-space:nowrap">${fmtRangeShort(shiftDayStr(wFirst,7), shiftDayStr(wLast,7))} ›</button></div>`;
+      h += `<div class="row" style="margin-top:6px;align-items:center"><button class="small ghost" id="shiftPrev" aria-label="Previous week" style="white-space:nowrap;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:14px;padding-left:9px;padding-right:9px">‹ ${fmtRangeShort(shiftDayStr(wFirst,-7), shiftDayStr(wLast,-7))}</button><span id="weekLabel" style="text-align:center;white-space:nowrap;font-weight:600;flex:none;font-size:15px;letter-spacing:-.2px;padding:0 2px">${fmtRangeShort(wFirst, wLast)}</span><button class="small ghost" id="shiftNext" aria-label="Next week" style="white-space:nowrap;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:14px;padding-left:9px;padding-right:9px">${fmtRangeShort(shiftDayStr(wFirst,7), shiftDayStr(wLast,7))} ›</button></div>`;
     } else {
       h += `<div class="row" style="margin-top:4px"><span class="muted grow" id="weekLabel" style="text-align:center;white-space:nowrap">${fmtRangeShort(wFirst, wLast)}</span></div>`;
     }
@@ -645,7 +807,7 @@ function meetingSection(c){
   if(c.meeting.date){
     const going = c.members.filter(m=>(c.rsvps||{})[m.userId]==='going');
     const myR = (c.rsvps||{})[user.id];
-    h += `<div style="margin:8px 0"><b>${fmtDate(c.meeting.date)}${fmtTime(c.meeting.time) ? ' · ' + fmtTime(c.meeting.time) : ''}</b></div>
+    h += `<div style="margin:8px 0" id="meetWhen"><b>${fmtDate(c.meeting.date)}${fmtTime(c.meeting.time) ? ' · ' + fmtTime(c.meeting.time) : ''}</b></div>
     <div class="row"><button class="small ${myR==='going'?'':'ghost'}" data-rsvp="going">Going</button>
     <button class="small ${myR==='notgoing'?'':'ghost'}" data-rsvp="notgoing">Not going</button>
     <span class="muted grow" id="goingCount" style="text-align:right;cursor:pointer">${going.length} going ›</span></div>`;
@@ -659,9 +821,9 @@ function meetingSection(c){
     h += c.meeting.address ? `<div class="muted" style="margin-top:8px">📍 ${esc(c.meeting.address)}</div>` : '<div class="muted" style="margin-top:8px">In person</div>';
   }
   if(isAdmin){
-    h += `<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px">
-    <div class="datefield"><input type="date" id="pickDate" value="${esc(c.meeting.date||'')}"><span class="cal">${icon('calendar',18)}</span></div>
-    <input type="time" id="mtime" aria-label="Meeting time" value="${esc(c.meeting.time||'')}" style="margin-top:8px">
+    h += `<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:2px">
+    ${pickerFieldHTML('pickDate', 'date', c.meeting.date || '')}
+    ${pickerFieldHTML('mtime', 'time', c.meeting.time || '')}
     <div class="row" style="margin-top:8px"><div class="seg" role="radiogroup" aria-label="Meeting type"><label><input type="radio" name="mtype" value="online" ${c.meeting.type==='online'?'checked':''}><span>Online</span></label><label><input type="radio" name="mtype" value="inperson" ${c.meeting.type==='inperson'?'checked':''}><span>In person</span></label></div>
     <span class="muted" id="meetSaved" style="opacity:0;transition:opacity .3s">Saved</span></div>
     <input type="url" id="mlink" placeholder="Meeting link" value="${esc(c.meeting.link||'')}" class="${c.meeting.type==='online'?'':'hide'}">
@@ -680,18 +842,35 @@ function rsvpPopup(c){
   <button class="ghost small" id="mClose" style="margin-top:14px;width:100%">Close</button>`);
   $('#mClose').onclick = closeModal;
 }
+function clubStripHTML(c){
+  const ids = clubFlipIds(c);
+  const idx = ids.indexOf(c.id);
+  const multi = ids.length > 1;
+  let sub = '';
+  if(multi && ids.length <= 8) sub = `<div class="cs-dots">${ids.map(id=>`<span class="cs-dot${id===c.id?' on':''}"></span>`).join('')}</div>`;
+  else if(multi) sub = `<div class="cs-count">${idx + 1} of ${ids.length}</div>`;
+  return `<div class="clubstrip" id="clubStrip" data-club="${c.id}">
+  <span class="cs-side">${multi && idx > 0 ? `<button class="iconbtn" id="clubPrev" aria-label="Previous club">${icon('chevL',22)}</button>` : ''}</span>
+  <div class="cs-main"><h2 class="cs-title">${esc(c.name)}${c.private?'<span class="badge">Private</span>':''}</h2>${sub}</div>
+  <span class="cs-side">${multi && idx < ids.length - 1 ? `<button class="iconbtn" id="clubNext" aria-label="Next club">${icon('chev',22)}</button>` : ''}</span>
+  <button class="iconbtn" id="clubList" aria-label="All clubs">${icon('list',22)}</button>${c.role==='admin'?`<button class="iconbtn" id="gear" aria-label="Settings">${icon('gear',22)}</button>`:''}
+  </div>`;
+}
 function viewClub(){
   const c = currentClub; if(!c) return viewHome();
   const isAdmin = c.role==='admin';
   app.innerHTML = `
-  <div class="row"><button class="ghost small" id="back">‹ Clubs</button><span class="grow"></span>${isAdmin?`<button class="iconbtn" id="gear" aria-label="Settings">${icon('gear',22)}</button>`:''}</div>
-  <h2>${esc(c.name)}${c.private?'<span class="badge">Private</span>':''}</h2>
+  ${clubStripHTML(c)}
   ${currentSection(c)}
   ${nextBookSection(c)}
   ${meetingSection(c)}
   <div class="card row setrow a-teal" id="libRow"><span style="color:#17a398">${icon('book',20)}</span><b class="grow">Library</b><span class="muted">${c.library.length} book${c.library.length===1?'':'s'}</span><span class="muted">›</span></div>
   <div style="margin-top:10px"><button id="leave" class="ghost small">Leave club</button></div>`;
-  $('#back').onclick = ()=>{ currentClub=null; viewHome(); };
+  const flipIds = clubFlipIds(c), flipIdx = flipIds.indexOf(c.id);
+  if($('#clubPrev')) $('#clubPrev').onclick = ()=>openClub(flipIds[flipIdx - 1]);
+  if($('#clubNext')) $('#clubNext').onclick = ()=>openClub(flipIds[flipIdx + 1]);
+  $('#clubList').onclick = ()=>{ currentClub=null; setTab('home'); viewHome(); };
+  armClubNav(flipIds, flipIdx);
   if(isAdmin) $('#gear').onclick = ()=>viewSettings();
   $('#libRow').onclick = ()=>viewLibrary();
   wireRates(()=>viewClub());
@@ -725,13 +904,10 @@ function viewClub(){
       meetSaving = false;
     };
     document.querySelectorAll('input[name="mtype"]').forEach(r=>r.onchange=()=>{ const cur=document.querySelector('input[name="mtype"]:checked'); const on=cur?cur.value==='online':true; $('#mlink').classList.toggle('hide', !on); $('#maddr').classList.toggle('hide', on); saveMeeting(true); });
-    if($('#mtime')) $('#mtime').onchange = ()=>saveMeeting(true);
+    wireTimePicker('mtime', async ()=>{ await saveMeeting(false); const mw = $('#meetWhen'); if(mw && currentClub.meeting.date) mw.innerHTML = `<b>${fmtDate(currentClub.meeting.date)}${fmtTime(currentClub.meeting.time) ? ' · ' + fmtTime(currentClub.meeting.time) : ''}</b>`; });
     if($('#mlink')) $('#mlink').onchange = ()=>saveMeeting(false);
     if($('#maddr')) $('#maddr').onchange = ()=>saveMeeting(false);
-    const pd=$('#pickDate');
-    const pdf=pd.closest('.datefield');
-    if(pdf) pdf.onclick=()=>{ try{ pd.focus(); if(pd.showPicker) pd.showPicker(); }catch(e){} };
-    pd.onchange=async()=>{ if(!pd.value) return; try{ const j=await api('pickDate',{clubId:c.id, date:pd.value}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
+    wireDatePicker('pickDate', async (v)=>{ try{ const j=await api('pickDate',{clubId:c.id, date:v}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } });
   }
   $('#leave').onclick=async()=>{ await api('leaveClub',{clubId:c.id}); await refreshClubs(); currentClub=null; viewHome(); };
 }
@@ -789,8 +965,8 @@ function viewPoll(){
     body = `<h3 style="margin-top:0">Tie</h3>${isAdmin?'<button id="runoff" class="small">One day runoff</button> '+c.lastResult.tie.map(k=>{const b=c.library.find(x=>x.key===k); return b?`<button class="small ghost" data-pick="${k}">Pick ${esc(b.title)}</button>`:'';}).join(' '):'<div class="muted">The admin picks the winner</div>'}`;
   } else if(isAdmin && pollCandidatesOf(c).length>=2){
     body = `<h3 style="margin-top:0">${c.current?'Pick the next book':'Pick a book'}</h3>
-    <div class="muted" style="margin:6px 0 4px">End date</div>
-    <div class="datefield"><input type="date" id="pollEnd" value="${pollDefaultEnd(c)}"><span class="cal">${icon('calendar',18)}</span></div>
+    <div class="muted" style="margin:6px 0 0">End date</div>
+    ${pickerFieldHTML('pollEnd', 'date', pollDefaultEnd(c))}
     <button id="doStartPoll" class="ic" style="margin-top:10px;width:100%;justify-content:center">${icon('chart',16)} Start poll</button>`;
   } else {
     body = '<div class="muted">No poll running</div>';
@@ -806,8 +982,7 @@ function viewPoll(){
   app.querySelectorAll('[data-pick]').forEach(b=>b.onclick=async()=>{ const j=await api('adminPick',{clubId:c.id, bookKey:b.dataset.pick}); currentClub=j.club; viewClub(); });
   if($('#closePoll')) $('#closePoll').onclick=async()=>{ const j=await api('closePoll',{clubId:c.id}); currentClub=j.club; await refreshClubs(); viewClub(); };
   if($('#runoff')) $('#runoff').onclick=async()=>{ const j=await api('runoff',{clubId:c.id}); currentClub=j.club; viewPoll(); };
-  const pe = $('#pollEnd');
-  if(pe){ const pef = pe.closest('.datefield'); if(pef) pef.onclick=()=>{ try{ pe.focus(); if(pe.showPicker) pe.showPicker(); }catch(e){} }; }
+  if($('#pollEnd')) wireDatePicker('pollEnd');
   if($('#doStartPoll')) $('#doStartPoll').onclick=async()=>{ try{ const j=await api('startPoll',{clubId:c.id, endDate:$('#pollEnd').value}); currentClub=j.club; viewPoll(); }catch(e){ toast(e.message); } };
 }
 
@@ -882,23 +1057,26 @@ function viewDeleteClubPage(){
 
 // ---------- add books ----------
 function viewAdd(preClub){
+  disarmClubNav();
   const chosen = new Set(preClub?[preClub]: myClubs.map(c=>c.id));
   app.innerHTML = `<h2>Add books</h2>
   <div class="card"><h3 style="margin-top:0">To</h3><div id="clubPick">${myClubs.map(c=>`<span class="chip ${chosen.has(c.id)?'on':''}" data-club="${c.id}">${esc(c.name)}</span>`).join('')||'<span class="muted">Join or create a club first</span>'}</div></div>
   <div class="card"><h3 style="margin-top:0">Search</h3>
     <div class="row"><input type="text" id="sq" data-enter="sgo" placeholder="Title or author" class="grow"><button id="sgo" class="small">Search</button></div>
-    <div id="sres"></div>
-    <button id="addSel" class="hide" style="width:100%;margin-top:8px">Add selected</button></div>
+    <div id="sres"></div></div>
   <div class="card"><h3 style="margin-top:0">Paste a link</h3>
     <input type="url" id="link" data-enter="linkGo" placeholder="Amazon, Goodreads, Google Books or Open Library link">
-    <button id="linkGo" style="width:100%">Add from link</button><div class="err" id="lerr"></div></div>`;
+    <button id="linkGo" style="width:100%">Add from link</button><div class="err" id="lerr"></div></div>
+  <div id="addBar" class="hide"><button id="addSel" style="width:100%">Add 1 book</button></div>`;
   const clubs = ()=>[...app.querySelectorAll('#clubPick .chip.on')].map(x=>x.dataset.club);
   app.querySelectorAll('#clubPick .chip').forEach(ch=>ch.onclick=()=>ch.classList.toggle('on'));
-  const render = ()=>{ $('#sres').innerHTML = searchResults.map((b,i)=>`<label class="book"><input type="checkbox" data-i="${i}" ${addSel.has(i)?'checked':''} style="width:auto">
-    ${b.cover?`<img class="cover" src="${esc(b.cover)}">`:'<div class="cover"></div>'}
-    <span class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>${ratingsLine(b)}</span></label>`).join('');
-    $('#addSel').classList.toggle('hide', !addSel.size);
-    app.querySelectorAll('#sres [data-i]').forEach(cb=>cb.onchange=()=>{ cb.checked?addSel.set(Number(cb.dataset.i), searchResults[Number(cb.dataset.i)]):addSel.delete(Number(cb.dataset.i)); $('#addSel').classList.toggle('hide', !addSel.size); $('#addSel').textContent='Add selected ('+addSel.size+')'; }); };
+  const updateBar = ()=>{ const bar = $('#addBar'); if(!bar) return; bar.classList.toggle('hide', !addSel.size); if(addSel.size) $('#addSel').textContent = `Add ${addSel.size} book${addSel.size===1?'':'s'}`; };
+  const render = ()=>{ $('#sres').innerHTML = searchResults.map((b,i)=>{ const sel = addSel.has(i); return `<div class="book${sel?' picks':''}" data-pick="${i}" role="button" tabindex="0" aria-pressed="${sel}" aria-label="${esc(b.title)}">
+    ${b.cover?`<img class="cover" src="${esc(b.cover)}" alt="">`:'<div class="cover"></div>'}
+    <div class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>${ratingsLine(b)}</div>
+    ${sel?`<span class="selcheck">${icon('check',14)}</span>`:''}</div>`; }).join('');
+    updateBar();
+    app.querySelectorAll('#sres [data-pick]').forEach(row=>{ const toggle=()=>{ const i=Number(row.dataset.pick); if(addSel.has(i)) addSel.delete(i); else addSel.set(i, searchResults[i]); render(); }; row.onclick=toggle; row.onkeydown=(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } }; }); };
   const afterAdd = async ()=>{ await refreshClubs(); if(addReturn==='library' && currentClub){ await reloadClub(); viewLibrary(); } else if(currentClub) openClub(currentClub.id); else viewHome(); };
   $('#sgo').onclick = async ()=>{ try{ $('#sres').innerHTML='<div class="muted">Searching…</div>'; const j=await api('searchBooks',{q:$('#sq').value}); searchResults=j.results; addSel.clear(); render(); if(!searchResults.length) $('#sres').innerHTML='<div class="muted">Nothing found</div>'; }catch(e){ toast(e.message); } };
   $('#addSel').onclick = async ()=>{ try{ await api('addBooks',{clubIds:clubs(), books:[...addSel.values()]}); toast('Added'); addSel.clear(); afterAdd(); }catch(e){ toast(e.message); } };
@@ -907,6 +1085,7 @@ function viewAdd(preClub){
 
 // ---------- me ----------
 function viewMe(){
+  disarmClubNav();
   app.innerHTML = `<div class="card"><h3 style="margin-top:0">${esc(user.name)}</h3><div class="muted">${esc(user.email)}</div></div>
   <h2>My clubs</h2>${myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b></div><span>›</span></div>`).join('')||'<div class="muted">No clubs yet</div>'}
   <div class="card"><div id="delAcctBox"><button id="delAcct" class="ghost small danger">Delete account</button></div></div>`;
