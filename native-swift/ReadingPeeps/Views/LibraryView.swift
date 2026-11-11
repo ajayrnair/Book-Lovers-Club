@@ -61,13 +61,13 @@ struct LibraryView: View {
         let read = rest.filter { !($0.finishedBy ?? []).isEmpty }
         let toRead = rest.filter { ($0.finishedBy ?? []).isEmpty }
         if let current {
-            Section("Current book") { bookRows(c, books: [current]) }
+            Section { bookRows(c, books: [current]) } header: { rpSectionHeader("Current book") }
         }
         if !toRead.isEmpty {
-            Section("To read") { bookRows(c, books: toRead) }
+            Section { bookRows(c, books: toRead) } header: { rpSectionHeader("To read") }
         }
         if !read.isEmpty {
-            Section("Read") { bookRows(c, books: read) }
+            Section { bookRows(c, books: read) } header: { rpSectionHeader("Read") }
         }
     }
 

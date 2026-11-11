@@ -128,7 +128,7 @@ struct FindClubsView: View {
             }
 
             if hasSearched {
-                Section("Results") {
+                Section {
                     if results.isEmpty {
                         Text("No clubs match")
                             .foregroundStyle(.secondary)
@@ -136,10 +136,10 @@ struct FindClubsView: View {
                     ForEach(results) { club in
                         resultRow(club)
                     }
-                }
+                } header: { rpSectionHeader("Results") }
             }
 
-            Section("Have an invite?") {
+            Section {
                 TextField("Invite link or code", text: $inviteText)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -152,7 +152,7 @@ struct FindClubsView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-            }
+            } header: { rpSectionHeader("Have an invite?") }
         }
         .sheet(isPresented: $showGenres) {
             GenrePickerSheet(selected: $genres)
@@ -299,14 +299,14 @@ struct CreateClubView: View {
             Section {
                 TextField("Club name", text: $name)
             }
-            Section("Visibility") {
+            Section {
                 Picker("Visibility", selection: $isPrivate) {
                     Text("Private").tag(true)
                     Text("Public").tag(false)
                 }
                 .pickerStyle(.segmented)
-            }
-            Section("Format") {
+            } header: { rpSectionHeader("Visibility") }
+            Section {
                 Picker("Format", selection: $format) {
                     Text("Online").tag("online")
                     Text("In person").tag("in-person")
@@ -318,7 +318,7 @@ struct CreateClubView: View {
                         ForEach(PLACES) { p in Text(p.label).tag(Place?.some(p)) }
                     }
                 }
-            }
+            } header: { rpSectionHeader("Format") }
             Section {
                 Button {
                     showGenres = true

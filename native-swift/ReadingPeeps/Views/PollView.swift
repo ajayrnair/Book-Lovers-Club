@@ -144,13 +144,13 @@ struct PollView: View {
                     .foregroundStyle(.secondary)
             }
         } else {
-            Section(c.current != nil ? "Pick the next book" : "Pick a book") {
+            Section {
                 DatePicker("End date", selection: $endDate, displayedComponents: .date)
                     .onChange(of: endDate) { _, _ in endDateTouched = true }
                 Button("Start poll") {
                     Task { await startPoll() }
                 }
-            }
+            } header: { rpSectionHeader(c.current != nil ? "Pick the next book" : "Pick a book") }
             Text("Defaults to one day before the next meeting, and never runs past a week.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)

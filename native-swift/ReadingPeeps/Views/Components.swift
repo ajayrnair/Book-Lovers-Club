@@ -71,18 +71,61 @@ struct AvatarView: View {
     }
 }
 
-/// The brand screen treatment: the web app's cream page behind white
-/// cards. Apply to a screen's root list or container.
+/// The brand screen treatment, matching the web app exactly: the deep
+/// plum page frame with cream cards (list rows) floating on it. Apply to
+/// a screen's root list or container.
 struct BrandScreen: ViewModifier {
     func body(content: Content) -> some View {
         content
             .scrollContentBackground(.hidden)
-            .background(Color.rpCream)
+            .background(Color.rpPlumBg)
+            .listRowBackground(Color.rpCream)
     }
 }
 
 extension View {
     func brandScreen() -> some View { modifier(BrandScreen()) }
+}
+
+/// Section header text for branded screens: the plum page shows through
+/// behind section headers, so they are set in soft cream instead of the
+/// system gray that would vanish on plum.
+@ViewBuilder
+func rpSectionHeader(_ title: String) -> some View {
+    Text(title)
+        .font(.footnote.weight(.semibold))
+        .foregroundStyle(Color.rpCream.opacity(0.75))
+        .textCase(.uppercase)
+}
+
+/// The Reading Peeps mark, drawn the way the app icon is: five bookmark
+/// ribbons in the brand colors standing on deep plum, each topped with a
+/// round head. Used inside the app so the brand is present on screen.
+struct LogoView: View {
+    var size: CGFloat = 64
+
+    private let heights: [Double] = [0.30, 0.40, 0.34, 0.44, 0.32]
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: size * 0.24)
+                .fill(Color.rpPlum)
+            HStack(alignment: .bottom, spacing: size * 0.05) {
+                ForEach(0..<5, id: \.self) { i in
+                    VStack(spacing: size * 0.035) {
+                        Circle()
+                            .fill(Color.rpAvatarColors[i])
+                            .frame(width: size * 0.115, height: size * 0.115)
+                        RoundedRectangle(cornerRadius: size * 0.035)
+                            .fill(Color.rpAvatarColors[i])
+                            .frame(width: size * 0.115, height: size * heights[i])
+                    }
+                }
+            }
+            .padding(.bottom, size * 0.14)
+        }
+        .frame(width: size, height: size)
+    }
 }
 
 // ---------- ratings text ----------

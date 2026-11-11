@@ -73,7 +73,7 @@ struct AddBooksView: View {
     // MARK: - sections
 
     private var toSection: some View {
-        Section("To") {
+        Section {
             ForEach(clubs) { club in
                 Button {
                     if selectedClubs.contains(club.id) { selectedClubs.remove(club.id) }
@@ -91,11 +91,11 @@ struct AddBooksView: View {
                 }
                 .buttonStyle(.plain)
             }
-        }
+        } header: { rpSectionHeader("To") }
     }
 
     private var linkSection: some View {
-        Section("Add by link") {
+        Section {
             TextField("Amazon, Goodreads, Google Books or Open Library link", text: $link)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -109,21 +109,21 @@ struct AddBooksView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-        }
+        } header: { rpSectionHeader("Add by link") }
     }
 
     @ViewBuilder
     private var resultsSection: some View {
         if searching {
-            Section("Results") {
+            Section {
                 HStack { ProgressView(); Text("Searching…").foregroundStyle(.secondary) }
-            }
+            } header: { rpSectionHeader("Results") }
         } else if let searchError {
-            Section("Results") {
+            Section {
                 Text(searchError).foregroundStyle(.red).font(.subheadline)
-            }
+            } header: { rpSectionHeader("Results") }
         } else if hasSearched {
-            Section("Results") {
+            Section {
                 if results.isEmpty {
                     Text("Nothing found")
                         .foregroundStyle(.secondary)
@@ -169,7 +169,7 @@ struct AddBooksView: View {
                         .buttonStyle(.plain)
                     }
                 }
-            }
+            } header: { rpSectionHeader("Results") }
         }
     }
 

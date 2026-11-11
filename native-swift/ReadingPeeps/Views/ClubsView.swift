@@ -8,7 +8,17 @@ struct ClubsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("My clubs") {
+                Section {
+                    HStack(spacing: 12) {
+                        LogoView(size: 40)
+                        Text("Reading Peeps")
+                            .font(.headline)
+                            .foregroundStyle(Color.rpInk)
+                        Spacer()
+                    }
+                    .listRowBackground(Color.rpCream)
+                }
+                Section {
                     if app.orderedClubs.isEmpty {
                         Text("No clubs yet. Find one or start your own below.")
                             .foregroundStyle(.secondary)
@@ -38,15 +48,15 @@ struct ClubsView: View {
                             Button("Leave club", role: .destructive) { clubToLeave = club }
                         }
                     }
-                }
-                Section("Find and create") {
+                } header: { rpSectionHeader("My clubs") }
+                Section {
                     NavigationLink(value: Route.findClubs) {
                         Label("Find a club", systemImage: "magnifyingglass")
                     }
                     NavigationLink(value: Route.createClub) {
                         Label("Create a club", systemImage: "plus.circle")
                     }
-                }
+                } header: { rpSectionHeader("Find and create") }
             }
             .navigationTitle("Clubs")
             .toolbar {

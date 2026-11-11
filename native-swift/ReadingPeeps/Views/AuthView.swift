@@ -14,12 +14,13 @@ struct AuthView: View {
     var body: some View {
         VStack(spacing: 0) {
             VStack(spacing: 6) {
+                LogoView(size: 76)
                 Text("Reading Peeps")
                     .font(.largeTitle.bold())
-                    .foregroundStyle(Color.rpPlum)
+                    .foregroundStyle(Color.rpCream)
                 Text("Read together, one book at a time.")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.rpCream.opacity(0.7))
             }
             .padding(.top, 48)
             .padding(.bottom, 8)
@@ -84,8 +85,9 @@ struct AuthView: View {
                 }
             }
             .scrollContentBackground(.hidden)
+            .listRowBackground(Color.rpCream)
         }
-        .background(Color.rpCream)
+        .background(Color.rpPlumBg)
     }
 
     private var formValid: Bool {

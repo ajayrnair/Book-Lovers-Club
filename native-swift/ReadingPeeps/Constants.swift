@@ -57,6 +57,9 @@ extension Color {
     static let rpTeal = Color(red: 23.0 / 255.0, green: 163.0 / 255.0, blue: 152.0 / 255.0)
     /// Cream page background (#fff9f1), the web app's page color.
     static let rpCream = Color(red: 255.0 / 255.0, green: 249.0 / 255.0, blue: 241.0 / 255.0)
+    /// Deep plum page frame (#3d1436), the web app's background around the
+    /// cream cards, and the color the app icon is drawn from.
+    static let rpPlumBg = Color(red: 61.0 / 255.0, green: 20.0 / 255.0, blue: 54.0 / 255.0)
     /// Ink text color (#3a1b2e), the web app's plum-brown text.
     static let rpInk = Color(red: 58.0 / 255.0, green: 27.0 / 255.0, blue: 46.0 / 255.0)
     /// Pale pink pill background (#f7e3ee) for rating pills.

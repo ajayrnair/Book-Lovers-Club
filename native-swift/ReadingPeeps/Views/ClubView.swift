@@ -145,7 +145,7 @@ struct ClubView: View {
 
     @ViewBuilder
     private func currentBookSection(_ c: Club) -> some View {
-        Section("Current book") {
+        Section {
             if let current = c.current {
                 BookRowView(title: current.title, author: current.author, year: current.year,
                             cover: current.cover, ratings: ratingsText(for: current), coverWidth: 60)
@@ -225,7 +225,7 @@ struct ClubView: View {
                 Text("No book picked yet")
                     .foregroundStyle(.secondary)
             }
-        }
+        } header: { rpSectionHeader("Current book") }
         if c.current != nil {
             progressSection(c)
         }
@@ -235,7 +235,7 @@ struct ClubView: View {
     private func progressSection(_ c: Club) -> some View {
         let current = c.current!
         let total = current.pageCount
-        Section("Reading progress") {
+        Section {
             HStack(spacing: 10) {
                 AvatarView(name: app.user?.name ?? "You", userId: myId)
                 Text("You")
@@ -250,7 +250,7 @@ struct ClubView: View {
             ForEach(orderedMembers(c), id: \.userId) { member in
                 memberProgressRow(c, member: member)
             }
-        }
+        } header: { rpSectionHeader("Reading progress") }
         .sheet(isPresented: $showingProgressEditor) {
             ProgressEditorSheet(
                 total: total,
@@ -322,7 +322,7 @@ struct ClubView: View {
     @ViewBuilder
     private func nextBookSection(_ c: Club) -> some View {
         if let poll = c.poll {
-            Section("Next book") {
+            Section {
                 NavigationLink(value: Route.poll(clubId)) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(pollTitle(c, poll: poll))
@@ -333,31 +333,31 @@ struct ClubView: View {
                             .lineLimit(2)
                     }
                 }
-            }
+            } header: { rpSectionHeader("Next book") }
         } else if let tie = c.lastResult?.tie, !tie.isEmpty {
-            Section("Next book") {
+            Section {
                 NavigationLink(value: Route.poll(clubId)) {
                     Label("Poll tied", systemImage: "chart.bar")
                 }
-            }
+            } header: { rpSectionHeader("Next book") }
         } else if c.library.isEmpty {
-            Section("Next book") {
+            Section {
                 NavigationLink(value: Route.library(clubId)) {
                     Label("Add books to the library", systemImage: "plus")
                 }
-            }
+            } header: { rpSectionHeader("Next book") }
         } else if c.pollCandidates.count == 1, let only = c.pollCandidates.first {
-            Section("Next book") {
+            Section {
                 Button("Pick \(only.title)") {
                     Task { await pickOnly(only) }
                 }
-            }
+            } header: { rpSectionHeader("Next book") }
         } else if c.pollCandidates.count >= 2 && c.isAdmin {
-            Section("Next book") {
+            Section {
                 NavigationLink(value: Route.poll(clubId)) {
                     Label("Start a poll", systemImage: "chart.bar")
                 }
-            }
+            } header: { rpSectionHeader("Next book") }
         }
     }
 
@@ -387,7 +387,7 @@ struct ClubView: View {
     @ViewBuilder
     private func discussionSection(_ c: Club) -> some View {
         if c.current != nil, let d = c.discussion {
-            Section("Discussion questions") {
+            Section {
                 Text("For the group")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -459,7 +459,7 @@ struct ClubView: View {
                     .disabled(qMineText.trimmingCharacters(in: .whitespaces).isEmpty)
                     .opacity(qMineText.trimmingCharacters(in: .whitespaces).isEmpty ? 0.4 : 1)
                 }
-            }
+            } header: { rpSectionHeader("Discussion questions") }
         }
     }
 
@@ -467,7 +467,7 @@ struct ClubView: View {
 
     @ViewBuilder
     private func meetingSection(_ c: Club) -> some View {
-        Section("Group meeting") {
+        Section {
             Text("Meets every \(c.meetingFrequencyWeeks) week\(c.meetingFrequencyWeeks > 1 ? "s" : "")")
                 .foregroundStyle(.secondary)
 
@@ -501,7 +501,7 @@ struct ClubView: View {
             if c.isAdmin {
                 meetingEditor(c)
             }
-        }
+        } header: { rpSectionHeader("Group meeting") }
     }
 
     @ViewBuilder
@@ -884,7 +884,7 @@ private struct ProgressEditorSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Your progress") {
+                Section {
                     HStack {
                         Text("Percent")
                         Spacer()
@@ -904,7 +904,7 @@ private struct ProgressEditorSheet: View {
                                 percent = total > 0 ? Double(new) / Double(total) * 100.0 : 0
                             }
                     }
-                }
+                } header: { rpSectionHeader("Your progress") }
             }
             .navigationTitle("Update progress")
             .navigationBarTitleDisplayMode(.inline)

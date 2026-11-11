@@ -25,7 +25,7 @@ struct ClubSettingsView: View {
                             Label("Members", systemImage: "person.2")
                         }
                     }
-                    Section("Meeting frequency") {
+                    Section {
                         Picker("Meets every", selection: freqBinding(club)) {
                             ForEach(1...8, id: \.self) { w in
                                 Text("\(w) week\(w == 1 ? "" : "s")").tag(w)
@@ -35,8 +35,8 @@ struct ClubSettingsView: View {
                         Text("Start a poll automatically a week before the cycle ends")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
-                    }
-                    Section("Discussion questions") {
+                    } header: { rpSectionHeader("Meeting frequency") }
+                    Section {
                         TextField("One question per line", text: $templateText, axis: .vertical)
                             .lineLimit(4...10)
                         Button("Save template") {
@@ -50,7 +50,7 @@ struct ClubSettingsView: View {
                         Text("These questions start the list for every new book. Members can add more for each book.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
-                    }
+                    } header: { rpSectionHeader("Discussion questions") }
                     Section {
                         Button("Delete club", role: .destructive) { confirmDelete = true }
                     }
@@ -239,7 +239,7 @@ struct MembersView: View {
     }
 
     private var inviteSection: some View {
-        Section("Invite members") {
+        Section {
             TextField("Emails to invite, separated by commas", text: $emails, axis: .vertical)
                 .lineLimit(3...6)
                 .textInputAutocapitalization(.never)
@@ -267,7 +267,7 @@ struct MembersView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-        }
+        } header: { rpSectionHeader("Invite members") }
     }
 
     @ViewBuilder

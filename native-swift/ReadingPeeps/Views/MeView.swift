@@ -68,19 +68,19 @@ struct StatsView: View {
                         LabeledContent("Clubs", value: "\(stats.clubs.total)")
                     }
                     if let n = stats.notifications {
-                        Section("Notifications") {
+                        Section {
                             LabeledContent("Delivered", value: "\(n.total)")
                             LabeledContent("Read", value: "\(n.read)")
                             LabeledContent("Email sent", value: "\(n.email["sent"] ?? 0)")
                             if (n.email["failed"] ?? 0) > 0 {
                                 LabeledContent("Email failed", value: "\(n.email["failed"] ?? 0)")
                             }
-                        }
+                        } header: { rpSectionHeader("Notifications") }
                     }
                     if let t = stats.telemetry {
                         telemetrySection(t)
                     }
-                    Section("Clubs") {
+                    Section {
                         ForEach(Array(stats.clubs.list.enumerated()), id: \.offset) { _, club in
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack {
@@ -96,8 +96,8 @@ struct StatsView: View {
                                 }
                             }
                         }
-                    }
-                    Section("Real accounts") {
+                    } header: { rpSectionHeader("Clubs") }
+                    Section {
                         ForEach(stats.users.list.filter { !$0.isTest }) { u in
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(u.name)
@@ -106,8 +106,8 @@ struct StatsView: View {
                                     .foregroundStyle(.secondary)
                             }
                         }
-                    }
-                    Section("Test accounts") {
+                    } header: { rpSectionHeader("Real accounts") }
+                    Section {
                         ForEach(stats.users.list.filter { $0.isTest }) { u in
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
@@ -123,7 +123,7 @@ struct StatsView: View {
                                 .buttonStyle(.bordered)
                             }
                         }
-                    }
+                    } header: { rpSectionHeader("Test accounts") }
                 }
             } else if let loadError {
                 ContentUnavailableView("Could not load stats", systemImage: "exclamationmark.triangle", description: Text(loadError))
@@ -140,12 +140,12 @@ struct StatsView: View {
 
     @ViewBuilder
     private func telemetrySection(_ t: StatsTelemetry) -> some View {
-        Section("Usage") {
+        Section {
             LabeledContent("Events", value: "\(t.total)")
             LabeledContent("Last 7 days", value: "\(t.last7Days)")
             LabeledContent("Active people", value: "\(t.activeUsers)")
-        }
-        Section("Last 14 days") {
+        } header: { rpSectionHeader("Usage") }
+        Section {
             let maxDay = max(1, t.byDay.map(\.count).max() ?? 0)
             HStack(alignment: .bottom, spacing: 4) {
                 ForEach(t.byDay) { d in
@@ -161,16 +161,16 @@ struct StatsView: View {
                 }
             }
             .padding(.vertical, 4)
-        }
+        } header: { rpSectionHeader("Last 14 days") }
         barSection("By page", t.byPage)
         barSection("By feature", t.byFeature)
         barSection("By event", t.byName)
         if !t.byUser.isEmpty {
-            Section("People") {
+            Section {
                 ForEach(Array(t.byUser.enumerated()), id: \.offset) { _, u in
                     LabeledContent(u.name, value: "\(u.events)")
                 }
-            }
+            } header: { rpSectionHeader("People") }
         }
     }
 
@@ -179,7 +179,7 @@ struct StatsView: View {
         if !values.isEmpty {
             let sorted = values.sorted { $0.value > $1.value }
             let maxV = max(1, sorted.first?.value ?? 0)
-            Section(title) {
+            Section {
                 ForEach(Array(sorted.enumerated()), id: \.offset) { _, pair in
                     HStack(spacing: 8) {
                         Text(pair.key)
@@ -198,7 +198,7 @@ struct StatsView: View {
                             .font(.subheadline.weight(.bold))
                     }
                 }
-            }
+            } header: { rpSectionHeader(title) }
         }
     }
 
