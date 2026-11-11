@@ -322,13 +322,15 @@ function publicClub(db, club, userId) {
   };
 }
 function meetingWeek(club) {
+  // The meeting week is the Monday-Sunday week containing cycleEnd.
   if (!club.cycleEnd) return [];
   const end = new Date(club.cycleEnd);
+  if (isNaN(end.getTime())) return [];
+  const day = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
+  const back = (new Date(day).getUTCDay() + 6) % 7; // days since Monday
+  const monday = day - back * 864e5;
   const days = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(end.getTime() - i * 864e5);
-    days.push(d.toISOString().slice(0, 10));
-  }
+  for (let i = 0; i < 7; i++) days.push(new Date(monday + i * 864e5).toISOString().slice(0, 10));
   return days;
 }
 function memberRatings(db, club, key) {
