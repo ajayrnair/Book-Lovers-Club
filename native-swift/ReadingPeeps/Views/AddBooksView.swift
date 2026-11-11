@@ -40,6 +40,7 @@ struct AddBooksView: View {
                                 Text(statusMessage)
                                     .foregroundStyle(.secondary)
                             }
+                            .listRowBackground(Color.rpCream)
                         }
                         resultsSection
                     }
@@ -92,6 +93,7 @@ struct AddBooksView: View {
                 .buttonStyle(.plain)
             }
         } header: { rpSectionHeader("To") }
+        .listRowBackground(Color.rpCream)
     }
 
     private var linkSection: some View {
@@ -110,6 +112,7 @@ struct AddBooksView: View {
                     .foregroundStyle(.secondary)
             }
         } header: { rpSectionHeader("Add by link") }
+        .listRowBackground(Color.rpCream)
     }
 
     @ViewBuilder
@@ -118,10 +121,12 @@ struct AddBooksView: View {
             Section {
                 HStack { ProgressView(); Text("Searching…").foregroundStyle(.secondary) }
             } header: { rpSectionHeader("Results") }
+            .listRowBackground(Color.rpCream)
         } else if let searchError {
             Section {
                 Text(searchError).foregroundStyle(.red).font(.subheadline)
             } header: { rpSectionHeader("Results") }
+            .listRowBackground(Color.rpCream)
         } else if hasSearched {
             Section {
                 if results.isEmpty {
@@ -170,6 +175,7 @@ struct AddBooksView: View {
                     }
                 }
             } header: { rpSectionHeader("Results") }
+            .listRowBackground(Color.rpCream)
         }
     }
 

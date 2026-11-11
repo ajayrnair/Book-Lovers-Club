@@ -25,6 +25,7 @@ struct ClubSettingsView: View {
                             Label("Members", systemImage: "person.2")
                         }
                     }
+                    .listRowBackground(Color.rpCream)
                     Section {
                         Picker("Meets every", selection: freqBinding(club)) {
                             ForEach(1...8, id: \.self) { w in
@@ -36,6 +37,7 @@ struct ClubSettingsView: View {
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     } header: { rpSectionHeader("Meeting frequency") }
+                    .listRowBackground(Color.rpCream)
                     Section {
                         TextField("One question per line", text: $templateText, axis: .vertical)
                             .lineLimit(4...10)
@@ -51,9 +53,11 @@ struct ClubSettingsView: View {
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     } header: { rpSectionHeader("Discussion questions") }
+                    .listRowBackground(Color.rpCream)
                     Section {
                         Button("Delete club", role: .destructive) { confirmDelete = true }
                     }
+                    .listRowBackground(Color.rpCream)
                 }
             } else if let loadError {
                 ContentUnavailableView("Could not load settings", systemImage: "exclamationmark.triangle", description: Text(loadError))
@@ -174,6 +178,7 @@ struct MembersView: View {
                             memberRow(club, member: member)
                         }
                     }
+                    .listRowBackground(Color.rpCream)
                     if club.isAdmin {
                         inviteSection
                     }
@@ -268,6 +273,7 @@ struct MembersView: View {
                     .foregroundStyle(.secondary)
             }
         } header: { rpSectionHeader("Invite members") }
+        .listRowBackground(Color.rpCream)
     }
 
     @ViewBuilder

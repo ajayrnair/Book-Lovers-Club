@@ -13,6 +13,7 @@ struct MeView: View {
                         LabeledContent("Name", value: user.name)
                         LabeledContent("Email", value: user.email)
                     }
+                    .listRowBackground(Color.rpCream)
                 }
                 if let user = app.user, ["ajay.r.nair@gmail.com", "hazel@readingpeeps.com"].contains(user.email) {
                     Section {
@@ -22,15 +23,18 @@ struct MeView: View {
                             Label("Stats", systemImage: "chart.bar")
                         }
                     }
+                    .listRowBackground(Color.rpCream)
                 }
                 Section {
                     Button("Sign out") {
                         Task { await app.signOut() }
                     }
                 }
+                .listRowBackground(Color.rpCream)
                 Section {
                     Button("Delete account", role: .destructive) { confirmDelete = true }
                 }
+                .listRowBackground(Color.rpCream)
             }
             .navigationTitle("Me")
             .brandScreen()
@@ -67,6 +71,7 @@ struct StatsView: View {
                         LabeledContent("Test accounts", value: "\(stats.users.test)")
                         LabeledContent("Clubs", value: "\(stats.clubs.total)")
                     }
+                    .listRowBackground(Color.rpCream)
                     if let n = stats.notifications {
                         Section {
                             LabeledContent("Delivered", value: "\(n.total)")
@@ -76,6 +81,7 @@ struct StatsView: View {
                                 LabeledContent("Email failed", value: "\(n.email["failed"] ?? 0)")
                             }
                         } header: { rpSectionHeader("Notifications") }
+                        .listRowBackground(Color.rpCream)
                     }
                     if let t = stats.telemetry {
                         telemetrySection(t)
@@ -97,6 +103,7 @@ struct StatsView: View {
                             }
                         }
                     } header: { rpSectionHeader("Clubs") }
+                    .listRowBackground(Color.rpCream)
                     Section {
                         ForEach(stats.users.list.filter { !$0.isTest }) { u in
                             VStack(alignment: .leading, spacing: 2) {
@@ -107,6 +114,7 @@ struct StatsView: View {
                             }
                         }
                     } header: { rpSectionHeader("Real accounts") }
+                    .listRowBackground(Color.rpCream)
                     Section {
                         ForEach(stats.users.list.filter { $0.isTest }) { u in
                             HStack {
@@ -124,6 +132,7 @@ struct StatsView: View {
                             }
                         }
                     } header: { rpSectionHeader("Test accounts") }
+                    .listRowBackground(Color.rpCream)
                 }
             } else if let loadError {
                 ContentUnavailableView("Could not load stats", systemImage: "exclamationmark.triangle", description: Text(loadError))
@@ -145,6 +154,7 @@ struct StatsView: View {
             LabeledContent("Last 7 days", value: "\(t.last7Days)")
             LabeledContent("Active people", value: "\(t.activeUsers)")
         } header: { rpSectionHeader("Usage") }
+        .listRowBackground(Color.rpCream)
         Section {
             let maxDay = max(1, t.byDay.map(\.count).max() ?? 0)
             HStack(alignment: .bottom, spacing: 4) {
@@ -162,6 +172,7 @@ struct StatsView: View {
             }
             .padding(.vertical, 4)
         } header: { rpSectionHeader("Last 14 days") }
+        .listRowBackground(Color.rpCream)
         barSection("By page", t.byPage)
         barSection("By feature", t.byFeature)
         barSection("By event", t.byName)
@@ -171,6 +182,7 @@ struct StatsView: View {
                     LabeledContent(u.name, value: "\(u.events)")
                 }
             } header: { rpSectionHeader("People") }
+            .listRowBackground(Color.rpCream)
         }
     }
 
@@ -199,6 +211,7 @@ struct StatsView: View {
                     }
                 }
             } header: { rpSectionHeader(title) }
+            .listRowBackground(Color.rpCream)
         }
     }
 

@@ -20,6 +20,7 @@ struct LibraryView: View {
                                 .foregroundStyle(.secondary)
                             Button("Add books") { showAddBooks = true }
                         }
+                        .listRowBackground(Color.rpCream)
                     } else {
                         groups(club)
                     }
@@ -62,12 +63,15 @@ struct LibraryView: View {
         let toRead = rest.filter { ($0.finishedBy ?? []).isEmpty }
         if let current {
             Section { bookRows(c, books: [current]) } header: { rpSectionHeader("Current book") }
+            .listRowBackground(Color.rpCream)
         }
         if !toRead.isEmpty {
             Section { bookRows(c, books: toRead) } header: { rpSectionHeader("To read") }
+            .listRowBackground(Color.rpCream)
         }
         if !read.isEmpty {
             Section { bookRows(c, books: read) } header: { rpSectionHeader("Read") }
+            .listRowBackground(Color.rpCream)
         }
     }
 

@@ -49,6 +49,7 @@ struct ClubsView: View {
                         }
                     }
                 } header: { rpSectionHeader("My clubs") }
+                .listRowBackground(Color.rpCream)
                 Section {
                     NavigationLink(value: Route.findClubs) {
                         Label("Find a club", systemImage: "magnifyingglass")
@@ -57,6 +58,7 @@ struct ClubsView: View {
                         Label("Create a club", systemImage: "plus.circle")
                     }
                 } header: { rpSectionHeader("Find and create") }
+                .listRowBackground(Color.rpCream)
             }
             .navigationTitle("Clubs")
             .toolbar {
@@ -162,6 +164,7 @@ struct NotificationsView: View {
                     }
                     .padding(.vertical, 2)
                 }
+                .listRowBackground(Color.rpCream)
             }
         }
         .navigationTitle("Notifications")

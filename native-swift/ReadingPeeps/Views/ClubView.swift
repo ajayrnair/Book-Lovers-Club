@@ -48,6 +48,7 @@ struct ClubView: View {
                             Label("Library", systemImage: "books.vertical")
                         }
                     }
+                    .listRowBackground(Color.rpCream)
                 }
                 .refreshable { await load() }
                 .brandScreen()
@@ -226,6 +227,7 @@ struct ClubView: View {
                     .foregroundStyle(.secondary)
             }
         } header: { rpSectionHeader("Current book") }
+        .listRowBackground(Color.rpCream)
         if c.current != nil {
             progressSection(c)
         }
@@ -251,6 +253,7 @@ struct ClubView: View {
                 memberProgressRow(c, member: member)
             }
         } header: { rpSectionHeader("Reading progress") }
+        .listRowBackground(Color.rpCream)
         .sheet(isPresented: $showingProgressEditor) {
             ProgressEditorSheet(
                 total: total,
@@ -334,30 +337,35 @@ struct ClubView: View {
                     }
                 }
             } header: { rpSectionHeader("Next book") }
+            .listRowBackground(Color.rpCream)
         } else if let tie = c.lastResult?.tie, !tie.isEmpty {
             Section {
                 NavigationLink(value: Route.poll(clubId)) {
                     Label("Poll tied", systemImage: "chart.bar")
                 }
             } header: { rpSectionHeader("Next book") }
+            .listRowBackground(Color.rpCream)
         } else if c.library.isEmpty {
             Section {
                 NavigationLink(value: Route.library(clubId)) {
                     Label("Add books to the library", systemImage: "plus")
                 }
             } header: { rpSectionHeader("Next book") }
+            .listRowBackground(Color.rpCream)
         } else if c.pollCandidates.count == 1, let only = c.pollCandidates.first {
             Section {
                 Button("Pick \(only.title)") {
                     Task { await pickOnly(only) }
                 }
             } header: { rpSectionHeader("Next book") }
+            .listRowBackground(Color.rpCream)
         } else if c.pollCandidates.count >= 2 && c.isAdmin {
             Section {
                 NavigationLink(value: Route.poll(clubId)) {
                     Label("Start a poll", systemImage: "chart.bar")
                 }
             } header: { rpSectionHeader("Next book") }
+            .listRowBackground(Color.rpCream)
         }
     }
 
@@ -426,7 +434,6 @@ struct ClubView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(qGroupText.trimmingCharacters(in: .whitespaces).isEmpty)
-                    .opacity(qGroupText.trimmingCharacters(in: .whitespaces).isEmpty ? 0.4 : 1)
                 }
                 Text("Yours, only you see these")
                     .font(.subheadline)
@@ -457,9 +464,9 @@ struct ClubView: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(qMineText.trimmingCharacters(in: .whitespaces).isEmpty)
-                    .opacity(qMineText.trimmingCharacters(in: .whitespaces).isEmpty ? 0.4 : 1)
                 }
             } header: { rpSectionHeader("Discussion questions") }
+            .listRowBackground(Color.rpCream)
         }
     }
 
@@ -502,6 +509,7 @@ struct ClubView: View {
                 meetingEditor(c)
             }
         } header: { rpSectionHeader("Group meeting") }
+        .listRowBackground(Color.rpCream)
     }
 
     @ViewBuilder
@@ -905,6 +913,7 @@ private struct ProgressEditorSheet: View {
                             }
                     }
                 } header: { rpSectionHeader("Your progress") }
+                .listRowBackground(Color.rpCream)
             }
             .navigationTitle("Update progress")
             .navigationBarTitleDisplayMode(.inline)

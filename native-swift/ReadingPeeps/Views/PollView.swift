@@ -92,12 +92,14 @@ struct PollView: View {
             let closes = Dates.shortDate(iso: poll.closesAt)
             Text("\(poll.totalVotes) vote\(poll.totalVotes == 1 ? "" : "s")\(closes.isEmpty ? "" : " · Closes \(closes)")")
         }
+        .listRowBackground(Color.rpCream)
         if c.isAdmin {
             Section {
                 Button("Close poll", role: .destructive) {
                     Task { await closePoll() }
                 }
             }
+            .listRowBackground(Color.rpCream)
         }
     }
 
@@ -117,17 +119,20 @@ struct PollView: View {
                 }
             }
         }
+        .listRowBackground(Color.rpCream)
         if c.isAdmin {
             Section {
                 Button("Run a one-day runoff") {
                     Task { await runoff() }
                 }
             }
+            .listRowBackground(Color.rpCream)
         } else {
             Section {
                 Text("The admin picks the winner.")
                     .foregroundStyle(.secondary)
             }
+            .listRowBackground(Color.rpCream)
         }
     }
 
@@ -138,11 +143,13 @@ struct PollView: View {
                 Text("No poll is running. An admin can start one.")
                     .foregroundStyle(.secondary)
             }
+            .listRowBackground(Color.rpCream)
         } else if c.pollCandidates.count < 2 {
             Section {
                 Text("No poll is running. A poll needs at least two books that nobody has finished yet.")
                     .foregroundStyle(.secondary)
             }
+            .listRowBackground(Color.rpCream)
         } else {
             Section {
                 DatePicker("End date", selection: $endDate, displayedComponents: .date)
@@ -151,9 +158,11 @@ struct PollView: View {
                     Task { await startPoll() }
                 }
             } header: { rpSectionHeader(c.current != nil ? "Pick the next book" : "Pick a book") }
+            .listRowBackground(Color.rpCream)
             Text("Defaults to one day before the next meeting, and never runs past a week.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+                .listRowBackground(Color.rpCream)
         }
     }
 

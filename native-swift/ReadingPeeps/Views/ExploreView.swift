@@ -126,6 +126,7 @@ struct FindClubsView: View {
                 }
                 .disabled(searching)
             }
+            .listRowBackground(Color.rpCream)
 
             if hasSearched {
                 Section {
@@ -137,6 +138,7 @@ struct FindClubsView: View {
                         resultRow(club)
                     }
                 } header: { rpSectionHeader("Results") }
+                .listRowBackground(Color.rpCream)
             }
 
             Section {
@@ -153,6 +155,7 @@ struct FindClubsView: View {
                         .foregroundStyle(.secondary)
                 }
             } header: { rpSectionHeader("Have an invite?") }
+            .listRowBackground(Color.rpCream)
         }
         .sheet(isPresented: $showGenres) {
             GenrePickerSheet(selected: $genres)
@@ -299,6 +302,7 @@ struct CreateClubView: View {
             Section {
                 TextField("Club name", text: $name)
             }
+            .listRowBackground(Color.rpCream)
             Section {
                 Picker("Visibility", selection: $isPrivate) {
                     Text("Private").tag(true)
@@ -306,6 +310,7 @@ struct CreateClubView: View {
                 }
                 .pickerStyle(.segmented)
             } header: { rpSectionHeader("Visibility") }
+            .listRowBackground(Color.rpCream)
             Section {
                 Picker("Format", selection: $format) {
                     Text("Online").tag("online")
@@ -319,6 +324,7 @@ struct CreateClubView: View {
                     }
                 }
             } header: { rpSectionHeader("Format") }
+            .listRowBackground(Color.rpCream)
             Section {
                 Button {
                     showGenres = true
@@ -340,11 +346,13 @@ struct CreateClubView: View {
                 }
                 TextField("Specialty (optional)", text: $specialty)
             }
+            .listRowBackground(Color.rpCream)
             if let createdMessage {
                 Section {
                     Text(createdMessage)
                         .foregroundStyle(.secondary)
                 }
+                .listRowBackground(Color.rpCream)
             }
             Section {
                 Button {
@@ -358,6 +366,7 @@ struct CreateClubView: View {
                 }
                 .disabled(busy || name.trimmingCharacters(in: .whitespaces).isEmpty || (format == "in-person" && place == nil))
             }
+            .listRowBackground(Color.rpCream)
         }
         .sheet(isPresented: $showGenres) {
             GenrePickerSheet(selected: $genres, cap: 8)

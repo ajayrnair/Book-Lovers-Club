@@ -49,6 +49,7 @@ struct AuthView: View {
                     SecureField("Password", text: $password)
                         .textContentType(mode == 1 ? .newPassword : .password)
                 }
+                .listRowBackground(Color.rpCream)
 
                 if let errorMessage {
                     Section {
@@ -56,6 +57,7 @@ struct AuthView: View {
                             .foregroundStyle(.red)
                             .font(.subheadline)
                     }
+                    .listRowBackground(Color.rpCream)
                 }
 
                 Section {
@@ -70,6 +72,7 @@ struct AuthView: View {
                     }
                     .disabled(busy || !formValid)
                 }
+                .listRowBackground(Color.rpCream)
 
                 Section {
                     Button {
@@ -83,6 +86,7 @@ struct AuthView: View {
                     }
                     .disabled(busy)
                 }
+                .listRowBackground(Color.rpCream)
             }
             .scrollContentBackground(.hidden)
             .listRowBackground(Color.rpCream)
