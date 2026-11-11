@@ -87,6 +87,12 @@
   @keyframes slideup{from{transform:translateY(26px);opacity:.5}to{transform:none;opacity:1}}
   .setrow{cursor:pointer}
   [data-open]{cursor:pointer}
+  .seg{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+  .seg label{cursor:pointer;margin:0}
+  .seg input{position:absolute;opacity:0;width:1px;height:1px}
+  .seg span{display:inline-flex;align-items:center;padding:8px 14px;border-radius:9px;font-weight:600;font-size:15px;color:var(--muted)}
+  .seg input:checked+span{background:var(--accent);color:#fff}
+  .seg input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
   .book{cursor:pointer}
   .setrow:active{background:rgba(201,58,84,.05)}
   .datefield{position:relative}
@@ -153,6 +159,8 @@ async function api(action, body={}){
 function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function fmtDate(ds){ if(!ds) return ''; const d=new Date(ds+'T12:00:00'); return d.toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'}); }
 function fmtDayShort(ds){ if(!ds) return ''; const d=new Date(ds+'T12:00:00'); return d.toLocaleDateString(undefined,{month:'short', day:'numeric'}); }
+function shiftDayStr(ds, n){ const p = ds.split('-').map(Number); return new Date(Date.UTC(p[0], p[1]-1, p[2]+n)).toISOString().slice(0,10); }
+function fmtRangeShort(a, b){ const da=new Date(a+'T12:00:00'); const db=new Date(b+'T12:00:00'); return (da.getMonth()===db.getMonth() && da.getFullYear()===db.getFullYear()) ? fmtDayShort(a)+'–'+db.getDate() : fmtDayShort(a)+' – '+fmtDayShort(b); }
 function ratingsLine(b){
   const parts=[];
   if(b.google) parts.push(`Google ★ ${b.google.rating} (${b.google.count})`);
@@ -410,7 +418,12 @@ function meetingSection(c){
   let h = `<div class="card a-violet"><h3 style="margin-top:0">Group meeting</h3>
   <div class="muted">Meets every ${c.meetingFrequencyWeeks} week${c.meetingFrequencyWeeks>1?'s':''}</div>`;
   if(c.week && c.week.length){
-    h += `<div class="row" style="margin-top:4px"><span class="muted grow">Meeting week · ${fmtDayShort(c.week[0])} – ${fmtDayShort(c.week[c.week.length-1])}</span>${isAdmin?`<button class="small ghost" id="shiftPrev">‹ Week</button><button class="small ghost" id="shiftNext">Week ›</button>`:''}</div>`;
+    const wFirst = c.week[0], wLast = c.week[c.week.length-1];
+    if(isAdmin){
+      h += `<div class="row" style="margin-top:6px;align-items:center"><button class="small ghost" id="shiftPrev" aria-label="Previous week">‹ ${fmtRangeShort(shiftDayStr(wFirst,-7), shiftDayStr(wLast,-7))}</button><span class="muted grow" style="text-align:center">Meeting week · ${fmtDayShort(wFirst)} – ${fmtDayShort(wLast)}</span><button class="small ghost" id="shiftNext" aria-label="Next week">${fmtRangeShort(shiftDayStr(wFirst,7), shiftDayStr(wLast,7))} ›</button></div>`;
+    } else {
+      h += `<div class="row" style="margin-top:4px"><span class="muted grow">Meeting week · ${fmtDayShort(wFirst)} – ${fmtDayShort(wLast)}</span></div>`;
+    }
   }
   if(c.meeting.date){
     const going = c.members.filter(m=>(c.rsvps||{})[m.userId]==='going');
@@ -431,7 +444,7 @@ function meetingSection(c){
   if(isAdmin){
     h += `<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px">
     <div class="datefield"><input type="date" id="pickDate" value="${esc(c.meeting.date||'')}"><span class="cal">${icon('calendar',18)}</span></div>
-    <div class="row" style="margin-top:6px"><select id="mtype" style="width:auto"><option value="online" ${c.meeting.type==='online'?'selected':''}>Online</option><option value="inperson" ${c.meeting.type==='inperson'?'selected':''}>In person</option></select>
+    <div class="row" style="margin-top:6px"><div class="seg" role="radiogroup" aria-label="Meeting type"><label><input type="radio" name="mtype" value="online" ${c.meeting.type==='online'?'checked':''}><span>Online</span></label><label><input type="radio" name="mtype" value="inperson" ${c.meeting.type==='inperson'?'checked':''}><span>In person</span></label></div>
     <button id="saveMeet" class="small">Save</button></div>
     <input type="url" id="mlink" data-enter="saveMeet" placeholder="Meeting link" value="${esc(c.meeting.link||'')}" class="${c.meeting.type==='online'?'':'hide'}">
     <input type="text" id="maddr" data-enter="saveMeet" placeholder="Address" value="${esc(c.meeting.address||'')}" class="${c.meeting.type==='inperson'?'':'hide'}">
@@ -476,8 +489,8 @@ function viewClub(){
   if(isAdmin){
     if($('#shiftPrev')) $('#shiftPrev').onclick=async()=>{ try{ const j=await api('shiftMeetingWeek',{clubId:c.id, weeks:-1}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
     if($('#shiftNext')) $('#shiftNext').onclick=async()=>{ try{ const j=await api('shiftMeetingWeek',{clubId:c.id, weeks:1}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
-    $('#saveMeet').onclick=async()=>{ const j=await api('clubSettings',{clubId:c.id, meeting:{type:$('#mtype').value, link:$('#mlink').value, address:$('#maddr').value}}); currentClub=j.club; toast('Saved'); viewClub(); };
-    $('#mtype').onchange=()=>{ const online=$('#mtype').value==='online'; $('#mlink').classList.toggle('hide', !online); $('#maddr').classList.toggle('hide', online); };
+    $('#saveMeet').onclick=async()=>{ const mt=document.querySelector('input[name="mtype"]:checked'); const j=await api('clubSettings',{clubId:c.id, meeting:{type:mt?mt.value:'online', link:$('#mlink').value, address:$('#maddr').value}}); currentClub=j.club; toast('Saved'); viewClub(); };
+    document.querySelectorAll('input[name="mtype"]').forEach(r=>r.onchange=()=>{ const cur=document.querySelector('input[name="mtype"]:checked'); const on=cur?cur.value==='online':true; $('#mlink').classList.toggle('hide', !on); $('#maddr').classList.toggle('hide', on); });
     const pd=$('#pickDate');
     const pdf=pd.closest('.datefield');
     if(pdf) pdf.onclick=()=>{ try{ pd.focus(); if(pd.showPicker) pd.showPicker(); }catch(e){} };
