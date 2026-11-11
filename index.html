@@ -742,7 +742,7 @@ function currentSection(c){
     const avg = rated.length ? Math.round(rated.reduce((a,r)=>a+r.rating,0)/rated.length*10)/10 : null;
     h += bookRow(c.current);
     if(c.lastResult && c.lastResult.winner && c.current && c.lastResult.winner === c.current.key){
-      h += `<div class="row" style="margin-top:6px"><span class="muted grow">Won the club vote</span>${reactionHTML(c.pollReactions || [], 'data-rtype="poll"')}</div>`;
+      h += `<div style="margin-top:6px"><div class="muted">Won the club vote</div><div style="margin-top:2px">${reactionHTML(c.pollReactions || [], 'data-rtype="poll"')}</div></div>`;
     }
     h += myProgressHTML(c);
     h += memberProgressHTML(c);
