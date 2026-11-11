@@ -1071,17 +1071,22 @@ module.exports = async (req, res) => {
           const all = db.events || [];
           const byName = {}; const byPage = {}; const byFeature = {}; const perUser = {};
           const nowMs = Date.now(); let last7 = 0; let last30 = 0; const active = new Set();
+          const byDay = [];
+          for (let i = 13; i >= 0; i--) byDay.push({ day: new Date(nowMs - i * 864e5).toISOString().slice(0, 10), count: 0 });
+          const dayIndex = {}; byDay.forEach((d, i) => { dayIndex[d.day] = i; });
           all.forEach((e) => {
             byName[e.name] = (byName[e.name] || 0) + 1;
             if (e.page) byPage[e.page] = (byPage[e.page] || 0) + 1;
             if (e.feature) byFeature[e.feature] = (byFeature[e.feature] || 0) + 1;
             const t = new Date(e.at).getTime();
             if (!isNaN(t)) { if (nowMs - t < 7 * 864e5) last7++; if (nowMs - t < 30 * 864e5) last30++; }
+            const dk = String(e.at || '').slice(0, 10);
+            if (dayIndex[dk] !== undefined) byDay[dayIndex[dk]].count++;
             if (e.userId) { active.add(e.userId); perUser[e.userId] = (perUser[e.userId] || 0) + 1; }
           });
           return {
             total: all.length, last7Days: last7, last30Days: last30, activeUsers: active.size,
-            byName, byPage, byFeature,
+            byName, byPage, byFeature, byDay,
             byUser: Object.keys(perUser).map((userId) => {
               const u = byId[userId];
               return { name: u ? u.name : '(deleted account)', email: u ? u.email : '', events: perUser[userId] };
