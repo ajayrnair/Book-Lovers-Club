@@ -878,7 +878,7 @@ function viewClub(){
   if($('#pollRow')) $('#pollRow').onclick=()=>viewPoll();
   if($('#startPoll')) $('#startPoll').onclick=()=>viewPoll();
   if($('#addBooksBtn')) $('#addBooksBtn').onclick=()=>viewLibrary();
-  if($('#finBtn')) $('#finBtn').onclick=async()=>{ const j=await api('toggleFinished',{clubId:c.id}); currentClub=j.club; viewClub(); };
+  if($('#finBtn')) $('#finBtn').onclick=async()=>{ const j = c.myFinished ? await api('toggleFinished',{clubId:c.id}) : await api('setProgress',{clubId:c.id, bookKey:c.current.key, percent:100}); currentClub=j.club; viewClub(); };
   if($('#rateSummary')) $('#rateSummary').onclick=()=>{ $('#rateList').classList.toggle('hide'); };
   app.querySelectorAll('[data-rsvp]').forEach(b=>b.onclick=async()=>{ const cur=(currentClub.rsvps||{})[user.id]; const j=await api('rsvp',{clubId:c.id, status: cur===b.dataset.rsvp ? '' : b.dataset.rsvp}); currentClub=j.club; viewClub(); });
   if($('#goingCount')) $('#goingCount').onclick=()=>rsvpPopup(currentClub);
