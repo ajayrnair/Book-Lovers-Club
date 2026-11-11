@@ -756,6 +756,10 @@ module.exports = async (req, res) => {
       || ['example.com', 'example.org', 'example.net', 'test.com'].includes(domain)
       || /^(smoke|test|debug|ship)/.test(local);
   };
+  // Super admin is exactly two identities, defined here in server code.
+  // No API action can grant it, and no other account can hold it.
+  const SUPER_ADMIN_EMAILS = ['ajay.r.nair@gmail.com', 'hazel@readingpeeps.com'];
+  const isSuperAdmin = !!me && SUPER_ADMIN_EMAILS.includes(me.email);
   const action = body.action || '';
   const needAuth = !['signup', 'signin'].includes(action);
   if (needAuth && !me) return send(401, { error: 'Sign in first' });
@@ -783,10 +787,10 @@ module.exports = async (req, res) => {
       case 'signout': { delete db.sessions[token]; await writeDB(db); return send(200, { ok: true }); }
       case 'me': return send(200, { user: { id: me.id, name: me.name, email: me.email } });
       case 'stats': {
-        const OWNER_EMAIL = 'ajay.r.nair@gmail.com';
-        const full = me.email === OWNER_EMAIL;
+        if (!isSuperAdmin) return send(403, { error: 'Super admin only' });
+        const full = true;
         const byId = {}; db.users.forEach((u) => { byId[u.id] = u; });
-        const userList = db.users.map((u) => ({ name: u.name, email: u.email, createdAt: u.createdAt, isTest: isTestUser(u) }));
+        const userList = db.users.map((u) => ({ name: u.name, email: u.email, createdAt: u.createdAt, isTest: isTestUser(u), isSuperAdmin: SUPER_ADMIN_EMAILS.includes(u.email) }));
         const clubList = db.clubs.map((c) => ({
           name: c.name, private: !!c.private, memberCount: (c.members || []).length,
           ...(full ? { members: (c.members || []).map((m) => { const u = byId[m.userId]; return u ? { name: u.name, email: u.email, role: m.role } : { userId: m.userId, role: m.role, missing: true }; }) } : {}),
@@ -803,7 +807,7 @@ module.exports = async (req, res) => {
         });
       }
       case 'deleteTestUser': {
-        if (me.email !== 'ajay.r.nair@gmail.com') return send(403, { error: 'Owner only' });
+        if (!isSuperAdmin) return send(403, { error: 'Super admin only' });
         const target = db.users.find((u) => u.email === (body.email || '').toLowerCase());
         if (!target) return send(404, { error: 'No such account' });
         if (target.id === me.id) return send(400, { error: 'Use Delete account for your own account' });

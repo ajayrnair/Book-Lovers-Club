@@ -1099,7 +1099,7 @@ function viewMe(){
   disarmClubNav();
   app.innerHTML = `<div class="card"><h3 style="margin-top:0">${esc(user.name)}</h3><div class="muted">${esc(user.email)}</div></div>
   <h2>My clubs</h2>${myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b></div><span>›</span></div>`).join('')||'<div class="muted">No clubs yet</div>'}
-  ${user.email==='ajay.r.nair@gmail.com'?'<div class="card row" id="statsRow"><div class="grow"><b>Stats</b></div><span>›</span></div>':''}
+  ${['ajay.r.nair@gmail.com','hazel@readingpeeps.com'].includes(user.email)?'<div class="card row" id="statsRow"><div class="grow"><b>Stats</b></div><span>›</span></div>':''}
   <div class="card"><div id="delAcctBox"><button id="delAcct" class="ghost small danger">Delete account</button></div></div>`;
   app.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openClub(el.dataset.open));
   const sr = $('#statsRow'); if(sr) sr.onclick = ()=>viewStats();
@@ -1124,7 +1124,7 @@ async function viewStats(){
     <h3>Clubs</h3>
     ${j.clubs.list.map(c=>`<div class="card"><div class="row"><b class="grow">${esc(c.name)}</b><span class="muted">${c.private?'Private':'Public'} · ${c.memberCount} member${c.memberCount===1?'':'s'}</span></div>${(c.members||[]).map(m=>`<div class="muted" style="margin-top:2px">${esc(m.name||'')} ${m.email?'· '+esc(m.email):''}${m.role==='admin'?' · admin':''}</div>`).join('')}</div>`).join('')||'<div class="muted">No clubs</div>'}
     <h3>Real accounts</h3>
-    ${real.map(u=>`<div class="card"><b>${esc(u.name)}</b><div class="muted">${esc(u.email)} · joined ${day(u.createdAt)}</div></div>`).join('')||'<div class="muted">None</div>'}
+    ${real.map(u=>`<div class="card"><b>${esc(u.name)}</b><div class="muted">${esc(u.email)} · joined ${day(u.createdAt)}${u.isSuperAdmin?' · super admin':''}</div></div>`).join('')||'<div class="muted">None</div>'}
     <h3>Test accounts</h3>
     ${test.map(u=>`<div class="card"><div class="row"><div class="grow"><b>${esc(u.name)}</b><div class="muted">${esc(u.email)} · joined ${day(u.createdAt)}</div></div><button class="ghost small danger" data-del="${esc(u.email)}">Delete</button></div></div>`).join('')||'<div class="muted">None</div>'}`;
     $('#back').onclick = ()=>viewMe();
