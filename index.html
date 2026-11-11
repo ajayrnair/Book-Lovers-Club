@@ -21,14 +21,14 @@
   .card.a-coral{box-shadow:inset 0 3px 0 #ff7e5f,0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
   .card.a-violet{box-shadow:inset 0 3px 0 #8b5cf6,0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
   .card.a-teal{box-shadow:inset 0 3px 0 #17a398,0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
-  #mine .card:nth-child(3n+1),#found .card:nth-child(3n+1){box-shadow:inset 3px 0 0 #ff7e5f,0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
-  #mine .card:nth-child(3n+2),#found .card:nth-child(3n+2){box-shadow:inset 3px 0 0 #8b5cf6,0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
-  #mine .card:nth-child(3n),#found .card:nth-child(3n){box-shadow:inset 3px 0 0 #17a398,0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
-  #mine>.muted,#found>.muted{color:#d9a8c2}
+  #mine .card:nth-child(3n+1),#found .card:nth-child(3n+1),#xresults .card:nth-child(3n+1){box-shadow:inset 3px 0 0 #ff7e5f,0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
+  #mine .card:nth-child(3n+2),#found .card:nth-child(3n+2),#xresults .card:nth-child(3n+2){box-shadow:inset 3px 0 0 #8b5cf6,0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
+  #mine .card:nth-child(3n),#found .card:nth-child(3n),#xresults .card:nth-child(3n){box-shadow:inset 3px 0 0 #17a398,0 1px 2px rgba(20,4,16,.20),0 10px 28px rgba(20,4,16,.14)}
+  #mine>.muted,#found>.muted,#xresults>.muted{color:#d9a8c2}
   .row{display:flex;gap:12px;align-items:center}
   .grow{flex:1}
   input,select,button,textarea{font-size:17px;font-family:inherit}
-  input[type=text],input[type=email],input[type=password],input[type=url],input[type=date],input[type=number],select,textarea{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:6px 0;color:var(--ink)}
+  input[type=text],input[type=email],input[type=password],input[type=url],input[type=date],input[type=time],input[type=number],select,textarea{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;margin:6px 0;color:var(--ink)}
   input:focus,select:focus,textarea:focus{outline:2px solid rgba(201,58,84,.5);outline-offset:0;border-color:transparent}
   button{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:12px 18px;min-height:48px;cursor:pointer;font-weight:600;font-size:16px;transition:transform .08s ease}
   button:active{transform:scale(.98)}
@@ -136,6 +136,39 @@ let addSel = new Map(); // bookKey-from-search index -> data
 let searchResults = [];
 let addReturn = null; // 'library' when Add Books was opened from a club library page
 
+const GENRES = ['Fiction','Mystery','Thriller','Science Fiction','Fantasy','Romance','Horror','Classics','Poetry','History','Biography','Memoir','Science','Self Development','Young Adult','Comics and Graphic Novels'];
+const AUDIENCES = ['Kids','Teens','Young adults','Adults','Seniors'];
+const PLACES = [
+  {label:'Seattle, WA', lat:47.6062, lng:-122.3321},
+  {label:'Bellevue, WA', lat:47.6101, lng:-122.2015},
+  {label:'Portland, OR', lat:45.5152, lng:-122.6784},
+  {label:'San Francisco, CA', lat:37.7749, lng:-122.4194},
+  {label:'San Jose, CA', lat:37.3387, lng:-121.8853},
+  {label:'Los Angeles, CA', lat:34.0522, lng:-118.2437},
+  {label:'San Diego, CA', lat:32.7157, lng:-117.1611},
+  {label:'Sacramento, CA', lat:38.5816, lng:-121.4944},
+  {label:'Phoenix, AZ', lat:33.4484, lng:-112.074},
+  {label:'Las Vegas, NV', lat:36.1699, lng:-115.1398},
+  {label:'Salt Lake City, UT', lat:40.7608, lng:-111.891},
+  {label:'Denver, CO', lat:39.7392, lng:-104.9903},
+  {label:'Austin, TX', lat:30.2672, lng:-97.7431},
+  {label:'Dallas, TX', lat:32.7767, lng:-96.797},
+  {label:'Houston, TX', lat:29.7604, lng:-95.3698},
+  {label:'Minneapolis, MN', lat:44.9778, lng:-93.265},
+  {label:'Chicago, IL', lat:41.8781, lng:-87.6298},
+  {label:'Nashville, TN', lat:36.1627, lng:-86.7816},
+  {label:'Atlanta, GA', lat:33.749, lng:-84.388},
+  {label:'Miami, FL', lat:25.7617, lng:-80.1918},
+  {label:'Washington, DC', lat:38.9072, lng:-77.0369},
+  {label:'Philadelphia, PA', lat:39.9526, lng:-75.1652},
+  {label:'New York, NY', lat:40.7128, lng:-74.006},
+  {label:'Brooklyn, NY', lat:40.6782, lng:-73.9442},
+  {label:'Boston, MA', lat:42.3601, lng:-71.0589},
+];
+let xpTab = 'find';
+const xpFind = { genres: new Set(), audience: '', place: null, radius: 25 };
+const xpCreate = { genres: new Set(), audience: '', place: null };
+
 const ICONS = {
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
   chart: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
@@ -158,6 +191,7 @@ async function api(action, body={}){
 }
 function esc(s){ return (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function fmtDate(ds){ if(!ds) return ''; const d=new Date(ds+'T12:00:00'); return d.toLocaleDateString(undefined,{weekday:'short', month:'short', day:'numeric'}); }
+function fmtTime(t){ if(!t || !/^\d{2}:\d{2}$/.test(t)) return ''; const d=new Date('2000-01-01T'+t+':00'); return isNaN(d.getTime()) ? '' : d.toLocaleTimeString(undefined,{hour:'numeric', minute:'2-digit'}); }
 function fmtDayShort(ds){ if(!ds) return ''; const d=new Date(ds+'T12:00:00'); return d.toLocaleDateString(undefined,{month:'short', day:'numeric'}); }
 function shiftDayStr(ds, n){ const p = ds.split('-').map(Number); return new Date(Date.UTC(p[0], p[1]-1, p[2]+n)).toISOString().slice(0,10); }
 function fmtRangeShort(a, b){ const da=new Date(a+'T12:00:00'); const db=new Date(b+'T12:00:00'); return (da.getMonth()===db.getMonth() && da.getFullYear()===db.getFullYear()) ? fmtDayShort(a)+'–'+db.getDate() : fmtDayShort(a)+' – '+fmtDayShort(b); }
@@ -246,19 +280,187 @@ function setTab(t){ tab=t; document.querySelectorAll('#tabs button').forEach(x=>
 // ---------- home ----------
 async function viewHome(){
   app.innerHTML = `<h2>My clubs</h2><div id="mine"></div>
-  <div class="card"><input type="text" id="newName" data-enter="create" placeholder="New club name"><div class="row" style="margin-top:8px">
-  <select id="newVis" class="grow" style="margin:0"><option value="private" selected>Private</option><option value="public">Public</option></select>
-  <button id="create">Create</button></div></div>
-  <h2>Find a club</h2>
-  <div class="row"><input type="text" id="q" data-enter="go" placeholder="Search clubs" class="grow"><button id="go" class="small">Search</button></div>
-  <div id="found"></div>`;
+  <div class="card row setrow" id="exploreRow"><div class="grow"><b>Explore clubs</b><div class="muted">Find a club or start your own</div></div><span class="muted">›</span></div>`;
   const renderMine = ()=>{ $('#mine').innerHTML = myClubs.length ? myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b>${c.private?'<span class="badge">Private</span>':''}<div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div></div><span>›</span></div>`).join('') : '<div class="muted">No clubs yet</div>';
     app.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openClub(el.dataset.open)); };
   renderMine();
-  $('#create').onclick = async ()=>{ try{ const j=await api('createClub',{name:$('#newName').value, private:$('#newVis').value==='private'}); await refreshClubs(); openClub(j.club.id); }catch(e){ toast(e.message); } };
-  const search = async ()=>{ const j=await api('searchClubs',{q:$('#q').value}); $('#found').innerHTML = j.clubs.map(c=>`<div class="card row"><div class="grow"><b>${esc(c.name)}</b><div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div></div>${c.isMember?'<span class="muted">Joined</span>':`<button class="small" data-join="${c.id}">Join</button>`}</div>`).join('') || '<div class="muted">Nothing found</div>';
-    app.querySelectorAll('[data-join]').forEach(b=>b.onclick=async()=>{ await api('joinClub',{clubId:b.dataset.join}); await refreshClubs(); renderMine(); search(); }); };
-  $('#go').onclick = search; search();
+  $('#exploreRow').onclick = ()=>viewExplore();
+}
+
+// ---------- explore ----------
+function genreChipsHTML(sel){ return GENRES.map(g=>`<span class="chip ${sel.has(g)?'on':''}" data-genre="${esc(g)}">${esc(g)}</span>`).join(''); }
+function wireGenreChips(box, sel, max){
+  if(!box) return;
+  box.querySelectorAll('[data-genre]').forEach(ch=>ch.onclick=()=>{
+    const g = ch.dataset.genre;
+    if(sel.has(g)){ sel.delete(g); ch.classList.remove('on'); }
+    else { if(max && sel.size >= max){ toast('Up to ' + max + ' genres'); return; } sel.add(g); ch.classList.add('on'); }
+  });
+}
+function renderAud(box, state, withAny){
+  if(!box) return;
+  const opts = withAny ? ['Any', ...AUDIENCES] : AUDIENCES;
+  box.innerHTML = opts.map(a=>{
+    const on = withAny ? (state.audience === a || (!state.audience && a === 'Any')) : (state.audience === a);
+    return `<span class="chip ${on?'on':''}" data-aud="${esc(a)}">${esc(a)}</span>`;
+  }).join('');
+  box.querySelectorAll('[data-aud]').forEach(ch=>ch.onclick=()=>{
+    const a = ch.dataset.aud;
+    if(withAny) state.audience = a === 'Any' ? '' : a;
+    else state.audience = state.audience === a ? '' : a;
+    renderAud(box, state, withAny);
+  });
+}
+function placePickerHTML(p){
+  return `<div id="${p}Picked" class="hide"><div class="row"><b class="grow" id="${p}PickedLabel"></b><button class="small ghost" id="${p}Change" type="button">Change</button></div></div>
+  <div id="${p}Search"><input type="text" id="${p}Q" placeholder="Search places" autocomplete="off"><div id="${p}List"></div></div>`;
+}
+function wirePlacePicker(p, store){
+  const q = $('#' + p + 'Q'), list = $('#' + p + 'List');
+  if(!q || !list) return;
+  const renderList = ()=>{
+    const t = (q.value || '').trim().toLowerCase();
+    const hits = PLACES.filter(x=>!t || x.label.toLowerCase().includes(t)).slice(0, 8);
+    list.innerHTML = hits.map(x=>`<div class="row setrow" data-place="${esc(x.label)}" style="padding:9px 2px;border-bottom:1px solid var(--line)"><span class="grow">${esc(x.label)}</span><span class="muted">›</span></div>`).join('') || '<div class="muted">No places match</div>';
+    list.querySelectorAll('[data-place]').forEach(el=>el.onclick=()=>{ store.place = PLACES.find(x=>x.label === el.dataset.place) || null; showPicked(); });
+  };
+  const showPicked = ()=>{
+    if(store.place){
+      $('#' + p + 'PickedLabel').textContent = store.place.label;
+      $('#' + p + 'Picked').classList.remove('hide');
+      $('#' + p + 'Search').classList.add('hide');
+    } else {
+      $('#' + p + 'Picked').classList.add('hide');
+      $('#' + p + 'Search').classList.remove('hide');
+      q.value = ''; renderList();
+    }
+  };
+  q.addEventListener('input', renderList);
+  $('#' + p + 'Change').onclick = ()=>{ store.place = null; showPicked(); q.focus(); };
+  if(store.place) showPicked(); else renderList();
+}
+function viewExplore(){
+  currentClub = null;
+  app.innerHTML = `
+  <button class="ghost small" id="xpBack">‹ Clubs</button>
+  <h2>Explore clubs</h2>
+  <div class="seg" role="radiogroup" aria-label="Explore clubs">
+    <label><input type="radio" name="xptab" value="find" ${xpTab==='find'?'checked':''}><span>Find a club</span></label>
+    <label><input type="radio" name="xptab" value="create" ${xpTab==='create'?'checked':''}><span>Create a club</span></label>
+  </div>
+  <div id="xpBody"></div>`;
+  $('#xpBack').onclick = ()=>viewHome();
+  document.querySelectorAll('input[name="xptab"]').forEach(r=>r.onchange=()=>{ xpTab = r.value; renderXpBody(); });
+  renderXpBody();
+}
+function renderXpBody(){ if(xpTab === 'create') xpCreateHTML(); else xpFindHTML(); }
+function xpFindHTML(){
+  const body = $('#xpBody');
+  body.innerHTML = `
+  <div class="card">
+    <input type="text" id="xq" data-enter="xsearch" placeholder="Club name">
+    <div class="muted" style="margin:10px 0 4px">Format</div>
+    <div class="seg" role="radiogroup" aria-label="Format">
+      <label><input type="radio" name="xf" value="any" checked><span>Any</span></label>
+      <label><input type="radio" name="xf" value="online"><span>Online</span></label>
+      <label><input type="radio" name="xf" value="in-person"><span>In person</span></label>
+    </div>
+    <div class="muted" style="margin:12px 0 4px">Genres</div>
+    <div id="xGenres">${genreChipsHTML(xpFind.genres)}</div>
+    <div class="muted" style="margin:12px 0 4px">Audience</div>
+    <div id="xAud"></div>
+    <div class="muted" style="margin:12px 0 4px">Specialty</div>
+    <input type="text" id="xspec" data-enter="xsearch" placeholder="Specialty">
+    <div class="muted" style="margin:12px 0 4px">Near</div>
+    ${placePickerHTML('np')}
+    <div class="seg" role="radiogroup" aria-label="Radius" style="margin-top:8px">
+      ${[10, 25, 50].map(km=>`<label><input type="radio" name="xrad" value="${km}" ${xpFind.radius===km?'checked':''}><span>${km} km</span></label>`).join('')}
+    </div>
+    <button id="xsearch" style="width:100%;margin-top:12px">Search</button>
+  </div>
+  <div id="xresults"></div>`;
+  wireGenreChips($('#xGenres'), xpFind.genres, 0);
+  renderAud($('#xAud'), xpFind, true);
+  wirePlacePicker('np', xpFind);
+  document.querySelectorAll('input[name="xrad"]').forEach(r=>r.onchange=()=>{ xpFind.radius = Number(r.value); });
+  const run = async ()=>{
+    try{
+      const base = {};
+      const qv = $('#xq').value.trim(); if(qv) base.q = qv;
+      const f = document.querySelector('input[name="xf"]:checked'); if(f && f.value !== 'any') base.format = f.value;
+      if(xpFind.audience) base.audience = xpFind.audience;
+      const sp = $('#xspec').value.trim(); if(sp) base.specialty = sp;
+      if(xpFind.place) base.near = { lat: xpFind.place.lat, lng: xpFind.place.lng, radiusKm: xpFind.radius };
+      let clubs;
+      if(!xpFind.genres.size){ clubs = (await api('searchClubs', base)).clubs; }
+      else {
+        let acc = null;
+        for(const g of xpFind.genres){
+          const j = await api('searchClubs', { ...base, genre: g });
+          acc = acc === null ? j.clubs : acc.filter(c=>j.clubs.some(x=>x.id === c.id));
+        }
+        clubs = acc || [];
+      }
+      renderXpResults(clubs);
+    }catch(e){ toast(e.message); }
+  };
+  $('#xsearch').onclick = run;
+  run();
+}
+function renderXpResults(clubs){
+  const box = $('#xresults'); if(!box) return;
+  box.innerHTML = clubs.length ? clubs.map(c=>`
+    <div class="card">
+      <div class="row"><div class="grow"><b>${esc(c.name)}</b><div class="muted">${c.memberCount} member${c.memberCount>1?'s':''} · ${c.format==='in-person' ? esc((c.location && c.location.label) || 'In person') : 'Online'}</div></div>${c.isMember?'<span class="muted">Joined</span>':`<button class="small" data-join="${c.id}">Join</button>`}</div>
+      ${c.audience?`<div class="muted" style="margin-top:4px">${esc(c.audience)}</div>`:''}
+      ${c.specialty?`<div class="muted">${esc(c.specialty)}</div>`:''}
+      ${(c.genres && c.genres.length)?`<div style="margin-top:6px">${c.genres.map(g=>`<span class="chip" style="cursor:default">${esc(g)}</span>`).join('')}</div>`:''}
+    </div>`).join('') : '<div class="muted">No clubs match</div>';
+  box.querySelectorAll('[data-join]').forEach(b=>b.onclick=async()=>{ try{ await api('joinClub',{clubId:b.dataset.join}); await refreshClubs(); b.outerHTML = '<span class="muted">Joined</span>'; toast('Joined'); }catch(e){ toast(e.message); } });
+}
+function xpCreateHTML(){
+  const body = $('#xpBody');
+  body.innerHTML = `
+  <div class="card">
+    <input type="text" id="cname" data-enter="ccreate" placeholder="Club name">
+    <div class="muted" style="margin:10px 0 4px">Visibility</div>
+    <div class="seg" role="radiogroup" aria-label="Visibility">
+      <label><input type="radio" name="cvis" value="private" checked><span>Private</span></label>
+      <label><input type="radio" name="cvis" value="public"><span>Public</span></label>
+    </div>
+    <div class="muted" style="margin:12px 0 4px">Format</div>
+    <div class="seg" role="radiogroup" aria-label="Format">
+      <label><input type="radio" name="cfmt" value="online" checked><span>Online</span></label>
+      <label><input type="radio" name="cfmt" value="in-person"><span>In person</span></label>
+    </div>
+    <div id="cPlace" class="hide" style="margin-top:8px">${placePickerHTML('cp')}</div>
+    <div class="muted" style="margin:12px 0 4px">Genres</div>
+    <div id="cGenres">${genreChipsHTML(xpCreate.genres)}</div>
+    <div class="muted" style="margin:12px 0 4px">Audience</div>
+    <div id="cAud"></div>
+    <div class="muted" style="margin:12px 0 4px">Specialty</div>
+    <input type="text" id="cspec" data-enter="ccreate" placeholder="Specialty (optional)">
+    <button id="ccreate" style="width:100%;margin-top:12px">Create club</button>
+  </div>`;
+  wireGenreChips($('#cGenres'), xpCreate.genres, 8);
+  renderAud($('#cAud'), xpCreate, false);
+  wirePlacePicker('cp', xpCreate);
+  const fmt = ()=>{ const r = document.querySelector('input[name="cfmt"]:checked'); return r ? r.value : 'online'; };
+  document.querySelectorAll('input[name="cfmt"]').forEach(r=>r.onchange=()=>{ $('#cPlace').classList.toggle('hide', fmt() !== 'in-person'); });
+  $('#ccreate').onclick = async ()=>{
+    const name = $('#cname').value.trim();
+    if(!name){ toast('Club name needed'); return; }
+    const f = fmt();
+    if(f === 'in-person' && !xpCreate.place){ toast('Pick a place for an in-person club'); return; }
+    try{
+      const payload = { name, private: document.querySelector('input[name="cvis"]:checked').value === 'private', format: f, genres: [...xpCreate.genres], audience: xpCreate.audience, specialty: $('#cspec').value.trim() };
+      if(f === 'in-person') payload.location = xpCreate.place;
+      const j = await api('createClub', payload);
+      xpCreate.genres.clear(); xpCreate.audience = ''; xpCreate.place = null;
+      await refreshClubs();
+      openClub(j.club.id);
+    }catch(e){ toast(e.message); }
+  };
 }
 async function openClub(id){ const j=await api('club',{clubId:id}); currentClub=j.club; viewClub(); }
 async function reloadClub(){ if(!currentClub) return; const j=await api('club',{clubId:currentClub.id}); currentClub=j.club; }
@@ -267,10 +469,12 @@ async function reloadClub(){ if(!currentClub) return; const j=await api('club',{
 function bookRow(b, opts={}){
   return `<div class="book">
     ${b.cover?`<img class="cover" src="${esc(b.cover)}" alt="">`:'<div class="cover"></div>'}
-    <div class="grow"><b>${esc(b.title)}</b><div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>
+    <div class="grow"><b>${esc(b.title)}</b>${opts.badge?`<span class="badge">${esc(opts.badge)}</span>`:''}<div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>
     ${ratingsLine(b)}
     ${b.memberCount?`<div class="muted">Members ★ ${b.memberAverage} (${b.memberCount})</div>`:''}
+    ${opts.subline?`<div class="muted">${esc(opts.subline)}</div>`:''}
     </div>
+    ${opts.rateLabel?'<span class="muted" style="font-size:13px;align-self:center">Your rating</span>':''}
     ${rateStrip(b)}
     ${opts.current?`<button class="small ghost" data-setcurrent="${b.key}">Reading now</button>`:''}
   </div>`;
@@ -309,19 +513,32 @@ function wireRates(rerender){
   app.querySelectorAll('[data-clear]').forEach(b=>b.onclick=async()=>{ try{ await api('rate',{bookKey:b.dataset.clear, rating:0}); toast('Saved'); if(rerender){ await reloadClub(); rerender(); } }catch(e){ toast(e.message); } });
   app.querySelectorAll('[data-setcurrent]').forEach(b=>b.onclick=async()=>{ const go=()=>api('setCurrent',{clubId:currentClub.id, bookKey:b.dataset.setcurrent}); try{ const j=await go(); currentClub=j.club; viewClub(); }catch(e1){ await new Promise(r=>setTimeout(r,900)); try{ const j=await go(); currentClub=j.club; viewClub(); }catch(e2){ toast(e2.message); } } });
 }
+// The "To read" set: library books that are not the current book and that
+// no member has finished. Polls and picks run against this set only.
+function pollCandidatesOf(c){
+  return (c.library || []).filter(b => (!c.current || b.key !== c.current.key) && !(b.finishedBy && b.finishedBy.length));
+}
 function nextBookSection(c){
   const isAdmin = c.role==='admin';
+  const cand = pollCandidatesOf(c);
   let inner = '';
   if(c.poll){
-    inner = `<div class="row setrow" id="pollRow"><span style="color:#8b5cf6">${icon('chart',20)}</span><b class="grow">${c.current?'Pick the next book':'Pick a book'}${c.poll.runoff?' · Runoff':''}</b><span class="muted">Closes ${new Date(c.poll.closesAt).toLocaleDateString(undefined,{month:'short', day:'numeric'})}</span><span class="muted">›</span></div>`;
+    const opts = c.poll.options || [];
+    const total = c.poll.totalVotes || 0;
+    const leader = opts.reduce((a, o)=> (!a || o.votes > a.votes) ? o : a, null);
+    const mine = c.poll.myVote ? opts.find(o=>o.book.key === c.poll.myVote) : null;
+    let status = total ? `${esc(leader.book.title)} leads · ${total} vote${total===1?'':'s'}` : 'No votes yet';
+    if(mine) status += ` · Your vote: ${esc(mine.book.title)}`;
+    inner = `<div class="row setrow" id="pollRow"><span style="color:#8b5cf6">${icon('chart',20)}</span><div class="grow"><b>${c.current?'Pick the next book':'Pick a book'}${c.poll.runoff?' · Runoff':''}</b><div class="muted">${status}</div></div><span class="muted">Closes ${new Date(c.poll.closesAt).toLocaleDateString(undefined,{month:'short', day:'numeric'})}</span><span class="muted">›</span></div>`;
   } else if(c.lastResult && c.lastResult.tie){
     inner = `<div class="row setrow" id="pollRow"><span style="color:#8b5cf6">${icon('chart',20)}</span><b class="grow">Poll tied</b><span class="muted">›</span></div>`;
   } else if(c.library.length===0){
     inner = `<button class="small ic" id="addBooksBtn">${icon('plus',16)} Add books to library</button>`;
-  } else if(c.library.length===1){
-    const only = c.library[0];
-    if(c.current && c.current.key===only.key) return '';
-    inner = `<div class="muted">Only one book in the library</div><button class="small" style="margin-top:6px" data-setcurrent="${only.key}">Pick ${esc(only.title)}</button>`;
+  } else if(cand.length===0){
+    return '';
+  } else if(cand.length===1){
+    const only = cand[0];
+    inner = `<div class="muted">Only one book to pick</div><button class="small" style="margin-top:6px" data-setcurrent="${only.key}">Pick ${esc(only.title)}</button>`;
   } else if(!isAdmin){
     return '';
   } else {
@@ -428,7 +645,7 @@ function meetingSection(c){
   if(c.meeting.date){
     const going = c.members.filter(m=>(c.rsvps||{})[m.userId]==='going');
     const myR = (c.rsvps||{})[user.id];
-    h += `<div style="margin:8px 0"><b>${fmtDate(c.meeting.date)}</b></div>
+    h += `<div style="margin:8px 0"><b>${fmtDate(c.meeting.date)}${fmtTime(c.meeting.time) ? ' · ' + fmtTime(c.meeting.time) : ''}</b></div>
     <div class="row"><button class="small ${myR==='going'?'':'ghost'}" data-rsvp="going">Going</button>
     <button class="small ${myR==='notgoing'?'':'ghost'}" data-rsvp="notgoing">Not going</button>
     <span class="muted grow" id="goingCount" style="text-align:right;cursor:pointer">${going.length} going ›</span></div>`;
@@ -443,7 +660,7 @@ function meetingSection(c){
   }
   if(isAdmin){
     h += `<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px">
-    <div class="datefield"><input type="date" id="pickDate" value="${esc(c.meeting.date||'')}"><span class="cal">${icon('calendar',18)}</span></div>
+    <div class="row" style="align-items:flex-start"><div class="datefield grow"><input type="date" id="pickDate" value="${esc(c.meeting.date||'')}"><span class="cal">${icon('calendar',18)}</span></div><input type="time" id="mtime" aria-label="Meeting time" value="${esc(c.meeting.time||'')}" style="width:132px;flex:none;margin:0"></div>
     <div class="row" style="margin-top:6px"><div class="seg" role="radiogroup" aria-label="Meeting type"><label><input type="radio" name="mtype" value="online" ${c.meeting.type==='online'?'checked':''}><span>Online</span></label><label><input type="radio" name="mtype" value="inperson" ${c.meeting.type==='inperson'?'checked':''}><span>In person</span></label></div>
     <button id="saveMeet" class="small">Save</button></div>
     <input type="url" id="mlink" data-enter="saveMeet" placeholder="Meeting link" value="${esc(c.meeting.link||'')}" class="${c.meeting.type==='online'?'':'hide'}">
@@ -456,7 +673,7 @@ function rsvpPopup(c){
   const g = c.members.filter(m=>(c.rsvps||{})[m.userId]==='going');
   const ng = c.members.filter(m=>(c.rsvps||{})[m.userId]==='notgoing');
   const names = (arr)=>arr.length ? arr.map(m=>`<div style="padding:2px 0">${esc(m.name)}</div>`).join('') : '<div class="muted">None yet</div>';
-  showModal(`<h3 style="margin-top:0">${fmtDate(c.meeting.date)}</h3>
+  showModal(`<h3 style="margin-top:0">${fmtDate(c.meeting.date)}${fmtTime(c.meeting.time) ? ' · ' + fmtTime(c.meeting.time) : ''}</h3>
   <div class="muted">Going (${g.length})</div>${names(g)}
   <div class="muted" style="margin-top:10px">Not going (${ng.length})</div>${names(ng)}
   <button class="ghost small" id="mClose" style="margin-top:14px;width:100%">Close</button>`);
@@ -489,7 +706,7 @@ function viewClub(){
   if(isAdmin){
     if($('#shiftPrev')) $('#shiftPrev').onclick=async()=>{ try{ const j=await api('shiftMeetingWeek',{clubId:c.id, weeks:-1}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
     if($('#shiftNext')) $('#shiftNext').onclick=async()=>{ try{ const j=await api('shiftMeetingWeek',{clubId:c.id, weeks:1}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
-    $('#saveMeet').onclick=async()=>{ const mt=document.querySelector('input[name="mtype"]:checked'); const j=await api('clubSettings',{clubId:c.id, meeting:{type:mt?mt.value:'online', link:$('#mlink').value, address:$('#maddr').value}}); currentClub=j.club; toast('Saved'); viewClub(); };
+    $('#saveMeet').onclick=async()=>{ try{ const mt=document.querySelector('input[name="mtype"]:checked'); const j=await api('clubSettings',{clubId:c.id, meeting:{type:mt?mt.value:'online', link:$('#mlink').value, address:$('#maddr').value, time:$('#mtime').value}}); currentClub=j.club; toast('Saved'); viewClub(); }catch(e){ toast(e.message); } };
     document.querySelectorAll('input[name="mtype"]').forEach(r=>r.onchange=()=>{ const cur=document.querySelector('input[name="mtype"]:checked'); const on=cur?cur.value==='online':true; $('#mlink').classList.toggle('hide', !on); $('#maddr').classList.toggle('hide', on); });
     const pd=$('#pickDate');
     const pdf=pd.closest('.datefield');
@@ -502,11 +719,19 @@ function viewClub(){
 // ---------- library page ----------
 function viewLibrary(){
   const c = currentClub; if(!c) return viewHome();
-  const isAdmin = c.role==='admin';
+  const curKey = c.current ? c.current.key : null;
+  const cur = curKey ? c.library.find(b=>b.key===curKey) : null;
+  const rest = c.library.filter(b=>b.key!==curKey);
+  const read = rest.filter(b=>(b.finishedBy||[]).length>0);
+  const toread = rest.filter(b=>!(b.finishedBy||[]).length);
+  const groups = [];
+  if(cur) groups.push({ title:'Current book', books:[cur], opts:()=>({ badge:'Current book', rateLabel:true }) });
+  if(toread.length) groups.push({ title:'To read', books:toread, opts:()=>({ rateLabel:true }) });
+  if(read.length) groups.push({ title:'Read', books:read, opts:(b)=>({ rateLabel:true, subline:`Finished by ${(b.finishedBy||[]).length} of ${c.members.length}` }) });
   app.innerHTML = `
   <button class="ghost small" id="back">‹ ${esc(c.name)}</button>
   <div class="row"><h2 class="grow">Library</h2><button class="small ic" id="addBtn">${icon('plus',16)} Add books</button></div>
-  <div class="card">${c.library.length? c.library.map(b=>bookRow(b,{current:isAdmin})).join('') : '<div class="muted">No books yet</div>'}</div>`;
+  ${c.library.length ? groups.map(g=>`<div class="card"><h3 style="margin-top:0">${g.title}</h3>${g.books.map(b=>bookRow(b, g.opts(b))).join('')}</div>`).join('') : '<div class="card"><div class="muted">No books yet</div></div>'}`;
   $('#back').onclick = ()=>viewClub();
   $('#addBtn').onclick = ()=>{ addReturn='library'; setTab('add'); viewAdd(c.id); };
   wireRates(()=>viewLibrary());
@@ -526,13 +751,23 @@ function viewPoll(){
   const isAdmin = c.role==='admin';
   let body = '';
   if(c.poll){
+    const myVote = c.poll.myVote || null;
     body = `<h3 style="margin-top:0">Pick the next book${c.poll.runoff?' · Runoff':''}</h3>
-    ${c.poll.options.map(o=>`<div style="margin:8px 0"><div class="row"><div class="grow">${esc(o.book.title)}</div><b>${o.votes}</b><button class="small" data-vote="${o.book.key}">Vote</button></div><div class="voteBar"><i style="width:${c.poll.totalVotes?Math.round(o.votes/c.poll.totalVotes*100):0}%"></i></div></div>`).join('')}
-    <div class="muted">Closes ${new Date(c.poll.closesAt).toLocaleDateString(undefined,{month:'short', day:'numeric'})}</div>
-    ${isAdmin?'<button id="closePoll" class="ghost small" style="margin-top:6px">Close poll</button>':''}`;
+    <div class="muted" style="margin-bottom:4px">${c.poll.totalVotes} vote${c.poll.totalVotes===1?'':'s'} · Closes ${new Date(c.poll.closesAt).toLocaleDateString(undefined,{month:'short', day:'numeric'})}</div>
+    ${c.poll.options.map(o=>{
+      const mine = myVote === o.book.key;
+      const pct = c.poll.totalVotes ? Math.round(o.votes / c.poll.totalVotes * 100) : 0;
+      return `<div class="book" data-vote="${o.book.key}" role="button" tabindex="0" aria-pressed="${mine}" aria-label="Vote for ${esc(o.book.title)}" style="position:relative;overflow:hidden;border-radius:12px;padding-left:8px;padding-right:8px;${mine?'box-shadow:inset 0 0 0 2px #8b5cf6;':''}">
+      <span style="position:absolute;top:0;bottom:0;left:0;width:${pct}%;background:rgba(139,92,246,.12)"></span>
+      ${o.book.cover?`<img class="cover" src="${esc(o.book.cover)}" alt="" style="position:relative">`:'<div class="cover" style="position:relative"></div>'}
+      <div class="grow" style="position:relative"><b>${esc(o.book.title)}</b><div class="muted">${esc(o.book.author)}</div>${mine?'<div style="color:#8b5cf6;font-weight:600;font-size:13px">Your vote</div>':''}</div>
+      ${mine?`<span style="position:relative;flex:none;background:#8b5cf6;color:#fff;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center">${icon('check',14)}</span>`:''}
+      <b style="position:relative;flex:none;min-width:20px;text-align:right">${o.votes}</b></div>`;
+    }).join('')}
+    ${isAdmin?'<button id="closePoll" class="ghost small" style="margin-top:10px">Close poll</button>':''}`;
   } else if(c.lastResult && c.lastResult.tie){
     body = `<h3 style="margin-top:0">Tie</h3>${isAdmin?'<button id="runoff" class="small">One day runoff</button> '+c.lastResult.tie.map(k=>{const b=c.library.find(x=>x.key===k); return b?`<button class="small ghost" data-pick="${k}">Pick ${esc(b.title)}</button>`:'';}).join(' '):'<div class="muted">The admin picks the winner</div>'}`;
-  } else if(isAdmin && c.library.length>=2){
+  } else if(isAdmin && pollCandidatesOf(c).length>=2){
     body = `<h3 style="margin-top:0">${c.current?'Pick the next book':'Pick a book'}</h3>
     <div class="muted" style="margin:6px 0 4px">End date</div>
     <div class="datefield"><input type="date" id="pollEnd" value="${pollDefaultEnd(c)}"><span class="cal">${icon('calendar',18)}</span></div>
@@ -544,7 +779,10 @@ function viewPoll(){
   <button class="ghost small" id="back">‹ ${esc(c.name)}</button>
   <div class="card" style="margin-top:8px">${body}</div>`;
   $('#back').onclick = ()=>viewClub();
-  app.querySelectorAll('[data-vote]').forEach(b=>b.onclick=async()=>{ const j=await api('vote',{clubId:c.id, bookKey:b.dataset.vote}); currentClub=j.club; viewPoll(); });
+  app.querySelectorAll('[data-vote]').forEach(b=>{
+    b.onclick = async ()=>{ try{ const j=await api('vote',{clubId:c.id, bookKey:b.dataset.vote}); currentClub=j.club; viewPoll(); }catch(e){ toast(e.message); } };
+    b.onkeydown = (e)=>{ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); b.click(); } };
+  });
   app.querySelectorAll('[data-pick]').forEach(b=>b.onclick=async()=>{ const j=await api('adminPick',{clubId:c.id, bookKey:b.dataset.pick}); currentClub=j.club; viewClub(); });
   if($('#closePoll')) $('#closePoll').onclick=async()=>{ const j=await api('closePoll',{clubId:c.id}); currentClub=j.club; await refreshClubs(); viewClub(); };
   if($('#runoff')) $('#runoff').onclick=async()=>{ const j=await api('runoff',{clubId:c.id}); currentClub=j.club; viewPoll(); };
@@ -574,9 +812,9 @@ function viewMembersPage(){
   <button class="ghost small" id="back">‹ Settings</button>
   <h2>Members</h2>
   <div class="card">
-  ${c.members.map(m=>`<div class="row" style="padding:4px 0"><span class="grow">${esc(m.name)}${m.role==='admin'?'<span class="badge">Admin</span>':''}</span>${m.role==='admin'
+  ${c.members.map(m=>`<div class="row" style="padding:4px 0"><span class="grow">${esc(m.name)}${m.role==='admin'?'<span class="badge">Admin</span>':''}</span><span id="mact-${m.userId}">${m.role==='admin'
     ? (admins>1?`<button class="small ghost" data-demote="${m.userId}">Remove admin</button>`:'')
-    : `<button class="small ghost" data-promote="${m.userId}">Make admin</button>`}</div>`).join('')}
+    : `<button class="small ghost" data-promote="${m.userId}">Make admin</button>`}${m.userId!==user.id?` <button class="small ghost danger" data-remove="${m.userId}" data-name="${esc(m.name)}">Remove</button>`:''}</span></div>`).join('')}
   </div>
   <div class="card"><h3 style="margin-top:0">Invite</h3>
   <div class="row"><input type="email" id="invEmail" data-enter="invBtn" placeholder="Email to invite" class="grow"><button id="invBtn" class="small">Invite</button></div>
@@ -584,6 +822,13 @@ function viewMembersPage(){
   $('#back').onclick = ()=>viewSettings();
   app.querySelectorAll('[data-promote]').forEach(b=>b.onclick=async()=>{ const j=await api('makeAdmin',{clubId:c.id, userId:b.dataset.promote}); currentClub=j.club; viewMembersPage(); });
   app.querySelectorAll('[data-demote]').forEach(b=>b.onclick=async()=>{ const j=await api('removeAdmin',{clubId:c.id, userId:b.dataset.demote}); currentClub=j.club; if(currentClub.role!=='admin') return viewClub(); viewMembersPage(); });
+  app.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{
+    const box = document.getElementById('mact-' + b.dataset.remove);
+    if(!box) return;
+    box.innerHTML = `<span class="muted">Remove ${esc(b.dataset.name)}?</span> <button class="small danger" id="rmYes">Remove</button> <button class="small ghost" id="rmNo">Cancel</button>`;
+    document.getElementById('rmNo').onclick = ()=>viewMembersPage();
+    document.getElementById('rmYes').onclick = async ()=>{ try{ const j=await api('removeMember',{clubId:c.id, userId:b.dataset.remove}); currentClub=j.club; await refreshClubs(); toast('Removed'); if(currentClub.role!=='admin') return viewClub(); viewMembersPage(); }catch(e){ toast(e.message); } };
+  });
   $('#invBtn').onclick=async()=>{ try{ const j=await api('createInvite',{clubId:c.id, email:$('#invEmail').value}); const link=location.origin+'/?invite='+j.inviteToken; $('#invOut').innerHTML=`<div class="muted" style="margin-top:6px">Send this link to ${esc(j.email)} (works once):</div><input type="text" readonly value="${link}" onclick="this.select()">`; }catch(e){ toast(e.message); } };
 }
 function viewFrequencyPage(){
