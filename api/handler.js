@@ -28,6 +28,7 @@ const COLLECTIONS = [
   ['invites', []],
   ['ratings', {}],
   ['progress', {}],
+  ['notifications', []],
 ];
 const COLLECTION_NAMES = COLLECTIONS.map(([n]) => n);
 function emptyCollection(name) {
@@ -51,6 +52,10 @@ function normalizeDB(db) {
     club.rsvps = club.rsvps || {};
     club.availability = club.availability || {};
     club.library = club.library || [];
+    club.questions = club.questions || {};
+    club.privateQuestions = club.privateQuestions || {};
+    club.discussionTemplate = club.discussionTemplate || [];
+    club.reactions = club.reactions || [];
     club.meeting = { type: 'online', link: '', address: '', date: '', ...(club.meeting || {}) };
   });
   return db;
@@ -265,6 +270,122 @@ async function sendInviteEmail(apiKey, { to, inviterLabel, clubName, link }) {
     return { sent: false, error: 'Email send failed: ' + (e && e.message ? e.message : 'network error') };
   }
 }
+// ---------------------------------------------------------------------------
+// Notifications: in-app records (db.notifications) plus one email per member
+// via Resend when configured. Events: a poll opens (start, runoff, auto), a
+// poll settles (winner or tie), a meeting date is picked, meeting details
+// change, and a day-before meeting reminder swept on any signed-in request.
+// The member who caused the event is never notified about it.
+// ---------------------------------------------------------------------------
+const APP_URL = 'https://www.readingpeeps.com/';
+function prettyDay(dateStr) {
+  const d = new Date(String(dateStr) + 'T12:00:00Z');
+  if (isNaN(d.getTime())) return String(dateStr || '');
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' });
+}
+function prettyDateTime(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' });
+}
+function fmtTime(t) {
+  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(t || ''));
+  if (!m) return '';
+  let h = Number(m[1]);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return h + ':' + m[2] + ' ' + suffix;
+}
+function bookTitleOf(db, key) {
+  const b = (db.books || {})[key];
+  return b && b.title ? b.title : 'A book';
+}
+async function sendNoticeEmail(apiKey, { to, subject, text }) {
+  const base = process.env.RESEND_API_BASE || 'https://api.resend.com';
+  const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#fff9f1;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#3a1b2e">
+  <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;padding:28px;border:1px solid #f0e2d4">
+    <p style="margin:0 0 12px;font-size:18px"><strong>${escHtml(subject)}</strong></p>
+    <p style="margin:0 0 16px;font-size:15px;line-height:1.5">${escHtml(text)}</p>
+    <p style="margin:20px 0 4px"><a href="${APP_URL}" style="display:inline-block;background:#c93a54;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600">Open Reading Peeps</a></p>
+  </div>
+</body></html>`;
+  try {
+    const r = await fetch(base + '/emails', {
+      method: 'POST',
+      headers: { authorization: 'Bearer ' + apiKey, 'content-type': 'application/json' },
+      body: JSON.stringify({ from: 'Reading Peeps <notifications@readingpeeps.com>', to: [to], subject, text: text + '\n\nOpen Reading Peeps: ' + APP_URL, html }),
+    });
+    return { sent: r.ok };
+  } catch (e) {
+    return { sent: false };
+  }
+}
+// Creates the in-app records only; returns them so the caller can email.
+function queueNotifications(db, club, { exceptUserId = null, type, title, body }) {
+  const created = [];
+  (club.members || []).forEach((m) => {
+    if (m.userId === exceptUserId) return;
+    const rec = { id: uid(), userId: m.userId, clubId: club.id, type, title, body, createdAt: nowISO(), readAt: 0 };
+    db.notifications.push(rec);
+    created.push(rec);
+  });
+  return created;
+}
+async function emailNotifications(db, records) {
+  const apiKey = process.env.RESEND_API_KEY || '';
+  if (!apiKey || !records.length) return;
+  const byId = {};
+  (db.users || []).forEach((u) => { byId[u.id] = u; });
+  await Promise.allSettled(records.map((rec) => {
+    const u = byId[rec.userId];
+    if (!u || !u.email) return Promise.resolve();
+    return sendNoticeEmail(apiKey, { to: u.email, subject: rec.title, text: rec.body });
+  }));
+}
+async function notifyMembers(db, club, opts) {
+  const records = queueNotifications(db, club, opts);
+  await emailNotifications(db, records);
+  return records;
+}
+async function notifyPollResult(db, club, result, exceptUserId) {
+  if (!result) return;
+  if (result.winner) {
+    await notifyMembers(db, club, {
+      exceptUserId, type: 'poll_result',
+      title: 'Next book for ' + club.name,
+      body: bookTitleOf(db, result.winner) + ' won the vote and is the club\u2019s next book.',
+    });
+  } else if (result.tie) {
+    await notifyMembers(db, club, {
+      exceptUserId, type: 'poll',
+      title: 'The vote tied in ' + club.name,
+      body: 'No book won outright. The admin can run a runoff or pick the next book.',
+    });
+  }
+}
+// Day-before meeting reminders. Meeting times are wall clock with no stored
+// timezone, so the sweep treats them as UTC and fires when the start is
+// within the next 24 hours; reminderFor stamps the date+time so it fires
+// exactly once per scheduled meeting. Returns created records for emailing.
+function sweepMeetingReminders(db) {
+  const created = [];
+  const now = Date.now();
+  (db.clubs || []).forEach((club) => {
+    const mtg = club.meeting || {};
+    if (!mtg.date) return;
+    const key = mtg.date + 'T' + (mtg.time || '');
+    if (mtg.reminderFor === key) return;
+    const start = new Date(mtg.date + 'T' + (mtg.time || '18:00') + ':00Z').getTime();
+    if (isNaN(start) || start <= now || start - now > 24 * 3600e3) return;
+    mtg.reminderFor = key;
+    created.push(...queueNotifications(db, club, {
+      type: 'meeting_reminder',
+      title: 'Meeting coming up in ' + club.name,
+      body: 'Your club meets on ' + prettyDay(mtg.date) + (mtg.time ? ' at ' + fmtTime(mtg.time) : '') + '. See you there.',
+    }));
+  });
+  return created;
+}
 function hashPw(pw, salt) {
   salt = salt || crypto.randomBytes(16).toString('hex');
   return salt + ':' + crypto.scryptSync(pw, salt, 32).toString('hex');
@@ -400,6 +521,36 @@ function defaultClose(club) {
   }
   return new Date(weekCap).toISOString();
 }
+// Reactions: a fixed small palette, one tap to add, same tap again to remove.
+// Targets are a member's finish of a book, a member's rating of a book, or a
+// poll result. Nobody reacts to their own finish or rating; a poll result
+// belongs to the whole club, so anyone may react to it.
+const REACTION_EMOJIS = ['❤️', '👏', '🔥', '😮', '😂', '🎉'];
+function reactionChips(db, club, userId, pred) {
+  const byEmoji = new Map();
+  (club.reactions || []).filter(pred).forEach((r) => {
+    if (!byEmoji.has(r.emoji)) byEmoji.set(r.emoji, []);
+    byEmoji.get(r.emoji).push(r);
+  });
+  return REACTION_EMOJIS.filter((e) => byEmoji.has(e)).map((emoji) => {
+    const list = byEmoji.get(emoji);
+    return {
+      emoji, count: list.length, mine: list.some((r) => r.userId === userId),
+      names: list.map((r) => { const u = db.users.find((x) => x.id === r.userId); return u ? u.name : ''; }),
+    };
+  });
+}
+// Discussion questions for the current book: the group list starts as a copy
+// of the admin's template the first time a book becomes current, and members
+// add more from there. Private questions live per user inside the club record
+// and are only ever exposed to their owner (see publicClub).
+function seedDiscussion(club) {
+  if (!club.current) return;
+  club.questions = club.questions || {};
+  if (!club.questions[club.current]) {
+    club.questions[club.current] = (club.discussionTemplate || []).map((text) => ({ id: uid(), text, byUserId: null, createdAt: nowISO() }));
+  }
+}
 function settlePoll(db, club) {
   const p = club.poll;
   if (!p) return;
@@ -409,6 +560,7 @@ function settlePoll(db, club) {
   const top = Object.keys(counts).filter((k) => counts[k] === max);
   if (top.length === 1 && max > 0) {
     club.current = top[0];
+    seedDiscussion(club);
     club.lastResult = { winner: top[0], tie: null, at: nowISO() };
     club.poll = null;
     club.pendingTie = null;
@@ -419,14 +571,14 @@ function settlePoll(db, club) {
   }
 }
 function expirePolls(db) {
-  let dirty = false;
+  const outcomes = [];
   (db.clubs || []).forEach((club) => {
     if (club.poll && club.poll.closesAt && Date.now() > new Date(club.poll.closesAt).getTime()) {
       settlePoll(db, club);
-      dirty = true;
+      if (club.lastResult) outcomes.push({ club, result: club.lastResult });
     }
   });
-  return dirty;
+  return outcomes;
 }
 // Books a poll may run on: in the library, not the current book, and not
 // finished by any member (the "To read" set).
@@ -465,7 +617,10 @@ function publicClub(db, club, userId) {
       return v;
     }),
     current: club.current ? bookView(db, club.current, userId) : null,
-    currentRatings: club.current ? memberRatings(db, club, club.current) : [],
+    currentRatings: club.current ? memberRatings(db, club, club.current).map((r) => ({
+      ...r,
+      reactions: r.rating === null || r.rating === undefined ? [] : reactionChips(db, club, userId, (x) => x.type === 'rating' && x.bookKey === club.current && x.subjectUserId === r.userId),
+    })) : [],
     meetingFrequencyWeeks: club.meetingFrequencyWeeks, cycleEnd: club.cycleEnd,
     autoPoll: club.autoPoll, meeting: club.meeting,
     week: meetingWeek(club),
@@ -474,11 +629,20 @@ function publicClub(db, club, userId) {
     myFinished: club.current ? ((club.finished || {})[userId] || []).includes(club.current) : false,
     progress: club.current ? club.members.map((m) => {
       const p = (db.progress || {})[m.userId + '|' + club.id + '|' + club.current];
-      return p ? { userId: m.userId, percent: p.percent, page: p.page, totalPages: p.totalPages, updatedAt: p.updatedAt } : null;
+      return p ? { userId: m.userId, percent: p.percent, page: p.page, totalPages: p.totalPages, updatedAt: p.updatedAt, reactions: p.percent === 100 ? reactionChips(db, club, userId, (x) => x.type === 'finish' && x.bookKey === club.current && x.subjectUserId === m.userId) : [] } : null;
     }).filter(Boolean) : [],
     rsvps: club.rsvps || {},
     poll: club.poll ? pollView(db, club, userId) : null,
     lastResult: club.lastResult || null,
+    pollReactions: club.lastResult && club.lastResult.winner ? reactionChips(db, club, userId, (x) => x.type === 'poll' && x.at === club.lastResult.at) : [],
+    discussion: {
+      template: club.discussionTemplate || [],
+      group: club.current ? ((club.questions || {})[club.current] || []).map((q) => {
+        const u = q.byUserId ? db.users.find((x) => x.id === q.byUserId) : null;
+        return { id: q.id, text: q.text, byUserId: q.byUserId || null, byName: u ? u.name : '', mine: q.byUserId === userId };
+      }) : [],
+      mine: club.current ? (((club.privateQuestions || {})[userId] || {})[club.current] || []).map((q) => ({ id: q.id, text: q.text })) : [],
+    },
   };
 }
 function meetingWeek(club) {
@@ -763,7 +927,14 @@ module.exports = async (req, res) => {
   const action = body.action || '';
   const needAuth = !['signup', 'signin'].includes(action);
   if (needAuth && !me) return send(401, { error: 'Sign in first' });
-  if (me && expirePolls(db)) await writeDB(db);
+  if (me) {
+    let dirty = false;
+    const outcomes = expirePolls(db);
+    for (const o of outcomes) { await notifyPollResult(db, o.club, o.result, null); dirty = true; }
+    const reminded = sweepMeetingReminders(db);
+    if (reminded.length) { await emailNotifications(db, reminded); dirty = true; }
+    if (dirty) await writeDB(db);
+  }
 
   try {
     switch (action) {
@@ -786,6 +957,20 @@ module.exports = async (req, res) => {
       }
       case 'signout': { delete db.sessions[token]; await writeDB(db); return send(200, { ok: true }); }
       case 'me': return send(200, { user: { id: me.id, name: me.name, email: me.email } });
+      case 'notifications': {
+        const mine = db.notifications.filter((n) => n.userId === me.id)
+          .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+        return send(200, { notifications: mine.slice(0, 50), unread: mine.filter((n) => !n.readAt).length });
+      }
+      case 'markNotificationsRead': {
+        const ids = Array.isArray(body.ids) ? body.ids : null;
+        let changed = false;
+        db.notifications.forEach((n) => {
+          if (n.userId === me.id && !n.readAt && (!ids || ids.includes(n.id))) { n.readAt = nowISO(); changed = true; }
+        });
+        if (changed) await writeDB(db);
+        return send(200, { unread: db.notifications.filter((n) => n.userId === me.id && !n.readAt).length });
+      }
       case 'stats': {
         if (!isSuperAdmin) return send(403, { error: 'Super admin only' });
         const full = true;
@@ -1052,6 +1237,7 @@ module.exports = async (req, res) => {
         if (!club) return send(404, { error: 'Club not found' });
         if (!club.library.includes(body.bookKey)) club.library.push(body.bookKey);
         club.current = body.bookKey;
+        seedDiscussion(club);
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
@@ -1079,7 +1265,105 @@ module.exports = async (req, res) => {
             return send(400, { error: 'Meeting time must be HH:MM' });
           }
         }
+        const prevMeeting = { ...(club.meeting || {}) };
         if (body.meeting) club.meeting = { ...club.meeting, ...body.meeting };
+        if (body.meeting && club.meeting.date) {
+          const dateChanged = (prevMeeting.date || '') !== (club.meeting.date || '');
+          const detailChanged = ['time', 'link', 'address'].some((f) => (prevMeeting[f] || '') !== (club.meeting[f] || ''));
+          if (dateChanged) {
+            await notifyMembers(db, club, {
+              exceptUserId: me.id, type: 'meeting',
+              title: 'Meeting set for ' + club.name,
+              body: 'The next ' + club.name + ' meeting is on ' + prettyDay(club.meeting.date) + (club.meeting.time ? ' at ' + fmtTime(club.meeting.time) : '') + '. Open Reading Peeps to RSVP.',
+            });
+          } else if (detailChanged) {
+            await notifyMembers(db, club, {
+              exceptUserId: me.id, type: 'meeting',
+              title: 'Meeting details updated for ' + club.name,
+              body: 'The next ' + club.name + ' meeting is on ' + prettyDay(club.meeting.date) + (club.meeting.time ? ' at ' + fmtTime(club.meeting.time) : '') + '. The time or place was just updated.',
+            });
+          }
+        }
+        await writeDB(db);
+        return send(200, { club: publicClub(db, club, me.id) });
+      }
+      case 'react': {
+        const club = db.clubs.find((c) => c.id === body.clubId);
+        if (!club) return send(404, { error: 'Club not found' });
+        if (!club.members.some((m) => m.userId === me.id)) return send(403, { error: 'Members only' });
+        if (!REACTION_EMOJIS.includes(body.emoji)) return send(400, { error: 'Pick one of the reaction emojis' });
+        const type = body.type;
+        let bookKey = null, subjectUserId = null, at = null;
+        if (type === 'finish' || type === 'rating') {
+          bookKey = String(body.bookKey || '');
+          subjectUserId = String(body.subjectUserId || '');
+          if (!bookKey || !subjectUserId) return send(400, { error: 'Nothing there to react to' });
+          if (subjectUserId === me.id) return send(400, { error: 'That one is yours' });
+          const okTarget = type === 'finish'
+            ? (((club.finished || {})[subjectUserId] || []).includes(bookKey))
+            : (db.ratings[subjectUserId + '|' + bookKey] !== undefined);
+          if (!okTarget) return send(400, { error: 'Nothing there to react to' });
+        } else if (type === 'poll') {
+          if (!club.lastResult || !club.lastResult.winner) return send(400, { error: 'No poll result to react to' });
+          at = club.lastResult.at;
+        } else {
+          return send(400, { error: 'Unknown reaction target' });
+        }
+        club.reactions = club.reactions || [];
+        const idx = club.reactions.findIndex((r) => r.userId === me.id && r.type === type && r.bookKey === bookKey && r.subjectUserId === subjectUserId && r.at === at && r.emoji === body.emoji);
+        if (idx >= 0) club.reactions.splice(idx, 1);
+        else club.reactions.push({ id: uid(), type, bookKey, subjectUserId, at, userId: me.id, emoji: body.emoji, createdAt: nowISO() });
+        await writeDB(db);
+        return send(200, { club: publicClub(db, club, me.id) });
+      }
+      case 'setDiscussionTemplate': {
+        const club = db.clubs.find((c) => c.id === body.clubId);
+        if (!club) return send(404, { error: 'Club not found' });
+        const mem = club.members.find((m) => m.userId === me.id);
+        if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
+        const list = (Array.isArray(body.questions) ? body.questions : [])
+          .map((q) => String(q || '').trim()).filter(Boolean).slice(0, 30);
+        club.discussionTemplate = list;
+        await writeDB(db);
+        return send(200, { club: publicClub(db, club, me.id) });
+      }
+      case 'addDiscussionQuestion': {
+        const club = db.clubs.find((c) => c.id === body.clubId);
+        if (!club) return send(404, { error: 'Club not found' });
+        if (!club.members.some((m) => m.userId === me.id)) return send(403, { error: 'Members only' });
+        if (!club.current) return send(400, { error: 'No book picked yet' });
+        const text = String(body.text || '').trim().slice(0, 500);
+        if (!text) return send(400, { error: 'Write the question first' });
+        if (body.scope === 'private') {
+          club.privateQuestions = club.privateQuestions || {};
+          const mineAll = club.privateQuestions[me.id] = club.privateQuestions[me.id] || {};
+          (mineAll[club.current] = mineAll[club.current] || []).push({ id: uid(), text, createdAt: nowISO() });
+        } else {
+          seedDiscussion(club);
+          club.questions[club.current].push({ id: uid(), text, byUserId: me.id, createdAt: nowISO() });
+        }
+        await writeDB(db);
+        return send(200, { club: publicClub(db, club, me.id) });
+      }
+      case 'removeDiscussionQuestion': {
+        const club = db.clubs.find((c) => c.id === body.clubId);
+        if (!club) return send(404, { error: 'Club not found' });
+        const mem = club.members.find((m) => m.userId === me.id);
+        if (!mem) return send(403, { error: 'Members only' });
+        if (!club.current) return send(400, { error: 'No book picked yet' });
+        if (body.scope === 'private') {
+          const mineAll = (club.privateQuestions || {})[me.id] || {};
+          const list = mineAll[club.current] || [];
+          const next = list.filter((q) => q.id !== body.questionId);
+          if (next.length === list.length) return send(404, { error: 'Question not found' });
+          club.privateQuestions[me.id][club.current] = next;
+        } else {
+          const list = ((club.questions || {})[club.current] || []);
+          const target = list.find((q) => q.id === body.questionId);
+          if (!target) return send(404, { error: 'Question not found' });
+          if (target.byUserId !== me.id && mem.role !== 'admin') return send(403, { error: 'Only the person who added it, or an admin, can remove it' });
+          club.questions[club.current] = list.filter((q) => q.id !== body.questionId);
+        }
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
@@ -1098,11 +1382,19 @@ module.exports = async (req, res) => {
         if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
         const chosen = new Date(body.date + 'T12:00:00');
         if (chosen.getTime() - Date.now() < 7 * 864e5) return send(400, { error: 'The date has to be picked at least a week before it happens' });
+        const prevDate = club.meeting.date;
         if (club.meeting.date !== body.date) club.rsvps = {};
         club.meeting.date = body.date;
         club.members.forEach((m) => {
           if (!club.rsvps[m.userId] && ((club.availability || {})[m.userId] || []).includes(body.date)) club.rsvps[m.userId] = 'going';
         });
+        if (prevDate !== body.date) {
+          await notifyMembers(db, club, {
+            exceptUserId: me.id, type: 'meeting',
+            title: 'Meeting set for ' + club.name,
+            body: 'The next ' + club.name + ' meeting is on ' + prettyDay(body.date) + (club.meeting.time ? ' at ' + fmtTime(club.meeting.time) : '') + '. Open Reading Peeps to RSVP.',
+          });
+        }
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
@@ -1141,6 +1433,11 @@ module.exports = async (req, res) => {
           if (!isNaN(t) && t > Date.now()) closesAt = new Date(Math.min(t, new Date(closesAt).getTime())).toISOString();
         }
         club.poll = { id: uid(), options: candidates, votes: {}, runoff: false, closesAt, createdAt: nowISO(), auto: false };
+        await notifyMembers(db, club, {
+          exceptUserId: me.id, type: 'poll',
+          title: 'Voting is open in ' + club.name,
+          body: 'Vote for the next book to read together. Voting closes ' + prettyDateTime(closesAt) + '.',
+        });
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
@@ -1159,6 +1456,7 @@ module.exports = async (req, res) => {
         const mem = club.members.find((m) => m.userId === me.id);
         if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
         settlePoll(db, club);
+        if (club.lastResult) await notifyPollResult(db, club, club.lastResult, me.id);
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
@@ -1169,6 +1467,11 @@ module.exports = async (req, res) => {
         if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
         club.poll = { id: uid(), options: club.pendingTie, votes: {}, runoff: true, closesAt: new Date(Math.min(Date.now() + 864e5, new Date(defaultClose(club)).getTime())).toISOString(), createdAt: nowISO(), auto: false };
         club.pendingTie = null; club.lastResult = null;
+        await notifyMembers(db, club, {
+          exceptUserId: me.id, type: 'poll',
+          title: 'Runoff vote in ' + club.name,
+          body: 'The vote tied, so a one day runoff is open. Vote now to break the tie.',
+        });
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
@@ -1179,6 +1482,12 @@ module.exports = async (req, res) => {
         if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
         club.current = body.bookKey; club.pendingTie = null; club.lastResult = null;
         club.cycleEnd = new Date(Date.now() + (club.meetingFrequencyWeeks * 7 + 7) * 864e5).toISOString();
+        seedDiscussion(club);
+        await notifyMembers(db, club, {
+          exceptUserId: me.id, type: 'poll_result',
+          title: 'Next book for ' + club.name,
+          body: bookTitleOf(db, body.bookKey) + ' was picked as the club\u2019s next book.',
+        });
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }

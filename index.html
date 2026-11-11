@@ -140,12 +140,17 @@
   .brand img{width:78px;height:78px;border-radius:19px;box-shadow:0 10px 28px rgba(20,4,16,.35)}
   .brand .bname{font-size:27px;font-weight:800;letter-spacing:-.02em;margin-top:12px;color:#ffe9d2}
   :focus-visible{outline:2px solid #ff8a66;outline-offset:2px}
+  .reactions{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap}
+  .rchip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:1px 8px;font-size:13px;line-height:1.5;cursor:pointer;color:inherit;font-family:inherit}
+  .rchip.mine{background:#ffe3da;border-color:#ff8a66}
+  .bellbadge{background:#c93a54;color:#fff;border-radius:999px;padding:0 6px;font-size:12px;font-weight:700;margin-left:4px}
 </style>
 </head>
 <body>
 <header>
   <h1><img src="/icon.svg" alt="" width="30" height="30" style="border-radius:7px;vertical-align:-7px;margin-right:8px">Reading Peeps</h1>
-  <button id="signOut" class="ghost small hide">Sign out</button>
+  <span class="row" style="gap:8px;align-items:center"><button id="bell" class="ghost small hide" aria-label="Notifications"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="bellBadge" class="bellbadge hide"></span></button>
+  <button id="signOut" class="ghost small hide">Sign out</button></span>
 </header>
 <main id="app"></main>
 <nav id="tabs" class="hide">
@@ -256,7 +261,7 @@ function paintStars(el, v){
 // ---------- auth ----------
 function viewAuth(msg=''){
   disarmClubNav();
-  $('#tabs').classList.add('hide'); $('#signOut').classList.add('hide');
+  $('#tabs').classList.add('hide'); $('#signOut').classList.add('hide'); $('#bell').classList.add('hide');
   const gLogo = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-.95.66-2.23 1.08-4.07 1.08-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.21c-.25-.66-.38-1.4-.38-2.21s.14-1.55.38-2.21V6.7H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.3l3.98-3.09z"/><path fill="#EA4335" d="M12 4.83c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.21 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.7l3.98 3.09C6.22 6.94 8.87 4.83 12 4.83z"/></svg>';
   app.innerHTML = `
   <div class="brand"><img src="/icon.svg" alt=""><div class="bname">Reading Peeps</div></div>
@@ -305,7 +310,8 @@ document.addEventListener('keydown', (e)=>{
 // ---------- shell ----------
 async function boot(){
   try{ const j = await api('me'); user = j.user; }catch(e){ return viewAuth(authMsg); }
-  $('#tabs').classList.remove('hide'); $('#signOut').classList.remove('hide');
+  $('#tabs').classList.remove('hide'); $('#signOut').classList.remove('hide'); $('#bell').classList.remove('hide');
+  refreshBell();
   await refreshClubs();
   if(currentClub) return viewClub();
   const firstId = clubOrder[0];
@@ -314,6 +320,27 @@ async function boot(){
 }
 async function refreshClubs(){ const j = await api('myClubs'); myClubs = j.clubs; clubOrder = usageOrder(myClubs).map(c=>c.id); }
 $('#signOut').onclick = async ()=>{ try{ await api('signout'); }catch(e){} token=''; user=null; currentClub=null; localStorage.removeItem('blc_token'); viewAuth(); };
+function paintBell(n){
+  const b = $('#bellBadge'); if(!b) return;
+  b.textContent = n > 0 ? String(n) : '';
+  b.classList.toggle('hide', !(n > 0));
+}
+async function refreshBell(){
+  if(!user) return;
+  try{ const j = await api('notifications'); paintBell(j.unread || 0); }catch(e){}
+}
+async function viewNotifications(){
+  let j;
+  try{ j = await api('notifications'); }catch(e){ toast(e.message); return; }
+  const list = j.notifications || [];
+  app.innerHTML = `<button class="ghost small" id="nBack">‹ Back</button>
+  <h2>Notifications</h2>
+  ${list.length ? list.map(n=>`<div class="card" style="margin-bottom:8px"><b>${esc(n.title)}</b><div style="margin-top:2px">${esc(n.body)}</div><div class="muted" style="margin-top:4px;font-size:13px">${new Date(n.createdAt).toLocaleString(undefined,{month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})}</div></div>`).join('') : '<div class="card muted">Nothing yet. Voting and meeting updates will land here.</div>'}`;
+  $('#nBack').onclick = ()=>{ if(currentClub) viewClub(); else viewHome(); };
+  try{ await api('markNotificationsRead', {}); }catch(e){}
+  paintBell(0);
+}
+$('#bell').onclick = ()=>viewNotifications();
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{ tab=b.dataset.tab; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on', x===b)); if(tab==='home'){ currentClub=null; viewHome(); } if(tab==='add'){ addReturn=null; viewAdd(); } if(tab==='me') viewMe(); });
 function setTab(t){ tab=t; document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on', x.dataset.tab===t)); }
 
@@ -668,7 +695,11 @@ function memberProgressHTML(c){
     else if(isFin){ w = 100; txt = 'Finished'; }
     else { w = 0; txt = 'Not started'; cls = 'muted'; }
     if(isFin) style += ';color:var(--good);font-weight:600';
-    return `<div class="prow"><span class="pname">${m.userId===user.id ? 'You' : esc(m.name)}</span><span class="progBar"><i style="width:${w}%"></i></span><span class="${cls}" style="${style}">${txt}</span></div>`;
+    const row = `<div class="prow"><span class="pname">${m.userId===user.id ? 'You' : esc(m.name)}</span><span class="progBar"><i style="width:${w}%"></i></span><span class="${cls}" style="${style}">${txt}</span></div>`;
+    if(isFin && m.userId!==user.id && p){
+      return row + `<div style="margin:1px 0 5px">${reactionHTML(p.reactions || [], `data-rtype="finish" data-rbook="${esc(c.current.key)}" data-rsubject="${m.userId}"`)}</div>`;
+    }
+    return row;
   }).join('')}</div>`;
 }
 function wireProgress(){
@@ -709,12 +740,15 @@ function currentSection(c){
     const rated = c.currentRatings.filter(r=>r.rating!==null&&r.rating!==undefined);
     const avg = rated.length ? Math.round(rated.reduce((a,r)=>a+r.rating,0)/rated.length*10)/10 : null;
     h += bookRow(c.current);
+    if(c.lastResult && c.lastResult.winner && c.current && c.lastResult.winner === c.current.key){
+      h += `<div class="row" style="margin-top:6px"><span class="muted grow">Won the club vote</span>${reactionHTML(c.pollReactions || [], 'data-rtype="poll"')}</div>`;
+    }
     h += myProgressHTML(c);
     h += memberProgressHTML(c);
     h += `<div class="row" style="margin-top:8px"><button class="small ic ${c.myFinished?'':'ghost'}" id="finBtn">${c.myFinished?icon('check',16)+' Finished':'I finished reading'}</button>
       <span class="muted">${fin.length} of ${c.members.length} finished</span></div>
       <div class="row" id="rateSummary" style="margin-top:8px;cursor:pointer"><span class="grow muted">${rated.length?`Average ★ ${avg} (${rated.length} rating${rated.length>1?'s':''})`:'No ratings yet'}</span><span class="muted">Ratings ›</span></div>
-      <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div class="row" style="padding:3px 0"><span class="grow">${esc(r.name)}</span><span>${r.rating===null||r.rating===undefined?'—':'★ '+r.rating}</span></div>`).join('')}</div>`;
+      <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div style="padding:3px 0"><div class="row"><span class="grow">${esc(r.name)}</span><span>${r.rating===null||r.rating===undefined?'—':'★ '+r.rating}</span></div>${(r.rating!==null&&r.rating!==undefined&&r.userId!==user.id)?`<div style="margin-top:1px">${reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`)}</div>`:''}</div>`).join('')}</div>`;
   } else {
     h += '<div class="muted">No book picked yet</div>';
   }
@@ -842,6 +876,26 @@ function rsvpPopup(c){
   <button class="ghost small" id="mClose" style="margin-top:14px;width:100%">Close</button>`);
   $('#mClose').onclick = closeModal;
 }
+const REACTION_EMOJIS = ['❤️','👏','🔥','😮','😂','🎉'];
+function reactionHTML(chips, attrs){
+  const chipsH = (chips||[]).map(ch=>`<button class="rchip ${ch.mine?'mine':''}" ${attrs} data-emoji="${ch.emoji}" title="${esc((ch.names||[]).join(', '))}">${ch.emoji} ${ch.count}</button>`).join('');
+  const palette = REACTION_EMOJIS.map(e=>`<button class="rchip" ${attrs} data-emoji="${e}">${e}</button>`).join('');
+  return `<span class="reactions">${chipsH}<span class="rpal hide" style="display:none;gap:4px">${palette}</span><button class="rchip" data-radd aria-label="Add a reaction">+</button></span>`;
+}
+function discussionSection(c){
+  if(!c.current) return '';
+  const d = c.discussion || { group: [], mine: [] };
+  const isAdmin = c.role==='admin';
+  const grow = (q, scope)=>`<div class="row" style="padding:3px 0;align-items:flex-start"><span class="grow" style="font-size:15px">${esc(q.text)}${scope==='group' && q.byName ? ` <span class="muted" style="font-size:13px">· ${esc(q.byName)}</span>` : ''}</span>${(scope==='private' || q.mine || isAdmin) ? `<button class="ghost small" data-delq="${scope}:${q.id}">Remove</button>` : ''}</div>`;
+  return `<div class="card a-teal"><h3 style="margin-top:0">Discussion questions</h3>
+  <div class="muted" style="margin-bottom:4px">For the group</div>
+  ${d.group.length ? d.group.map(q=>grow(q,'group')).join('') : '<div class="muted">No questions yet</div>'}
+  <div class="row" style="margin-top:8px"><input type="text" id="qGroup" class="grow" placeholder="Add a question for the group" maxlength="500"><button class="small" id="qGroupAdd">Add</button></div>
+  <div class="muted" style="margin:14px 0 4px">Yours, only you see these</div>
+  ${d.mine.length ? d.mine.map(q=>grow(q,'private')).join('') : '<div class="muted">None yet</div>'}
+  <div class="row" style="margin-top:8px"><input type="text" id="qMine" class="grow" placeholder="Add a private question" maxlength="500"><button class="small" id="qMineAdd">Add</button></div>
+  </div>`;
+}
 function clubStripHTML(c){
   const ids = clubFlipIds(c);
   const idx = ids.indexOf(c.id);
@@ -864,6 +918,7 @@ function viewClub(){
   ${currentSection(c)}
   ${nextBookSection(c)}
   ${meetingSection(c)}
+  ${discussionSection(c)}
   <div class="card row setrow a-teal" id="libRow"><span style="color:#17a398">${icon('book',20)}</span><b class="grow">Library</b><span class="muted">${c.library.length} book${c.library.length===1?'':'s'}</span><span class="muted">›</span></div>
   <div style="margin-top:10px"><button id="leave" class="ghost small">Leave club</button></div>`;
   const flipIds = clubFlipIds(c), flipIdx = flipIds.indexOf(c.id);
@@ -879,6 +934,11 @@ function viewClub(){
   if($('#startPoll')) $('#startPoll').onclick=()=>viewPoll();
   if($('#addBooksBtn')) $('#addBooksBtn').onclick=()=>viewLibrary();
   if($('#finBtn')) $('#finBtn').onclick=async()=>{ const j = c.myFinished ? await api('toggleFinished',{clubId:c.id}) : await api('setProgress',{clubId:c.id, bookKey:c.current.key, percent:100}); currentClub=j.club; viewClub(); };
+  app.querySelectorAll('[data-radd]').forEach(b=>b.onclick=()=>{ const pal = b.parentElement.querySelector('.rpal'); if(pal){ const open = pal.style.display!=='none'; pal.style.display = open ? 'none' : 'inline-flex'; pal.classList.toggle('hide', open); } });
+  app.querySelectorAll('[data-rtype]').forEach(b=>b.onclick=async()=>{ try{ const j = await api('react', { clubId: c.id, type: b.dataset.rtype, bookKey: b.dataset.rbook || undefined, subjectUserId: b.dataset.rsubject || undefined, emoji: b.dataset.emoji }); currentClub = j.club; viewClub(); }catch(e){ toast(e.message); } });
+  if($('#qGroupAdd')) $('#qGroupAdd').onclick=async()=>{ const v=$('#qGroup').value.trim(); if(!v) return; try{ const j=await api('addDiscussionQuestion',{clubId:c.id, text:v, scope:'group'}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
+  if($('#qMineAdd')) $('#qMineAdd').onclick=async()=>{ const v=$('#qMine').value.trim(); if(!v) return; try{ const j=await api('addDiscussionQuestion',{clubId:c.id, text:v, scope:'private'}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
+  app.querySelectorAll('[data-delq]').forEach(b=>b.onclick=async()=>{ const [scope, qid] = b.dataset.delq.split(':'); try{ const j=await api('removeDiscussionQuestion',{clubId:c.id, questionId:qid, scope}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } });
   if($('#rateSummary')) $('#rateSummary').onclick=()=>{ $('#rateList').classList.toggle('hide'); };
   app.querySelectorAll('[data-rsvp]').forEach(b=>b.onclick=async()=>{ const cur=(currentClub.rsvps||{})[user.id]; const j=await api('rsvp',{clubId:c.id, status: cur===b.dataset.rsvp ? '' : b.dataset.rsvp}); currentClub=j.club; viewClub(); });
   if($('#goingCount')) $('#goingCount').onclick=()=>rsvpPopup(currentClub);
@@ -994,11 +1054,31 @@ function viewSettings(){
   <h2>Settings</h2>
   <div class="card row setrow" id="setMembers"><b class="grow">Members</b><span class="muted">${c.members.length}</span><span class="muted">›</span></div>
   <div class="card row setrow" id="setFreq"><b class="grow">Frequency</b><span class="muted">›</span></div>
+  <div class="card row setrow" id="setQuestions"><b class="grow">Discussion questions</b><span class="muted">›</span></div>
   <div class="card row setrow" id="setDelete"><b class="grow" style="color:var(--danger)">Delete club</b><span class="muted">›</span></div>`;
   $('#back').onclick = ()=>viewClub();
   $('#setMembers').onclick = ()=>viewMembersPage();
   $('#setFreq').onclick = ()=>viewFrequencyPage();
+  $('#setQuestions').onclick = ()=>viewDiscussionTemplatePage();
   $('#setDelete').onclick = ()=>viewDeleteClubPage();
+}
+function viewDiscussionTemplatePage(){
+  const c = currentClub; if(!c || c.role!=='admin') return viewClub();
+  const tpl = (c.discussion && c.discussion.template) || [];
+  app.innerHTML = `
+  <button class="ghost small" id="back">‹ Settings</button>
+  <h2>Discussion questions</h2>
+  <div class="card"><h3 style="margin-top:0">Template</h3>
+  <div class="muted" style="margin-bottom:8px">These questions start the list for every new book. Members can add more for each book. One question per line.</div>
+  <textarea id="tplText" rows="8" placeholder="What stayed with you after the last chapter?">${esc(tpl.join('\n'))}</textarea>
+  <div style="margin-top:8px"><button id="tplSave" class="small">Save template</button></div>
+  <div id="tplOut"></div></div>`;
+  $('#back').onclick = ()=>viewSettings();
+  $('#tplSave').onclick = async ()=>{
+    const questions = $('#tplText').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    try{ const j = await api('setDiscussionTemplate', { clubId: c.id, questions }); currentClub = j.club; $('#tplOut').innerHTML = '<div class="muted" style="margin-top:8px">Saved</div>'; }
+    catch(e){ toast(e.message); }
+  };
 }
 function viewMembersPage(){
   const c = currentClub; if(!c || c.role!=='admin') return viewClub();
