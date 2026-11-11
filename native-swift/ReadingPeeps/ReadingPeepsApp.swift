@@ -9,6 +9,7 @@ struct ReadingPeepsApp: App {
             RootView()
                 .environmentObject(appState)
                 .tint(.rpCoral)
+                .preferredColorScheme(.light)
                 .task {
                     await appState.restore()
                 }
