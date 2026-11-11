@@ -55,11 +55,11 @@ export async function MembersPage(root: HTMLElement, clubId: string) {
         </ion-item>`).join('')}
     </ion-list>
 
-    <div class="section-label">Invite a member</div>
+    <div class="section-label">Invite members</div>
     <ion-list inset="true">
-      <ion-item><ion-input id="invEmail" type="email" label="Email" label-placement="stacked" placeholder="friend@example.com"></ion-input></ion-item>
+      <ion-item><ion-textarea id="invEmails" label="Emails" label-placement="stacked" rows="3" placeholder="Emails to invite, separated by commas"></ion-textarea></ion-item>
     </ion-list>
-    <ion-button id="invCreate" expand="block" fill="outline" style="margin:10px 16px">Create invite</ion-button>
+    <ion-button id="invCreate" expand="block" fill="outline" style="margin:10px 16px">Send invites</ion-button>
     <div id="invOut"></div>
     <p id="invErr" style="color:var(--ion-color-danger);min-height:16px;margin:2px 16px;font-size:14px"></p>`;
 
@@ -97,16 +97,28 @@ export async function MembersPage(root: HTMLElement, clubId: string) {
   (body.querySelector('#invCreate') as any).addEventListener('click', async () => {
     const err = body.querySelector('#invErr') as HTMLElement;
     err.textContent = '';
-    const email = ((body.querySelector('#invEmail') as any).value || '').trim();
+    const emailList = ((body.querySelector('#invEmails') as any).value || '').trim();
     try {
-      const r = await api<{ inviteToken: string; email: string }>('createInvite', { clubId, email });
-      const link = 'https://www.readingpeeps.com/?invite=' + r.inviteToken;
-      (body.querySelector('#invOut') as HTMLElement).innerHTML = `
-        <ion-list inset="true"><ion-item><ion-label class="ion-text-wrap">
-          <h3>Invite for ${esc(r.email)}</h3>
-          <p>Send this link to ${esc(r.email)} (works once):</p>
-          <p style="font-family:monospace;word-break:break-all">${esc(link)}</p>
-        </ion-label></ion-item></ion-list>`;
+      const r = await api<{ emailed: boolean; results: { email: string; inviteToken?: string; sent: boolean; error?: string }[] }>('createInvite', { clubId, emailList });
+      const items: string[] = [];
+      if (r.emailed === false) {
+        items.push(`<ion-item><ion-label class="ion-text-wrap"><p>Email sending isn't switched on yet. Send these links yourself:</p></ion-label></ion-item>`);
+      }
+      for (const res of r.results || []) {
+        if (res.sent) {
+          items.push(`<ion-item><ion-label class="ion-text-wrap"><h3>✓ Invite sent to ${esc(res.email)}</h3></ion-label></ion-item>`);
+        } else if (res.inviteToken) {
+          const link = 'https://www.readingpeeps.com/?invite=' + res.inviteToken;
+          items.push(`<ion-item><ion-label class="ion-text-wrap">
+            <h3>Couldn't email ${esc(res.email)}</h3>
+            <p>Send this link yourself (works once):</p>
+            <p style="font-family:monospace;word-break:break-all">${esc(link)}</p>
+          </ion-label></ion-item>`);
+        } else {
+          items.push(`<ion-item><ion-label class="ion-text-wrap"><p>${esc(res.email)}: ${esc(res.error || 'not invited')}</p></ion-label></ion-item>`);
+        }
+      }
+      (body.querySelector('#invOut') as HTMLElement).innerHTML = `<ion-list inset="true">${items.join('')}</ion-list>`;
     } catch (e) { err.textContent = errText(e); }
   });
 }
