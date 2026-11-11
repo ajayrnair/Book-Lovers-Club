@@ -348,7 +348,7 @@ async function viewNotifications(){
   <h2>Notifications</h2>
   ${list.length ? list.map(n=>`<div class="card" style="margin-bottom:8px"><b>${esc(n.title)}</b><div style="margin-top:2px">${esc(n.body)}</div><div class="muted" style="margin-top:4px;font-size:13px">${new Date(n.createdAt).toLocaleString(undefined,{month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})}</div></div>`).join('') : '<div class="card muted">Nothing yet. Voting and meeting updates will land here.</div>'}`;
   $('#nBack').onclick = ()=>{ if(currentClub) viewClub(); else viewHome(); };
-  try{ await api('markNotificationsRead', {}); }catch(e){}
+  try{ await api('markNotificationsRead', {via:'web'}); }catch(e){}
   paintBell(0);
 }
 $('#bell').onclick = ()=>viewNotifications();
@@ -1223,6 +1223,7 @@ async function viewStats(){
     app.innerHTML = `<button class="ghost small" id="back">‹ Me</button><h2>Stats</h2>
     <div class="card"><div><b>${j.users.real}</b> real accounts · <b>${j.users.test}</b> test accounts · <b>${j.users.total}</b> total</div>
     <div style="margin-top:4px"><b>${j.clubs.total}</b> clubs</div></div>
+    ${j.notifications?`<div class="card"><div><b>Notifications</b></div><div style="margin-top:4px">${j.notifications.total} delivered · ${j.notifications.read} read · ${j.notifications.unread} unread</div><div class="muted" style="margin-top:4px">Email: ${Object.entries(j.notifications.email||{}).map(([k,v])=>k+' '+v).join(' · ')||'none'}</div>${(j.notifications.byUser||[]).map(u=>`<div class="muted" style="margin-top:2px">${esc(u.name)} · ${u.delivered} delivered · ${u.read} read</div>`).join('')}</div>`:''}
     <h3>Clubs</h3>
     ${j.clubs.list.map(c=>`<div class="card"><div class="row"><b class="grow">${esc(c.name)}</b><span class="muted">${c.private?'Private':'Public'} · ${c.memberCount} member${c.memberCount===1?'':'s'}</span></div>${(c.members||[]).map(m=>`<div class="muted" style="margin-top:2px">${esc(m.name||'')} ${m.email?'· '+esc(m.email):''}${m.role==='admin'?' · admin':''}</div>`).join('')}</div>`).join('')||'<div class="muted">No clubs</div>'}
     <h3>Real accounts</h3>

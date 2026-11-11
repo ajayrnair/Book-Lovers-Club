@@ -58,6 +58,17 @@ function normalizeDB(db) {
     club.reactions = club.reactions || [];
     club.meeting = { type: 'online', link: '', address: '', date: '', ...(club.meeting || {}) };
   });
+  (db.notifications || []).forEach((n) => {
+    if (!n.dedupeKey) n.dedupeKey = 'legacy:' + n.id;
+    if (n.readVia === undefined) n.readVia = null;
+    if (!n.channels) {
+      n.channels = {
+        inbox: { status: 'delivered', at: n.createdAt },
+        email: { status: 'unknown' },
+        push: { status: 'unavailable' },
+      };
+    }
+  });
   return db;
 }
 
@@ -271,11 +282,13 @@ async function sendInviteEmail(apiKey, { to, inviterLabel, clubName, link }) {
   }
 }
 // ---------------------------------------------------------------------------
-// Notifications: in-app records (db.notifications) plus one email per member
-// via Resend when configured. Events: a poll opens (start, runoff, auto), a
-// poll settles (winner or tie), a meeting date is picked, meeting details
-// change, and a day-before meeting reminder swept on any signed-in request.
-// The member who caused the event is never notified about it.
+// Notifications, in two layers. Generation (emitNotifications) turns an
+// event into per-user delivery records; delivery (deliverNotifications)
+// attempts each channel and records the outcome on the record itself.
+// Events: a poll opens (start, runoff, auto), a poll settles (winner or
+// tie), a meeting date is picked, meeting details change, and a day-before
+// meeting reminder swept on any signed-in request. The member who caused
+// the event is never notified about it.
 // ---------------------------------------------------------------------------
 const APP_URL = 'https://www.readingpeeps.com/';
 function prettyDay(dateStr) {
@@ -315,49 +328,85 @@ async function sendNoticeEmail(apiKey, { to, subject, text }) {
       headers: { authorization: 'Bearer ' + apiKey, 'content-type': 'application/json' },
       body: JSON.stringify({ from: 'Reading Peeps <notifications@readingpeeps.com>', to: [to], subject, text: text + '\n\nOpen Reading Peeps: ' + APP_URL, html }),
     });
-    return { sent: r.ok };
+    if (!r.ok) return { sent: false, error: 'Email provider returned ' + r.status };
+    let providerId = '';
+    try { const j = await r.json(); providerId = j && j.id ? String(j.id) : ''; } catch (e) { }
+    return { sent: true, providerId };
   } catch (e) {
-    return { sent: false };
+    return { sent: false, error: 'Email send failed: ' + (e && e.message ? e.message : 'network error') };
   }
 }
-// Creates the in-app records only; returns them so the caller can email.
-function queueNotifications(db, club, { exceptUserId = null, type, title, body }) {
+// ---------------------------------------------------------------------------
+// Notification generation layer. emitNotifications turns an event into at
+// most one delivery record per member, actor excluded. Every record carries
+// a dedupeKey identifying the event instance, so re-emitting the same event
+// (an autosave re-save, a sweep re-entry, a retried request) never creates
+// a second copy for the same user.
+// ---------------------------------------------------------------------------
+function emitNotifications(db, club, { exceptUserId = null, type, title, body, dedupeKey }) {
   const created = [];
   (club.members || []).forEach((m) => {
     if (m.userId === exceptUserId) return;
-    const rec = { id: uid(), userId: m.userId, clubId: club.id, type, title, body, createdAt: nowISO(), readAt: 0 };
+    if (dedupeKey && db.notifications.some((n) => n.userId === m.userId && n.dedupeKey === dedupeKey)) return;
+    const rec = {
+      id: uid(), userId: m.userId, clubId: club.id, type, title, body,
+      createdAt: nowISO(), readAt: 0, readVia: null,
+      dedupeKey: dedupeKey || ('evt:' + uid()),
+      channels: {
+        inbox: { status: 'delivered', at: nowISO() },
+        email: { status: 'pending' },
+        push: { status: 'unavailable' },
+      },
+    };
     db.notifications.push(rec);
     created.push(rec);
   });
   return created;
 }
-async function emailNotifications(db, records) {
+// ---------------------------------------------------------------------------
+// Notification delivery layer. Attempts each channel for freshly generated
+// records and writes the outcome back onto the record's channels map, so
+// delivery and seen status are tracked per user per notification. The inbox
+// channel is the record itself: the web bell and the app inbox read the same
+// record, so a notification read anywhere is read everywhere. Email goes
+// through Resend and records the provider's message id. Push stays
+// 'unavailable' until an APNs key exists; this is the one place it plugs in.
+// ---------------------------------------------------------------------------
+async function deliverNotifications(db, records) {
+  if (!records.length) return records;
   const apiKey = process.env.RESEND_API_KEY || '';
-  if (!apiKey || !records.length) return;
   const byId = {};
   (db.users || []).forEach((u) => { byId[u.id] = u; });
-  await Promise.allSettled(records.map((rec) => {
+  await Promise.allSettled(records.map(async (rec) => {
+    const ch = rec.channels.email;
+    if (!apiKey) { ch.status = 'skipped'; ch.error = 'email_not_configured'; ch.at = nowISO(); return; }
     const u = byId[rec.userId];
-    if (!u || !u.email) return Promise.resolve();
-    return sendNoticeEmail(apiKey, { to: u.email, subject: rec.title, text: rec.body });
+    if (!u || !u.email) { ch.status = 'skipped'; ch.error = 'no_email_address'; ch.at = nowISO(); return; }
+    const r = await sendNoticeEmail(apiKey, { to: u.email, subject: rec.title, text: rec.body });
+    ch.status = r.sent ? 'sent' : 'failed';
+    ch.at = nowISO();
+    if (r.providerId) ch.providerId = r.providerId;
+    if (r.error) ch.error = r.error;
   }));
+  return records;
 }
+// Generate, then deliver. Every event call site goes through here.
 async function notifyMembers(db, club, opts) {
-  const records = queueNotifications(db, club, opts);
-  await emailNotifications(db, records);
+  const records = emitNotifications(db, club, opts);
+  await deliverNotifications(db, records);
   return records;
 }
 async function notifyPollResult(db, club, result, exceptUserId) {
   if (!result) return;
   if (result.winner) {
     await notifyMembers(db, club, {
-      exceptUserId, type: 'poll_result',
+      exceptUserId, type: 'poll_result', dedupeKey: 'poll-result:' + club.id + ':' + (result.at || ''),
       title: 'Next book for ' + club.name,
       body: bookTitleOf(db, result.winner) + ' won the vote and is the club\u2019s next book.',
     });
   } else if (result.tie) {
     await notifyMembers(db, club, {
-      exceptUserId, type: 'poll',
+      exceptUserId, type: 'poll', dedupeKey: 'poll-result:' + club.id + ':' + (result.at || ''),
       title: 'The vote tied in ' + club.name,
       body: 'No book won outright. The admin can run a runoff or pick the next book.',
     });
@@ -378,8 +427,8 @@ function sweepMeetingReminders(db) {
     const start = new Date(mtg.date + 'T' + (mtg.time || '18:00') + ':00Z').getTime();
     if (isNaN(start) || start <= now || start - now > 24 * 3600e3) return;
     mtg.reminderFor = key;
-    created.push(...queueNotifications(db, club, {
-      type: 'meeting_reminder',
+    created.push(...emitNotifications(db, club, {
+      type: 'meeting_reminder', dedupeKey: 'reminder:' + club.id + ':' + key,
       title: 'Meeting coming up in ' + club.name,
       body: 'Your club meets on ' + prettyDay(mtg.date) + (mtg.time ? ' at ' + fmtTime(mtg.time) : '') + '. See you there.',
     }));
@@ -932,7 +981,7 @@ module.exports = async (req, res) => {
     const outcomes = expirePolls(db);
     for (const o of outcomes) { await notifyPollResult(db, o.club, o.result, null); dirty = true; }
     const reminded = sweepMeetingReminders(db);
-    if (reminded.length) { await emailNotifications(db, reminded); dirty = true; }
+    if (reminded.length) { await deliverNotifications(db, reminded); dirty = true; }
     if (dirty) await writeDB(db);
   }
 
@@ -964,9 +1013,10 @@ module.exports = async (req, res) => {
       }
       case 'markNotificationsRead': {
         const ids = Array.isArray(body.ids) ? body.ids : null;
+        const via = ['web', 'app'].includes(body.via) ? body.via : null;
         let changed = false;
         db.notifications.forEach((n) => {
-          if (n.userId === me.id && !n.readAt && (!ids || ids.includes(n.id))) { n.readAt = nowISO(); changed = true; }
+          if (n.userId === me.id && !n.readAt && (!ids || ids.includes(n.id))) { n.readAt = nowISO(); if (via) n.readVia = via; changed = true; }
         });
         if (changed) await writeDB(db);
         return send(200, { unread: db.notifications.filter((n) => n.userId === me.id && !n.readAt).length });
@@ -980,8 +1030,28 @@ module.exports = async (req, res) => {
           name: c.name, private: !!c.private, memberCount: (c.members || []).length,
           ...(full ? { members: (c.members || []).map((m) => { const u = byId[m.userId]; return u ? { name: u.name, email: u.email, role: m.role } : { userId: m.userId, role: m.role, missing: true }; }) } : {}),
         }));
+        const notifStats = (() => {
+          const all = db.notifications || [];
+          const byType = {}; const email = {}; let read = 0; const perUser = {};
+          all.forEach((n) => {
+            byType[n.type] = (byType[n.type] || 0) + 1;
+            const st = (n.channels && n.channels.email && n.channels.email.status) || 'unknown';
+            email[st] = (email[st] || 0) + 1;
+            if (n.readAt) read++;
+            const pu = perUser[n.userId] || (perUser[n.userId] = { delivered: 0, read: 0 });
+            pu.delivered++; if (n.readAt) pu.read++;
+          });
+          return {
+            total: all.length, read, unread: all.length - read, byType, email,
+            byUser: Object.keys(perUser).map((userId) => {
+              const u = byId[userId];
+              return { name: u ? u.name : '(deleted account)', email: u ? u.email : '', delivered: perUser[userId].delivered, read: perUser[userId].read };
+            }),
+          };
+        })();
         return send(200, {
           scope: full ? 'full' : 'counts',
+          notifications: notifStats,
           users: {
             total: userList.length,
             real: userList.filter((u) => !u.isTest).length,
@@ -1108,7 +1178,16 @@ module.exports = async (req, res) => {
         const club = db.clubs.find((c) => c.id === body.clubId);
         if (!club) return send(404, { error: 'Club not found' });
         if (club.private && !club.members.some((m) => m.userId === me.id)) return send(403, { error: 'Private club' });
-        maybeAutoPoll(db, club); await writeDB(db);
+        const pollBefore = club.poll;
+        maybeAutoPoll(db, club);
+        if (!pollBefore && club.poll) {
+          await notifyMembers(db, club, {
+            type: 'poll', dedupeKey: 'poll-open:' + club.poll.id,
+            title: 'Voting is open in ' + club.name,
+            body: 'Vote for the next book to read together. Voting closes ' + prettyDateTime(club.poll.closesAt) + '.',
+          });
+        }
+        await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
       case 'createInvite': {
@@ -1266,19 +1345,20 @@ module.exports = async (req, res) => {
           }
         }
         const prevMeeting = { ...(club.meeting || {}) };
+        const meetingStamp = 'meeting:' + club.id + ':' + nowISO();
         if (body.meeting) club.meeting = { ...club.meeting, ...body.meeting };
         if (body.meeting && club.meeting.date) {
           const dateChanged = (prevMeeting.date || '') !== (club.meeting.date || '');
           const detailChanged = ['time', 'link', 'address'].some((f) => (prevMeeting[f] || '') !== (club.meeting[f] || ''));
           if (dateChanged) {
             await notifyMembers(db, club, {
-              exceptUserId: me.id, type: 'meeting',
+              exceptUserId: me.id, type: 'meeting', dedupeKey: meetingStamp,
               title: 'Meeting set for ' + club.name,
               body: 'The next ' + club.name + ' meeting is on ' + prettyDay(club.meeting.date) + (club.meeting.time ? ' at ' + fmtTime(club.meeting.time) : '') + '. Open Reading Peeps to RSVP.',
             });
           } else if (detailChanged) {
             await notifyMembers(db, club, {
-              exceptUserId: me.id, type: 'meeting',
+              exceptUserId: me.id, type: 'meeting', dedupeKey: meetingStamp,
               title: 'Meeting details updated for ' + club.name,
               body: 'The next ' + club.name + ' meeting is on ' + prettyDay(club.meeting.date) + (club.meeting.time ? ' at ' + fmtTime(club.meeting.time) : '') + '. The time or place was just updated.',
             });
@@ -1390,7 +1470,7 @@ module.exports = async (req, res) => {
         });
         if (prevDate !== body.date) {
           await notifyMembers(db, club, {
-            exceptUserId: me.id, type: 'meeting',
+            exceptUserId: me.id, type: 'meeting', dedupeKey: 'meeting:' + club.id + ':' + nowISO(),
             title: 'Meeting set for ' + club.name,
             body: 'The next ' + club.name + ' meeting is on ' + prettyDay(body.date) + (club.meeting.time ? ' at ' + fmtTime(club.meeting.time) : '') + '. Open Reading Peeps to RSVP.',
           });
@@ -1434,7 +1514,7 @@ module.exports = async (req, res) => {
         }
         club.poll = { id: uid(), options: candidates, votes: {}, runoff: false, closesAt, createdAt: nowISO(), auto: false };
         await notifyMembers(db, club, {
-          exceptUserId: me.id, type: 'poll',
+          exceptUserId: me.id, type: 'poll', dedupeKey: 'poll-open:' + club.poll.id,
           title: 'Voting is open in ' + club.name,
           body: 'Vote for the next book to read together. Voting closes ' + prettyDateTime(closesAt) + '.',
         });
@@ -1468,7 +1548,7 @@ module.exports = async (req, res) => {
         club.poll = { id: uid(), options: club.pendingTie, votes: {}, runoff: true, closesAt: new Date(Math.min(Date.now() + 864e5, new Date(defaultClose(club)).getTime())).toISOString(), createdAt: nowISO(), auto: false };
         club.pendingTie = null; club.lastResult = null;
         await notifyMembers(db, club, {
-          exceptUserId: me.id, type: 'poll',
+          exceptUserId: me.id, type: 'poll', dedupeKey: 'poll-open:' + club.poll.id,
           title: 'Runoff vote in ' + club.name,
           body: 'The vote tied, so a one day runoff is open. Vote now to break the tie.',
         });
@@ -1484,7 +1564,7 @@ module.exports = async (req, res) => {
         club.cycleEnd = new Date(Date.now() + (club.meetingFrequencyWeeks * 7 + 7) * 864e5).toISOString();
         seedDiscussion(club);
         await notifyMembers(db, club, {
-          exceptUserId: me.id, type: 'poll_result',
+          exceptUserId: me.id, type: 'poll_result', dedupeKey: 'pick:' + club.id + ':' + nowISO(),
           title: 'Next book for ' + club.name,
           body: bookTitleOf(db, body.bookKey) + ' was picked as the club\u2019s next book.',
         });
