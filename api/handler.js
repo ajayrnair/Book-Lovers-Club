@@ -484,7 +484,10 @@ function storeBook(db, data) {
 }
 
 // ---------- Google sign-in ----------
-const GOOGLE_REDIRECT_URI = 'https://booklovers-lemon.vercel.app/api/auth/google';
+function googleRedirectUri(req) {
+  const host = (req.headers && (req.headers['x-forwarded-host'] || req.headers.host)) || 'www.readingpeeps.com';
+  return 'https://' + host + '/api/auth/google';
+}
 function parseCookies(req) {
   const out = {};
   (req.headers.cookie || '').split(';').forEach((part) => {
@@ -507,7 +510,7 @@ async function googleAuth(req, res, u) {
     const state = crypto.randomBytes(16).toString('hex');
     const auth = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     auth.searchParams.set('client_id', clientId);
-    auth.searchParams.set('redirect_uri', GOOGLE_REDIRECT_URI);
+    auth.searchParams.set('redirect_uri', googleRedirectUri(req));
     auth.searchParams.set('response_type', 'code');
     auth.searchParams.set('scope', 'openid email profile');
     auth.searchParams.set('state', state);
@@ -523,7 +526,7 @@ async function googleAuth(req, res, u) {
     const tr = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: GOOGLE_REDIRECT_URI, grant_type: 'authorization_code' }).toString(),
+      body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: googleRedirectUri(req), grant_type: 'authorization_code' }).toString(),
     });
     if (!tr.ok) return fail();
     const tj = await tr.json();
