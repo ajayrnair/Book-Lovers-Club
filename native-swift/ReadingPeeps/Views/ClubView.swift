@@ -150,6 +150,9 @@ struct ClubView: View {
             if let current = c.current {
                 BookRowView(title: current.title, author: current.author, year: current.year,
                             cover: current.cover, ratings: ratingsText(for: current), coverWidth: 60)
+                if let s = current.synopsis, !s.isEmpty {
+                    SynopsisView(text: s)
+                }
                 if let avg = current.memberAverage, let count = current.memberCount, count > 0 {
                     Text("Members ★ \(trimNumber(avg)) (\(count) rating\(count == 1 ? "" : "s"))")
                         .font(.subheadline)

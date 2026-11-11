@@ -25,6 +25,7 @@ struct Book: Codable, Equatable, Identifiable {
     let cover: String?
     let year: String?
     let pageCount: Int?
+    let synopsis: String?
     let google: BookRatings?
     let hardcover: BookRatings?
     let openlibrary: BookRatings?
@@ -44,6 +45,7 @@ struct SearchBook: Codable, Equatable {
     let cover: String?
     let year: String?
     let pageCount: Int?
+    let synopsis: String?
     let google: BookRatings?
     let hardcover: BookRatings?
     let openlibrary: BookRatings?

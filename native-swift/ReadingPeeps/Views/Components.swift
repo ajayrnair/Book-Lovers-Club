@@ -200,6 +200,27 @@ struct BookRowView: View {
     }
 }
 
+/// A few lines of the book's synopsis with a More/Less toggle, so the full
+/// text never floods the screen. Mirrors the web app's clamped synopsis.
+struct SynopsisView: View {
+    let text: String
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(text)
+                .font(.subheadline)
+                .lineLimit(expanded ? nil : 3)
+            Button(expanded ? "Less" : "More") {
+                withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+            }
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Color.rpCoral)
+            .buttonStyle(.plain)
+        }
+    }
+}
+
 // ---------- star rating (half steps) ----------
 
 /// "Your rating" editor: five stars, tap the left or right half of a star for

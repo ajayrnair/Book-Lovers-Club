@@ -50,6 +50,7 @@ struct PollView: View {
     private func runningPoll(_ c: Club, poll: Poll) -> some View {
         Section {
             ForEach(poll.options, id: \.book.key) { option in
+                VStack(alignment: .leading, spacing: 6) {
                 Button {
                     Task { await vote(bookKey: option.book.key) }
                 } label: {
@@ -85,6 +86,10 @@ struct PollView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                if let s = option.book.synopsis, !s.isEmpty {
+                    SynopsisView(text: s)
+                }
+                }
             }
         } header: {
             Text(poll.runoff ? "Runoff" : (c.current != nil ? "Pick the next book" : "Pick a book"))

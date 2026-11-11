@@ -91,6 +91,9 @@ struct LibraryView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                if let s = book.synopsis, !s.isEmpty {
+                    SynopsisView(text: s)
+                }
                 HStack(spacing: 8) {
                     Text("Your rating")
                         .font(.subheadline)
