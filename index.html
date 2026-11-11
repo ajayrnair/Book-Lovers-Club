@@ -1126,8 +1126,9 @@ async function viewStats(){
     <h3>Real accounts</h3>
     ${real.map(u=>`<div class="card"><b>${esc(u.name)}</b><div class="muted">${esc(u.email)} · joined ${day(u.createdAt)}</div></div>`).join('')||'<div class="muted">None</div>'}
     <h3>Test accounts</h3>
-    ${test.map(u=>`<div class="card"><b>${esc(u.name)}</b><div class="muted">${esc(u.email)} · joined ${day(u.createdAt)}</div></div>`).join('')||'<div class="muted">None</div>'}`;
+    ${test.map(u=>`<div class="card"><div class="row"><div class="grow"><b>${esc(u.name)}</b><div class="muted">${esc(u.email)} · joined ${day(u.createdAt)}</div></div><button class="ghost small danger" data-del="${esc(u.email)}">Delete</button></div></div>`).join('')||'<div class="muted">None</div>'}`;
     $('#back').onclick = ()=>viewMe();
+    app.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{ if(b.dataset.armed){ try{ await api('deleteTestUser',{email:b.dataset.del}); toast('Deleted'); viewStats(); }catch(e){ toast(e.message); } } else { b.dataset.armed='1'; b.textContent='Tap again to delete'; } });
   }catch(e){ toast(e.message); }
 }
 

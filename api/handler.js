@@ -748,6 +748,14 @@ module.exports = async (req, res) => {
   const db = await readDB();
   const token = (req.headers.authorization || '').replace('Bearer ', '');
   const me = db.users.find((u) => db.sessions[token] === u.id);
+  const isTestUser = (u) => {
+    const e = (u.email || '').toLowerCase();
+    const local = e.split('@')[0]; const domain = e.split('@')[1] || '';
+    return /^(rp\.smoke\.|rp\.xp\.|blc\.dbg\.)/.test(local)
+      || local.includes('smoke')
+      || ['example.com', 'example.org', 'example.net', 'test.com'].includes(domain)
+      || /^(smoke|test|debug|ship)/.test(local);
+  };
   const action = body.action || '';
   const needAuth = !['signup', 'signin'].includes(action);
   if (needAuth && !me) return send(401, { error: 'Sign in first' });
@@ -776,14 +784,6 @@ module.exports = async (req, res) => {
       case 'me': return send(200, { user: { id: me.id, name: me.name, email: me.email } });
       case 'stats': {
         const OWNER_EMAIL = 'ajay.r.nair@gmail.com';
-        const isTestUser = (u) => {
-          const e = (u.email || '').toLowerCase();
-          const local = e.split('@')[0]; const domain = e.split('@')[1] || '';
-          return /^(rp\.smoke\.|rp\.xp\.|blc\.dbg\.)/.test(local)
-            || local.includes('smoke')
-            || ['example.com', 'example.org', 'example.net', 'test.com'].includes(domain)
-            || /^(smoke|test|debug|ship)/.test(local);
-        };
         const full = me.email === OWNER_EMAIL;
         const byId = {}; db.users.forEach((u) => { byId[u.id] = u; });
         const userList = db.users.map((u) => ({ name: u.name, email: u.email, createdAt: u.createdAt, isTest: isTestUser(u) }));
@@ -801,6 +801,29 @@ module.exports = async (req, res) => {
           },
           clubs: { total: clubList.length, list: clubList },
         });
+      }
+      case 'deleteTestUser': {
+        if (me.email !== 'ajay.r.nair@gmail.com') return send(403, { error: 'Owner only' });
+        const target = db.users.find((u) => u.email === (body.email || '').toLowerCase());
+        if (!target) return send(404, { error: 'No such account' });
+        if (target.id === me.id) return send(400, { error: 'Use Delete account for your own account' });
+        if (!isTestUser(target)) return send(400, { error: 'That is not a test account' });
+        for (const club of db.clubs) {
+          club.members = club.members.filter((m) => m.userId !== target.id);
+          if (club.availability) delete club.availability[target.id];
+          if (club.rsvps) delete club.rsvps[target.id];
+          if (club.finished) delete club.finished[target.id];
+          if (club.poll) delete club.poll.votes[target.id];
+          ensureAdmin(db, club);
+        }
+        db.clubs = db.clubs.filter((c) => c.members.length > 0);
+        Object.keys(db.ratings).forEach((k) => { if (k.startsWith(target.id + '|')) delete db.ratings[k]; });
+        Object.keys(db.progress || {}).forEach((k) => { if (k.startsWith(target.id + '|')) delete db.progress[k]; });
+        Object.keys(db.sessions).forEach((t) => { if (db.sessions[t] === target.id) delete db.sessions[t]; });
+        db.invites = db.invites.filter((i) => i.email !== target.email && i.createdBy !== target.id);
+        db.users = db.users.filter((u) => u.id !== target.id);
+        await writeDB(db);
+        return send(200, { ok: true, deleted: target.email });
       }
       case 'searchClubs': {
         const q = norm(body.q || '');
