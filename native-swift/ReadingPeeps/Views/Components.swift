@@ -208,8 +208,8 @@ struct ReactionChipsView: View {
                 Button {
                     withAnimation { paletteOpen.toggle() }
                 } label: {
-                    Image(systemName: paletteOpen ? "xmark" : "plus")
-                        .font(.caption.weight(.semibold))
+                    Image(systemName: paletteOpen ? "xmark" : "face.smiling")
+                        .font(paletteOpen ? .caption.weight(.semibold) : .body)
                         .padding(5)
                         .background(Color.secondary.opacity(0.10))
                         .clipShape(Circle())
