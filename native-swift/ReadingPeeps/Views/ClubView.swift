@@ -176,11 +176,10 @@ struct ClubView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 if let result = c.lastResult, let winner = result.winner, winner == current.key {
-                    HStack {
+                    VStack(alignment: .leading, spacing: 3) {
                         Text("Won the club vote")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        Spacer()
                         ReactionChipsView(chips: c.pollReactions ?? []) { emoji in
                             Task { await react(type: "poll", bookKey: nil, subject: nil, emoji: emoji) }
                         }
