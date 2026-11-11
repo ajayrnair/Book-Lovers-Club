@@ -1112,5 +1112,6 @@ const inv = new URLSearchParams(location.search).get('invite');
 if(inv){ localStorage.setItem('blc_invite', inv); history.replaceState({}, '', location.pathname); }
 if(token) boot(); else viewAuth();
 </script>
+<script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>
