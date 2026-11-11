@@ -12,6 +12,9 @@ struct ClubSettingsView: View {
     @State private var freqWeeks = 2
     @State private var autoPoll = false
     @State private var confirmDelete = false
+    @State private var templateText = ""
+    @State private var templateLoaded = false
+    @State private var templateSaved = false
 
     var body: some View {
         Group {
@@ -30,6 +33,21 @@ struct ClubSettingsView: View {
                         }
                         Toggle("Auto-poll", isOn: autoPollBinding(club))
                         Text("Start a poll automatically a week before the cycle ends")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    Section("Discussion questions") {
+                        TextField("One question per line", text: $templateText, axis: .vertical)
+                            .lineLimit(4...10)
+                        Button("Save template") {
+                            Task { await saveTemplate() }
+                        }
+                        if templateSaved {
+                            Text("Saved")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text("These questions start the list for every new book. Members can add more for each book.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -62,6 +80,10 @@ struct ClubSettingsView: View {
             loadError = nil
             freqWeeks = fresh.meetingFrequencyWeeks
             autoPoll = fresh.autoPoll
+            if !templateLoaded {
+                templateText = (fresh.discussion?.template ?? []).joined(separator: "\n")
+                templateLoaded = true
+            }
         } catch {
             if club == nil { loadError = errorText(error) }
             else { errorMessage = errorText(error) }
@@ -101,6 +123,19 @@ struct ClubSettingsView: View {
                 "autoPoll": autoPoll,
             ])
             club = updated
+        } catch { errorMessage = errorText(error) }
+    }
+
+    private func saveTemplate() async {
+        let questions = templateText.split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        do {
+            let updated: ClubResponse = try await APIClient.shared.call("setDiscussionTemplate", ["clubId": clubId, "questions": questions])
+            club = updated.club
+            templateSaved = true
+            try? await Task.sleep(nanoseconds: 1_600_000_000)
+            templateSaved = false
         } catch { errorMessage = errorText(error) }
     }
 
@@ -224,6 +259,11 @@ struct MembersView: View {
             }
             ForEach(inviteResults) { result in
                 inviteResultRow(result)
+            }
+            if inviteResults.contains(where: { $0.sent }) {
+                Text("The email comes from Reading Peeps (invites@readingpeeps.com), with the subject \"You're invited to join \(club?.name ?? "your club") on Reading Peeps\". Tell them to look for that in their inbox, and to check spam if it is not there.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
         }
     }

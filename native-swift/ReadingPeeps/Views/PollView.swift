@@ -29,6 +29,7 @@ struct PollView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .errorAlert($errorMessage)
+        .sensoryFeedback(.selection, trigger: club?.poll?.myVote)
     }
 
     @ViewBuilder
@@ -65,9 +66,11 @@ struct PollView: View {
                                 Text("Your vote")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(Color.rpViolet)
-                            } else if poll.totalVotes > 0 {
+                            }
+                            if poll.totalVotes > 0 {
                                 ProgressView(value: Double(option.votes), total: Double(max(poll.totalVotes, 1)))
                                     .tint(.rpViolet)
+                                    .animation(.easeInOut(duration: 0.35), value: option.votes)
                             }
                         }
                         Spacer()

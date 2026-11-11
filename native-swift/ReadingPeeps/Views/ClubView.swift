@@ -12,12 +12,14 @@ struct ClubView: View {
     @State private var loadError: String?
     @State private var errorMessage: String?
 
-    // reading progress editor
-    @State private var myPercent: Double = 0
-    @State private var percentValue: Int = 0
-    @State private var pageValue: Int = 0
+    // reading progress editor (sheet)
     @State private var serverPercent: Int = -1
     @State private var serverPage: Int = -1
+    @State private var showingProgressEditor = false
+
+    // discussion questions composers
+    @State private var qGroupText = ""
+    @State private var qMineText = ""
 
     // meeting editor (admin)
     @State private var editType = "online"
@@ -40,6 +42,7 @@ struct ClubView: View {
                     currentBookSection(club)
                     nextBookSection(club)
                     meetingSection(club)
+                    discussionSection(club)
                     Section {
                         NavigationLink(value: Route.library(clubId)) {
                             Label("Library", systemImage: "books.vertical")
@@ -109,9 +112,6 @@ struct ClubView: View {
         let page = entry?.page ?? (total != nil ? Int((Double(percent) / 100.0 * Double(total!)).rounded()) : 0)
         serverPercent = percent
         serverPage = page
-        myPercent = Double(percent)
-        percentValue = percent
-        pageValue = page
     }
 
     private func syncMeetingEditor(_ c: Club) {
@@ -175,14 +175,32 @@ struct ClubView: View {
                 }
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+                if let result = c.lastResult, let winner = result.winner, winner == current.key {
+                    HStack {
+                        Text("Won the club vote")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        ReactionChipsView(chips: c.pollReactions ?? []) { emoji in
+                            Task { await react(type: "poll", bookKey: nil, subject: nil, emoji: emoji) }
+                        }
+                    }
+                }
                 if !c.currentRatings.isEmpty {
                     DisclosureGroup("Ratings") {
                         ForEach(c.currentRatings, id: \.userId) { r in
-                            HStack {
-                                Text(r.userId == myId ? "You" : r.name)
-                                Spacer()
-                                Text(r.rating != nil ? "★ \(trimNumber(r.rating!))" : "—")
-                                    .foregroundStyle(.secondary)
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack {
+                                    Text(r.userId == myId ? "You" : r.name)
+                                    Spacer()
+                                    Text(r.rating != nil ? "★ \(trimNumber(r.rating!))" : "—")
+                                        .foregroundStyle(.secondary)
+                                }
+                                if r.rating != nil && r.userId != myId {
+                                    ReactionChipsView(chips: r.reactions ?? []) { emoji in
+                                        Task { await react(type: "rating", bookKey: current.key, subject: r.userId, emoji: emoji) }
+                                    }
+                                }
                             }
                         }
                     }
@@ -206,64 +224,26 @@ struct ClubView: View {
                 Text("You")
                     .font(.body.weight(.semibold))
                 Spacer()
-                Text("\(percentValue)%")
+                Text("\(max(serverPercent, 0))%")
                     .foregroundStyle(.secondary)
-            }
-            Slider(value: $myPercent, in: 0...100, step: 1, onEditingChanged: { editing in
-                if !editing {
-                    Task { await commitPercent(Int(myPercent.rounded())) }
-                }
-            })
-            .tint(.rpTeal)
-            .onChange(of: myPercent) { _, new in
-                percentValue = Int(new.rounded())
-                if let total {
-                    pageValue = Int((new / 100.0 * Double(total)).rounded())
-                }
-            }
-            if let total {
-                HStack {
-                    Text("Page")
-                    TextField("Page", value: $pageValue, format: .number)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 70)
-                        .onSubmit { Task { await commitPage(pageValue) } }
-                    Text("of \(total)")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Stepper("Page", value: $pageValue, in: 0...total)
-                        .labelsHidden()
-                        .onChange(of: pageValue) { _, new in
-                            // Ignore echoes from the slider; a real step diverges
-                            // from the slider-derived page and from the server page.
-                            let derived = Int((myPercent / 100.0 * Double(total)).rounded())
-                            if new != derived && new != serverPage {
-                                Task { await commitPage(new) }
-                            }
-                        }
-                }
-            }
-            HStack {
-                Text("Percent")
-                TextField("Percent", value: $percentValue, format: .number)
-                    .keyboardType(.numberPad)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 70)
-                    .onSubmit { Task { await commitPercent(percentValue) } }
-                Text("%")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Stepper("Percent", value: $percentValue, in: 0...100)
-                    .labelsHidden()
-                    .onChange(of: percentValue) { _, new in
-                        if new != Int(myPercent.rounded()) && new != serverPercent {
-                            Task { await commitPercent(new) }
-                        }
-                    }
+                Button("Update") { showingProgressEditor = true }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
             }
             ForEach(orderedMembers(c), id: \.userId) { member in
                 memberProgressRow(c, member: member)
+            }
+        }
+        .sheet(isPresented: $showingProgressEditor) {
+            ProgressEditorSheet(
+                total: total,
+                initialPercent: max(serverPercent, 0),
+                initialPage: max(serverPage, 0)
+            ) { percent, page in
+                Task {
+                    if let page { await commitPage(page) }
+                    else { await commitPercent(percent) }
+                }
             }
         }
     }
@@ -279,16 +259,23 @@ struct ClubView: View {
         let entry = c.progress?.first { $0.userId == member.userId }
         let finished = (entry?.percent ?? 0) >= 100 || c.finishedBy.contains(member.userId)
         let percent = entry?.percent ?? (finished ? 100 : 0)
-        HStack(spacing: 10) {
-            Text(member.userId == myId ? "You" : member.name)
-                .frame(width: 92, alignment: .leading)
-                .lineLimit(1)
-            ProgressView(value: Double(percent), total: 100)
-                .tint(finished ? .green : .rpTeal)
-            Text(progressLabel(entry: entry, finished: finished))
-                .font(.caption)
-                .foregroundStyle(finished ? .green : .secondary)
-                .frame(width: 96, alignment: .trailing)
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 10) {
+                Text(member.userId == myId ? "You" : member.name)
+                    .frame(width: 92, alignment: .leading)
+                    .lineLimit(1)
+                ProgressView(value: Double(percent), total: 100)
+                    .tint(finished ? .green : .rpTeal)
+                Text(progressLabel(entry: entry, finished: finished))
+                    .font(.caption)
+                    .foregroundStyle(finished ? .green : .secondary)
+                    .frame(width: 96, alignment: .trailing)
+            }
+            if finished && member.userId != myId, let current = c.current {
+                ReactionChipsView(chips: entry?.reactions ?? []) { emoji in
+                    Task { await react(type: "finish", bookKey: current.key, subject: member.userId, emoji: emoji) }
+                }
+            }
         }
     }
 
@@ -362,6 +349,69 @@ struct ClubView: View {
         let closes = Dates.shortDate(iso: poll.closesAt)
         if !closes.isEmpty { line += " · Closes \(closes)" }
         return line
+    }
+
+    // MARK: - discussion questions
+
+    @ViewBuilder
+    private func discussionSection(_ c: Club) -> some View {
+        if c.current != nil, let d = c.discussion {
+            Section("Discussion questions") {
+                Text("For the group")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if d.group.isEmpty {
+                    Text("No questions yet")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(d.group) { q in
+                    HStack(alignment: .top, spacing: 8) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(q.text)
+                            if let by = q.byName, !by.isEmpty {
+                                Text(by)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        Spacer()
+                        if q.mine == true || c.isAdmin {
+                            Button("Remove") {
+                                Task { await removeQuestion(id: q.id, scope: "group") }
+                            }
+                            .font(.subheadline)
+                        }
+                    }
+                }
+                HStack {
+                    TextField("Add a question for the group", text: $qGroupText)
+                    Button("Add") { Task { await addQuestion(scope: "group") } }
+                        .disabled(qGroupText.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+                Text("Yours, only you see these")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if d.mine.isEmpty {
+                    Text("None yet")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(d.mine) { q in
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(q.text)
+                        Spacer()
+                        Button("Remove") {
+                            Task { await removeQuestion(id: q.id, scope: "private") }
+                        }
+                        .font(.subheadline)
+                    }
+                }
+                HStack {
+                    TextField("Add a private question", text: $qMineText)
+                    Button("Add") { Task { await addQuestion(scope: "private") } }
+                        .disabled(qMineText.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+        }
     }
 
     // MARK: - group meeting
@@ -612,6 +662,33 @@ struct ClubView: View {
 
     // MARK: - actions
 
+    private func react(type: String, bookKey: String?, subject: String?, emoji: String) async {
+        var params: [String: Any] = ["clubId": clubId, "type": type, "emoji": emoji]
+        if let bookKey { params["bookKey"] = bookKey }
+        if let subject { params["subjectUserId"] = subject }
+        do {
+            try await APIClient.shared.callDiscard("react", params)
+            await load()
+        } catch { present(error) }
+    }
+
+    private func addQuestion(scope: String) async {
+        let text = (scope == "group" ? qGroupText : qMineText).trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        do {
+            try await APIClient.shared.callDiscard("addDiscussionQuestion", ["clubId": clubId, "text": text, "scope": scope])
+            if scope == "group" { qGroupText = "" } else { qMineText = "" }
+            await load()
+        } catch { present(error) }
+    }
+
+    private func removeQuestion(id: String, scope: String) async {
+        do {
+            try await APIClient.shared.callDiscard("removeDiscussionQuestion", ["clubId": clubId, "questionId": id, "scope": scope])
+            await load()
+        } catch { present(error) }
+    }
+
     private func rate(bookKey: String, value: Double) async {
         do {
             try await APIClient.shared.callDiscard("rate", ["bookKey": bookKey, "rating": value])
@@ -736,6 +813,73 @@ struct ClubView: View {
             await app.refreshClubs()
             dismiss()
         } catch { present(error) }
+    }
+}
+
+/// The Update progress sheet: a slider and a page stepper kept in sync,
+/// committed on Done. With a page count the displayed page is what gets
+/// saved; without one, the percent is.
+private struct ProgressEditorSheet: View {
+    let total: Int?
+    let initialPercent: Int
+    let initialPage: Int
+    var onCommit: (_ percent: Int, _ page: Int?) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var percent: Double = 0
+    @State private var page: Int = 0
+    @State private var savedTick = 0
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Your progress") {
+                    HStack {
+                        Text("Percent")
+                        Spacer()
+                        Text("\(Int(percent.rounded()))%")
+                            .foregroundStyle(.secondary)
+                    }
+                    Slider(value: $percent, in: 0...100, step: 1)
+                        .tint(.rpTeal)
+                        .onChange(of: percent) { _, new in
+                            if let total {
+                                page = Int((new / 100.0 * Double(total)).rounded())
+                            }
+                        }
+                    if let total {
+                        Stepper("Page \(page) of \(total)", value: $page, in: 0...total)
+                            .onChange(of: page) { _, new in
+                                percent = total > 0 ? Double(new) / Double(total) * 100.0 : 0
+                            }
+                    }
+                }
+            }
+            .navigationTitle("Update progress")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        onCommit(Int(percent.rounded()), total != nil ? page : nil)
+                        savedTick += 1
+                        dismiss()
+                    } label: {
+                        Image(systemName: "checkmark")
+                    }
+                    .tint(.rpCoral)
+                }
+            }
+            .onAppear {
+                percent = Double(initialPercent)
+                page = initialPage
+            }
+            .sensoryFeedback(.success, trigger: savedTick)
+        }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
     }
 }
 

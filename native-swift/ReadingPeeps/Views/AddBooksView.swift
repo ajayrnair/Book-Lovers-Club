@@ -20,6 +20,9 @@ struct AddBooksView: View {
     @State private var linkMessage: String?
     @State private var statusMessage: String?
     @State private var busy = false
+    // Club context (preset): results add in place, one tap per book.
+    @State private var addedIndices: Set<Int> = []
+    @State private var addingIndex: Int?
 
     var body: some View {
         NavigationStack {
@@ -62,6 +65,7 @@ struct AddBooksView: View {
                 }
             }
             .task { await loadClubs() }
+            .sensoryFeedback(.success, trigger: addedIndices.count)
         }
     }
 
@@ -124,21 +128,45 @@ struct AddBooksView: View {
                         .foregroundStyle(.secondary)
                 }
                 ForEach(Array(results.enumerated()), id: \.offset) { index, book in
-                    Button {
-                        if selectedResults.contains(index) { selectedResults.remove(index) }
-                        else { selectedResults.insert(index) }
-                    } label: {
+                    if presetClubId != nil {
                         HStack(alignment: .top, spacing: 10) {
                             BookRowView(title: book.title, author: book.author, year: book.year,
                                         cover: book.cover, ratings: ratingsText(for: book))
                             Spacer()
-                            if selectedResults.contains(index) {
+                            if addedIndices.contains(index) {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(Color.rpViolet)
+                                    .foregroundStyle(.green)
+                            } else if addingIndex == index {
+                                ProgressView()
+                            } else {
+                                Button {
+                                    Task { await addOne(index) }
+                                } label: {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(Color.rpCoral)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Add \(book.title)")
                             }
                         }
+                    } else {
+                        Button {
+                            if selectedResults.contains(index) { selectedResults.remove(index) }
+                            else { selectedResults.insert(index) }
+                        } label: {
+                            HStack(alignment: .top, spacing: 10) {
+                                BookRowView(title: book.title, author: book.author, year: book.year,
+                                            cover: book.cover, ratings: ratingsText(for: book))
+                                Spacer()
+                                if selectedResults.contains(index) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(Color.rpViolet)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
@@ -170,6 +198,7 @@ struct AddBooksView: View {
         do {
             results = try await APIClient.shared.searchBooks(q: q)
             selectedResults = []
+            addedIndices = []
             hasSearched = true
         } catch {
             searchError = errorText(error)
@@ -177,6 +206,22 @@ struct AddBooksView: View {
             hasSearched = true
         }
         searching = false
+    }
+
+    /// Club context: add one search result to the preset club right away;
+    /// the plus morphs into a checkmark.
+    private func addOne(_ index: Int) async {
+        guard let presetClubId, !addedIndices.contains(index), addingIndex == nil else { return }
+        addingIndex = index
+        do {
+            let book = APIClient.jsonObject(results[index])
+            try await APIClient.shared.callDiscard("addBooks", ["clubIds": [presetClubId], "books": [book]])
+            addedIndices.insert(index)
+            await app.refreshClubs()
+        } catch {
+            statusMessage = errorText(error)
+        }
+        addingIndex = nil
     }
 
     private func addSelected() async {

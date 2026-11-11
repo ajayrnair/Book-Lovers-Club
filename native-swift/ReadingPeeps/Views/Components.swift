@@ -160,6 +160,67 @@ struct StarRatingView: View {
     }
 }
 
+// ---------- reactions ----------
+
+let reactionPalette = ["❤️", "👏", "🔥", "😮", "😂", "🎉"]
+
+/// Emoji reaction chips on a finish, a rating, or a poll result. Existing
+/// reactions show as chips with counts; the plus opens the palette. Tapping
+/// an emoji you already left removes it (the server toggles).
+struct ReactionChipsView: View {
+    let chips: [ReactionChip]
+    var canReact: Bool = true
+    var onReact: (String) -> Void
+
+    @State private var paletteOpen = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(chips, id: \.emoji) { chip in
+                Button {
+                    onReact(chip.emoji)
+                } label: {
+                    Text("\(chip.emoji) \(chip.count)")
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(chip.mine ? Color.rpCoral.opacity(0.18) : Color.secondary.opacity(0.10))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(chip.names.joined(separator: ", ")) reacted with \(chip.emoji)")
+            }
+            if canReact {
+                if paletteOpen {
+                    ForEach(reactionPalette, id: \.self) { emoji in
+                        Button {
+                            paletteOpen = false
+                            onReact(emoji)
+                        } label: {
+                            Text(emoji)
+                                .font(.body)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 2)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Button {
+                    withAnimation { paletteOpen.toggle() }
+                } label: {
+                    Image(systemName: paletteOpen ? "xmark" : "plus")
+                        .font(.caption.weight(.semibold))
+                        .padding(5)
+                        .background(Color.secondary.opacity(0.10))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add a reaction")
+            }
+        }
+    }
+}
+
 // ---------- error presentation ----------
 
 extension View {

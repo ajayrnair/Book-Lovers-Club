@@ -61,6 +61,66 @@ struct MemberRating: Codable, Equatable {
     let userId: String
     let name: String
     let rating: Double?
+    let reactions: [ReactionChip]?
+}
+
+/// One emoji reaction summary on a finish, a rating, or a poll result.
+struct ReactionChip: Codable, Equatable {
+    let emoji: String
+    let count: Int
+    let mine: Bool
+    let names: [String]
+}
+
+struct DiscussionQuestion: Codable, Equatable, Identifiable {
+    let id: String
+    let text: String
+    let byUserId: String?
+    let byName: String?
+    let mine: Bool?
+}
+
+struct Discussion: Codable, Equatable {
+    let template: [String]
+    let group: [DiscussionQuestion]
+    let mine: [DiscussionQuestion]
+}
+
+/// One in-app notification. readAt arrives as 0 (unread) or an ISO string.
+struct NotificationItem: Codable, Equatable, Identifiable {
+    let id: String
+    let clubId: String
+    let type: String
+    let title: String
+    let body: String
+    let createdAt: String
+    let read: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id, clubId, type, title, body, createdAt, readAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        clubId = try c.decodeIfPresent(String.self, forKey: .clubId) ?? ""
+        type = try c.decodeIfPresent(String.self, forKey: .type) ?? ""
+        title = try c.decodeIfPresent(String.self, forKey: .title) ?? ""
+        body = try c.decodeIfPresent(String.self, forKey: .body) ?? ""
+        createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
+        if let s = try? c.decode(String.self, forKey: .readAt), !s.isEmpty {
+            read = true
+        } else if let n = try? c.decode(Double.self, forKey: .readAt) {
+            read = n != 0
+        } else {
+            read = false
+        }
+    }
+}
+
+struct NotificationsResponse: Decodable {
+    let notifications: [NotificationItem]
+    let unread: Int
 }
 
 struct PollOption: Codable, Equatable {
@@ -116,6 +176,7 @@ struct ProgressEntry: Codable, Equatable {
     let page: Int?
     let totalPages: Int?
     let updatedAt: String
+    let reactions: [ReactionChip]?
 }
 
 struct LastResult: Codable, Equatable {
@@ -152,6 +213,8 @@ struct Club: Codable, Equatable, Identifiable {
     let rsvps: [String: String]  // userId -> "going" | "maybe" | "notgoing"
     let poll: Poll?
     let lastResult: LastResult?
+    let pollReactions: [ReactionChip]?
+    let discussion: Discussion?
 
     var isAdmin: Bool { role == "admin" }
 

@@ -9,6 +9,7 @@ enum Route: Hashable {
     case members(String)
     case findClubs
     case createClub
+    case notifications
 }
 
 struct RootView: View {
