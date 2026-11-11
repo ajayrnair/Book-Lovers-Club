@@ -87,7 +87,7 @@ struct Discussion: Codable, Equatable {
 }
 
 /// One in-app notification. readAt arrives as 0 (unread) or an ISO string.
-struct NotificationItem: Codable, Equatable, Identifiable {
+struct NotificationItem: Decodable, Equatable, Identifiable {
     let id: String
     let clubId: String
     let type: String
