@@ -268,12 +268,19 @@ function expirePolls(db) {
   });
   return dirty;
 }
+// Books a poll may run on: in the library, not the current book, and not
+// finished by any member (the "To read" set).
+function pollCandidates(club) {
+  const finished = club.finished || {};
+  return (club.library || []).filter((k) => k !== club.current
+    && !club.members.some((m) => (finished[m.userId] || []).includes(k)));
+}
 function maybeAutoPoll(db, club) {
-  if (!club.autoPoll || club.poll || !club.cycleEnd || club.library.length < 2) return;
+  if (!club.autoPoll || club.poll || !club.cycleEnd || pollCandidates(club).length < 2) return;
   const opens = new Date(club.cycleEnd).getTime() - 7 * 864e5;
   if (Date.now() >= opens) {
     club.poll = {
-      id: uid(), options: [...club.library], votes: {}, runoff: false,
+      id: uid(), options: pollCandidates(club), votes: {}, runoff: false,
       closesAt: defaultClose(club), createdAt: nowISO(), auto: true,
     };
   }
@@ -291,7 +298,12 @@ function publicClub(db, club, userId) {
       const u = db.users.find((x) => x.id === m.userId);
       return { userId: m.userId, name: u ? u.name : '', role: m.role, joinedAt: m.joinedAt };
     }),
-    library: club.library.map((k) => bookView(db, k, userId)),
+    library: club.library.map((k) => {
+      const v = bookView(db, k, userId);
+      if (!v) return v;
+      v.finishedBy = club.members.filter((m) => ((club.finished || {})[m.userId] || []).includes(k)).map((m) => m.userId);
+      return v;
+    }),
     current: club.current ? bookView(db, club.current, userId) : null,
     currentRatings: club.current ? memberRatings(db, club, club.current) : [],
     meetingFrequencyWeeks: club.meetingFrequencyWeeks, cycleEnd: club.cycleEnd,
@@ -305,7 +317,7 @@ function publicClub(db, club, userId) {
       return p ? { userId: m.userId, percent: p.percent, page: p.page, totalPages: p.totalPages, updatedAt: p.updatedAt } : null;
     }).filter(Boolean) : [],
     rsvps: club.rsvps || {},
-    poll: club.poll ? pollView(db, club) : null,
+    poll: club.poll ? pollView(db, club, userId) : null,
     lastResult: club.lastResult || null,
   };
 }
@@ -339,7 +351,7 @@ function bookView(db, key, userId) {
     memberCount: all.length,
   };
 }
-function pollView(db, club) {
+function pollView(db, club, userId) {
   const p = club.poll;
   const counts = {};
   p.options.forEach((k) => (counts[k] = 0));
@@ -348,6 +360,7 @@ function pollView(db, club) {
     id: p.id, runoff: p.runoff, closesAt: p.closesAt, auto: !!p.auto,
     options: p.options.map((k) => ({ book: bookView(db, k, null), votes: counts[k] })),
     totalVotes: Object.keys(p.votes).length,
+    myVote: userId ? (p.votes[userId] || null) : null,
   };
 }
 
@@ -787,6 +800,12 @@ module.exports = async (req, res) => {
           club.cycleEnd = new Date(Date.now() + (w * 7 + 7) * 864e5).toISOString();
         }
         if (body.autoPoll !== undefined) club.autoPoll = !!body.autoPoll;
+        if (body.meeting && hasField(body.meeting, 'time')) {
+          const t = body.meeting.time;
+          if (typeof t !== 'string' || (t !== '' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t))) {
+            return send(400, { error: 'Meeting time must be HH:MM' });
+          }
+        }
         if (body.meeting) club.meeting = { ...club.meeting, ...body.meeting };
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
@@ -841,13 +860,14 @@ module.exports = async (req, res) => {
         if (!club) return send(404, { error: 'Club not found' });
         const mem = club.members.find((m) => m.userId === me.id);
         if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
-        if (club.library.length < 2) return send(400, { error: 'Add at least two books first' });
+        const candidates = pollCandidates(club);
+        if (!candidates.length) return send(400, { error: club.library.length ? 'No books to vote on: every book is being read or finished' : 'Add at least two books first' });
         let closesAt = defaultClose(club);
         if (body.endDate && /^\d{4}-\d{2}-\d{2}$/.test(body.endDate)) {
           const t = new Date(body.endDate + 'T23:59:59').getTime();
           if (!isNaN(t) && t > Date.now()) closesAt = new Date(Math.min(t, new Date(closesAt).getTime())).toISOString();
         }
-        club.poll = { id: uid(), options: [...club.library], votes: {}, runoff: false, closesAt, createdAt: nowISO(), auto: false };
+        club.poll = { id: uid(), options: candidates, votes: {}, runoff: false, closesAt, createdAt: nowISO(), auto: false };
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
@@ -896,6 +916,21 @@ module.exports = async (req, res) => {
         if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
         const target = club.members.find((m) => m.userId === body.userId);
         if (target) { target.role = 'member'; ensureAdmin(db, club); }
+        await writeDB(db);
+        return send(200, { club: publicClub(db, club, me.id) });
+      }
+      case 'removeMember': {
+        const club = db.clubs.find((c) => c.id === body.clubId);
+        if (!club) return send(404, { error: 'Club not found' });
+        const mem = club.members.find((m) => m.userId === me.id);
+        if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
+        const target = club.members.find((m) => m.userId === body.userId);
+        if (!target) return send(404, { error: 'Member not found' });
+        if (club.members.length <= 1) return send(400, { error: 'Cannot remove the only member of a club' });
+        club.members = club.members.filter((m) => m.userId !== body.userId);
+        // If the removed user was the last admin, the longest-standing
+        // remaining member becomes admin (same rule as leave/deleteAccount).
+        ensureAdmin(db, club);
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
