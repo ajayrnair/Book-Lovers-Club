@@ -620,8 +620,20 @@ struct ClubView: View {
     }
 
     private func toggleFinished() async {
+        guard let c = club, let current = c.current else { return }
         do {
-            try await APIClient.shared.callDiscard("toggleFinished", ["clubId": clubId])
+            if c.myFinished {
+                // Un-finishing drops the flag only; progress stays as is.
+                try await APIClient.shared.callDiscard("toggleFinished", ["clubId": clubId])
+            } else {
+                // Finishing means the book is done: progress goes to 100
+                // percent, the server derives the final page from the
+                // book's page count, and 100 percent adds the finished
+                // entry on the server by itself.
+                try await withRetry {
+                    try await APIClient.shared.callDiscard("setProgress", ["clubId": c.id, "bookKey": current.key, "percent": 100])
+                }
+            }
             await load()
             await app.refreshClubs()
         } catch { present(error) }
