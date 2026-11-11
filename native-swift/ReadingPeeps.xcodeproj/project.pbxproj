@@ -1,0 +1,331 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 54;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B10000000000000000000017 /* ReadingPeepsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* ReadingPeepsApp.swift */; };
+		B10000000000000000000018 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* Models.swift */; };
+		B10000000000000000000019 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000003 /* APIClient.swift */; };
+		B1000000000000000000001A /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* Keychain.swift */; };
+		B1000000000000000000001B /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000005 /* AppState.swift */; };
+		B1000000000000000000001C /* GoogleAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000006 /* GoogleAuth.swift */; };
+		B1000000000000000000001D /* Dates.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000007 /* Dates.swift */; };
+		B1000000000000000000001E /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000008 /* Constants.swift */; };
+		B1000000000000000000001F /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000009 /* RootView.swift */; };
+		B10000000000000000000020 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000A /* AuthView.swift */; };
+		B10000000000000000000021 /* ClubsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000B /* ClubsView.swift */; };
+		B10000000000000000000022 /* ClubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000C /* ClubView.swift */; };
+		B10000000000000000000023 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000D /* Components.swift */; };
+		B10000000000000000000024 /* PollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000E /* PollView.swift */; };
+		B10000000000000000000025 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000000000000000000000F /* LibraryView.swift */; };
+		B10000000000000000000026 /* AddBooksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000010 /* AddBooksView.swift */; };
+		B10000000000000000000027 /* ExploreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000011 /* ExploreView.swift */; };
+		B10000000000000000000028 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000012 /* SettingsView.swift */; };
+		B10000000000000000000029 /* MeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000013 /* MeView.swift */; };
+		B1000000000000000000002A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000015 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		B10000000000000000000001 /* ReadingPeepsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingPeepsApp.swift; sourceTree = "<group>"; };
+		B10000000000000000000002 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		B10000000000000000000003 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		B10000000000000000000004 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
+		B10000000000000000000005 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		B10000000000000000000006 /* GoogleAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuth.swift; sourceTree = "<group>"; };
+		B10000000000000000000007 /* Dates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dates.swift; sourceTree = "<group>"; };
+		B10000000000000000000008 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
+		B10000000000000000000009 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		B1000000000000000000000A /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
+		B1000000000000000000000B /* ClubsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClubsView.swift; sourceTree = "<group>"; };
+		B1000000000000000000000C /* ClubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClubView.swift; sourceTree = "<group>"; };
+		B1000000000000000000000D /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		B1000000000000000000000E /* PollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PollView.swift; sourceTree = "<group>"; };
+		B1000000000000000000000F /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		B10000000000000000000010 /* AddBooksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddBooksView.swift; sourceTree = "<group>"; };
+		B10000000000000000000011 /* ExploreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreView.swift; sourceTree = "<group>"; };
+		B10000000000000000000012 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		B10000000000000000000013 /* MeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeView.swift; sourceTree = "<group>"; };
+		B10000000000000000000014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B10000000000000000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B10000000000000000000016 /* ReadingPeeps.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReadingPeeps.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B10000000000000000000032 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		B1000000000000000000002B /* main */ = {
+			isa = PBXGroup;
+			children = (
+				B1000000000000000000002C /* ReadingPeeps */,
+				B1000000000000000000002E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B1000000000000000000002C /* ReadingPeeps */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000001 /* ReadingPeepsApp.swift */,
+				B10000000000000000000002 /* Models.swift */,
+				B10000000000000000000003 /* APIClient.swift */,
+				B10000000000000000000004 /* Keychain.swift */,
+				B10000000000000000000005 /* AppState.swift */,
+				B10000000000000000000006 /* GoogleAuth.swift */,
+				B10000000000000000000007 /* Dates.swift */,
+				B10000000000000000000008 /* Constants.swift */,
+				B1000000000000000000002D /* Views */,
+				B10000000000000000000015 /* Assets.xcassets */,
+				B10000000000000000000014 /* Info.plist */,
+			);
+			path = ReadingPeeps;
+			name = ReadingPeeps;
+			sourceTree = "<group>";
+		};
+		B1000000000000000000002D /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000009 /* RootView.swift */,
+				B1000000000000000000000A /* AuthView.swift */,
+				B1000000000000000000000B /* ClubsView.swift */,
+				B1000000000000000000000C /* ClubView.swift */,
+				B1000000000000000000000D /* Components.swift */,
+				B1000000000000000000000E /* PollView.swift */,
+				B1000000000000000000000F /* LibraryView.swift */,
+				B10000000000000000000010 /* AddBooksView.swift */,
+				B10000000000000000000011 /* ExploreView.swift */,
+				B10000000000000000000012 /* SettingsView.swift */,
+				B10000000000000000000013 /* MeView.swift */,
+			);
+			path = Views;
+			name = Views;
+			sourceTree = "<group>";
+		};
+		B1000000000000000000002E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000016 /* ReadingPeeps.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B10000000000000000000030 /* ReadingPeeps */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B10000000000000000000037 /* Build configuration list for PBXNativeTarget "ReadingPeeps" */;
+			buildPhases = (
+				B10000000000000000000031 /* Sources */,
+				B10000000000000000000032 /* Frameworks */,
+				B10000000000000000000033 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ReadingPeeps;
+			productName = ReadingPeeps;
+			productReference = B10000000000000000000016 /* ReadingPeeps.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		B1000000000000000000002F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1400;
+				LastUpgradeCheck = 1400;
+				TargetAttributes = {
+					B10000000000000000000030 = {
+						CreatedOnToolsVersion = 14.0;
+					};
+				};
+			};
+			buildConfigurationList = B10000000000000000000034 /* Build configuration list for PBXProject "ReadingPeeps" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = B1000000000000000000002B;
+			productRefGroup = B1000000000000000000002E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B10000000000000000000030 /* ReadingPeeps */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B10000000000000000000033 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1000000000000000000002A /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B10000000000000000000031 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B10000000000000000000017 /* ReadingPeepsApp.swift in Sources */,
+				B10000000000000000000018 /* Models.swift in Sources */,
+				B10000000000000000000019 /* APIClient.swift in Sources */,
+				B1000000000000000000001A /* Keychain.swift in Sources */,
+				B1000000000000000000001B /* AppState.swift in Sources */,
+				B1000000000000000000001C /* GoogleAuth.swift in Sources */,
+				B1000000000000000000001D /* Dates.swift in Sources */,
+				B1000000000000000000001E /* Constants.swift in Sources */,
+				B1000000000000000000001F /* RootView.swift in Sources */,
+				B10000000000000000000020 /* AuthView.swift in Sources */,
+				B10000000000000000000021 /* ClubsView.swift in Sources */,
+				B10000000000000000000022 /* ClubView.swift in Sources */,
+				B10000000000000000000023 /* Components.swift in Sources */,
+				B10000000000000000000024 /* PollView.swift in Sources */,
+				B10000000000000000000025 /* LibraryView.swift in Sources */,
+				B10000000000000000000026 /* AddBooksView.swift in Sources */,
+				B10000000000000000000027 /* ExploreView.swift in Sources */,
+				B10000000000000000000028 /* SettingsView.swift in Sources */,
+				B10000000000000000000029 /* MeView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		B10000000000000000000035 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+			};
+			name = Debug;
+		};
+		B10000000000000000000036 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		B10000000000000000000038 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = E5FB8K783X;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ReadingPeeps/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ajayrnair.readingpeeps;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B10000000000000000000039 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = E5FB8K783X;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ReadingPeeps/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ajayrnair.readingpeeps;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				CODE_SIGN_IDENTITY = "Apple Distribution";
+				CODE_SIGN_STYLE = Manual;
+				PROVISIONING_PROFILE_SPECIFIER = "Reading Peeps App Store";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		B10000000000000000000034 /* Build configuration list for PBXProject "ReadingPeeps" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B10000000000000000000035 /* Debug */,
+				B10000000000000000000036 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B10000000000000000000037 /* Build configuration list for PBXNativeTarget "ReadingPeeps" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B10000000000000000000038 /* Debug */,
+				B10000000000000000000039 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = B1000000000000000000002F /* Project object */;
+}
