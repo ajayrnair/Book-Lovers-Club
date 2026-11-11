@@ -55,6 +55,16 @@ final class APIClient {
         _ = try await rawCall(action, params)
     }
 
+    /// Telemetry: fire-and-forget usage event. Never throws to the caller
+    /// and is never awaited; failures are dropped silently by design.
+    func track(_ name: String, page: String? = nil, feature: String? = nil, clubId: String? = nil) {
+        var params: [String: Any] = ["name": name]
+        if let page { params["page"] = page }
+        if let feature { params["feature"] = feature }
+        if let clubId { params["clubId"] = clubId }
+        Task { _ = try? await rawCall("track", params) }
+    }
+
     /// Convert an Encodable value into a JSON object for use as a parameter.
     static func jsonObject<T: Encodable>(_ value: T) -> [String: Any] {
         guard let data = try? JSONEncoder().encode(value),
