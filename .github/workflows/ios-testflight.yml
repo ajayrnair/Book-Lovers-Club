@@ -74,8 +74,7 @@ jobs:
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            DEVELOPMENT_TEAM=E5FB8K783X \
-            PROVISIONING_PROFILE_SPECIFIER="Reading Peeps App Store"
+            DEVELOPMENT_TEAM=E5FB8K783X
 
       - name: Export IPA
         run: |
