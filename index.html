@@ -180,6 +180,7 @@
   .nbody{font-size:14px;color:var(--muted);margin-top:1px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .ntime{font-size:12px;color:var(--muted);flex:none;padding-top:2px}
   .ndot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;margin-top:6px}
+  .ratelink{background:none;border:0;color:var(--accent);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:6px 2px;min-height:0;min-width:0;align-self:center}
   .rchip.mine{background:#ffe3da;border-color:#ff8a66}
   .rslot{width:23px;height:23px;min-height:0;min-width:0;border-radius:50%;border:1px solid var(--line);background:transparent;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;line-height:1;cursor:pointer;padding:0;color:var(--muted);font-family:inherit}
   .pwrap{position:relative;padding-bottom:12px}
@@ -586,7 +587,7 @@ async function viewHome(){
   nav('/clubs');
   app.innerHTML = `<h2>My clubs</h2><div id="mine"></div>
   <div class="card row setrow" id="exploreRow"><div class="grow"><b>Explore clubs</b><div class="muted">Find a club or start your own</div></div><span class="muted">›</span></div>`;
-  const renderMine = ()=>{ $('#mine').innerHTML = myClubs.length ? myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b>${c.private?'<span class="badge">Private</span>':''}<div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div></div><span>›</span></div>`).join('') : '<div class="muted">No clubs yet</div>';
+  const renderMine = ()=>{ $('#mine').innerHTML = myClubs.length ? myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b>${c.private?'<span class="badge">Private</span>':''}${c.current ? `<div class="muted">Reading ${esc(c.current.title)}${c.meeting && c.meeting.date ? ' · Meets ' + fmtDate(c.meeting.date) : ''}</div>` : ''}<div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div></div><span>›</span></div>`).join('') : '<div class="muted">No clubs yet</div>';
     app.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openClub(el.dataset.open)); };
   renderMine();
   $('#exploreRow').onclick = ()=>viewExplore();
@@ -842,12 +843,12 @@ function bookRow(b, opts={}){
     ${opts.subline?`<div class="muted">${esc(opts.subline)}</div>`:''}
     ${synHTML(b)}
     </div>
-    ${opts.rateLabel?'<span class="muted" style="font-size:13px;align-self:center">Your rating</span>':''}
-    ${rateStrip(b)}
+    ${opts.rateLabel && !(b.myRating > 0) ? `<button class="ratelink" data-rateopen="${b.key}">Rate</button><span class="ratebox hide" data-ratebox="${b.key}">${rateStrip(b)}</span>` : `${opts.rateLabel ? '<span class="muted" style="font-size:13px;align-self:center">Your rating</span>' : ''}${rateStrip(b)}`}
     ${opts.current?`<button class="small ghost" data-setcurrent="${b.key}">Reading now</button>`:''}
   </div>`;
 }
 function wireRates(rerender){
+  app.querySelectorAll('[data-rateopen]').forEach(el=>{ el.onclick=()=>{ const box = app.querySelector('[data-ratebox="' + el.dataset.rateopen + '"]'); if(box){ box.classList.remove('hide'); el.classList.add('hide'); } }; });
   app.querySelectorAll('[data-rate]').forEach(el=>{
     const key = el.dataset.rate;
     let val = Number(el.dataset.val) || 0;
@@ -1118,7 +1119,8 @@ function meetingSection(c){
     h += c.meeting.address ? `<div class="muted" style="margin-top:8px">📍 ${esc(c.meeting.address)}</div>` : '<div class="muted" style="margin-top:8px">In person</div>';
   }
   if(isAdmin){
-    h += `<div style="border-top:1px solid var(--line);margin-top:10px;padding-top:2px">
+    if(c.meeting.date) h += `<div style="margin-top:8px"><button class="small ghost" id="meetEditBtn">Edit meeting</button></div>`;
+    h += `<div id="meetEditor" class="${c.meeting.date ? 'hide' : ''}" style="border-top:1px solid var(--line);margin-top:10px;padding-top:2px">
     ${pickerFieldHTML('pickDate', 'date', c.meeting.date || '')}
     ${pickerFieldHTML('mtime', 'time', c.meeting.time || '')}
     <div class="row" style="margin-top:8px"><div class="seg" role="radiogroup" aria-label="Meeting type"><label><input type="radio" name="mtype" value="online" ${c.meeting.type==='online'?'checked':''}><span>Online</span></label><label><input type="radio" name="mtype" value="inperson" ${c.meeting.type==='inperson'?'checked':''}><span>In person</span></label></div>
@@ -1231,6 +1233,7 @@ function viewClub(){
   if($('#goingCount')) $('#goingCount').onclick=()=>rsvpPopup(currentClub);
   app.querySelectorAll('[data-day]').forEach(d=>d.onclick=async()=>{ const mine=new Set((currentClub.availability[user.id]||[])); const day=d.dataset.day; mine.has(day)?mine.delete(day):mine.add(day); const j=await api('availability',{clubId:c.id, days:[...mine]}); currentClub=j.club; viewClub(); });
   if(isAdmin){
+    if($('#meetEditBtn')) $('#meetEditBtn').onclick=()=>{ const ed = $('#meetEditor'); if(ed) ed.classList.toggle('hide'); };
     if($('#shiftPrev')) $('#shiftPrev').onclick=async()=>{ try{ const j=await api('shiftMeetingWeek',{clubId:c.id, weeks:-1}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
     if($('#shiftNext')) $('#shiftNext').onclick=async()=>{ try{ const j=await api('shiftMeetingWeek',{clubId:c.id, weeks:1}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
     let meetSaving = false, meetDirty = false;
@@ -1328,7 +1331,7 @@ function viewPoll(){
       ${o.book.cover?`<img class="cover" src="${esc(o.book.cover)}" alt="" style="position:relative">`:'<div class="cover" style="position:relative"></div>'}
       <div class="grow" style="position:relative"><b>${esc(o.book.title)}</b><div class="muted">${esc(o.book.author)}</div>${mine?'<div style="color:#8b5cf6;font-weight:600;font-size:13px">Your vote</div>':''}${synHTML(o.book)}</div>
       ${mine?`<span style="position:relative;flex:none;background:#8b5cf6;color:#fff;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center">${icon('check',14)}</span>`:''}
-      <b style="position:relative;flex:none;min-width:20px;text-align:right">${o.votes}</b></div>`;
+      <b style="position:relative;flex:none;min-width:20px;text-align:right">${o.votes} <span class="muted" style="font-weight:400;font-size:13px">${pct}%</span></b></div>`;
     }).join('')}
     ${isAdmin?'<button id="closePoll" class="ghost small" style="margin-top:10px">Close poll</button>':''}`;
   } else if(c.lastResult && c.lastResult.tie){
