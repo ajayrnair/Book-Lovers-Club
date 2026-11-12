@@ -37,6 +37,12 @@ enum Dates {
     }
 
     /// "Tue, Nov 18, 2026" for a "yyyy-MM-dd" string; falls back to the input.
+    /// "Sat, Dec 19" for a yyyy-MM-dd day string.
+    static func meetingShort(_ day: String) -> String {
+        guard let d = parseDay(day) else { return day }
+        return formatter("EEE, MMM d").string(from: d)
+    }
+
     static func longDate(_ day: String) -> String {
         guard let d = parseDay(day) else { return day }
         return formatter("EEE, MMM d, yyyy").string(from: d)

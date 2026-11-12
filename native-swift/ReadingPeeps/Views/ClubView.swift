@@ -22,6 +22,7 @@ struct ClubView: View {
     @State private var qMineText = ""
 
     // meeting editor (admin)
+    @State private var meetingEditorOpen = false
     @State private var editType = "online"
     @State private var editLink = ""
     @State private var editAddress = ""
@@ -516,7 +517,17 @@ struct ClubView: View {
             }
 
             if c.isAdmin {
-                meetingEditor(c)
+                if c.meeting.date.isEmpty || meetingEditorOpen {
+                    meetingEditor(c)
+                } else {
+                    Button {
+                        meetingEditorOpen = true
+                    } label: {
+                        Text("Edit meeting")
+                            .foregroundStyle(Color.rpCoral)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         } header: { rpSectionHeader("Group meeting") }
         .listRowBackground(Color.rpCream)

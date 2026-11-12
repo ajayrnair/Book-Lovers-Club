@@ -4,9 +4,10 @@ struct ClubsView: View {
     @EnvironmentObject var app: AppState
     @State private var unread = 0
     @State private var clubToLeave: Club?
+    @State private var path: [Route] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
                 Section {
                     if app.orderedClubs.isEmpty {
@@ -97,6 +98,9 @@ struct ClubsView: View {
                 await refreshUnread()
             }
             .task { await refreshUnread() }
+            .onChange(of: app.openClubId) { _, id in
+                if let id { path.append(.club(id)); app.openClubId = nil }
+            }
             .onAppear { APIClient.shared.track("page_view", page: "clubs"); Task { await refreshUnread() } }
             .brandScreen()
             .confirmationDialog(
@@ -131,6 +135,9 @@ struct ClubsView: View {
         if let current = club.current {
             s += " · Reading \(current.title)"
         }
+        if !club.meeting.date.isEmpty {
+            s += " · Meets \(Dates.meetingShort(club.meeting.date))"
+        }
         return s
     }
 }
@@ -138,6 +145,7 @@ struct ClubsView: View {
 /// The notifications inbox: poll and meeting updates. Opening it marks
 /// everything read, like the web app's bell view.
 struct NotificationsView: View {
+    @EnvironmentObject var app: AppState
     @State private var items: [NotificationItem] = []
     @State private var loaded = false
     @State private var loadError: String?
@@ -197,6 +205,13 @@ struct NotificationsView: View {
             }
         }
         .padding(.vertical, 2)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            let cid = item.clubId
+            if !cid.isEmpty, app.clubs.contains(where: { $0.id == cid }) {
+                app.openClubId = cid
+            }
+        }
     }
 
     private func iconName(for type: String) -> String {

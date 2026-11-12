@@ -11,6 +11,8 @@ struct ClubUsage: Codable {
 final class AppState: ObservableObject {
     @Published var user: User?
     @Published var clubs: [Club] = []
+    /// Set by the notifications inbox: the Clubs tab pushes this club, then clears it.
+    @Published var openClubId: String?
     @Published var restoring = true
 
     private var usage: [String: ClubUsage] = [:]

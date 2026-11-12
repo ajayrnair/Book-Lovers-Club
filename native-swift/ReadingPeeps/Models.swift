@@ -128,6 +128,7 @@ struct NotificationsResponse: Decodable {
 struct PollOption: Codable, Equatable {
     let book: Book
     let votes: Int
+    let voters: [String]?
 }
 
 struct Poll: Codable, Equatable, Identifiable {

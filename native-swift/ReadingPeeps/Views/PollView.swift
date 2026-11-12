@@ -10,6 +10,9 @@ struct PollView: View {
     @State private var loadError: String?
     @State private var errorMessage: String?
     @State private var endDate = Date()
+    @State private var showVoters = false
+    @State private var voterTitle = ""
+    @State private var voterNames: [String] = []
     @State private var endDateTouched = false
 
     var body: some View {
@@ -31,6 +34,19 @@ struct PollView: View {
         .task { await load() }
         .errorAlert($errorMessage)
         .sensoryFeedback(.selection, trigger: club?.poll?.myVote)
+        .sheet(isPresented: $showVoters) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(voterTitle)
+                    .font(.headline)
+                ForEach(voterNames, id: \.self) { name in
+                    Text(name)
+                }
+                Spacer()
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .presentationDetents([.medium])
+        }
     }
 
     @ViewBuilder
@@ -88,6 +104,18 @@ struct PollView: View {
                 .buttonStyle(.plain)
                 if let s = option.book.synopsis, !s.isEmpty {
                     SynopsisView(text: s)
+                }
+                if option.votes > 0, let voters = option.voters, !voters.isEmpty {
+                    Button {
+                        voterTitle = option.book.title
+                        voterNames = voters
+                        showVoters = true
+                    } label: {
+                        Text("See who voted")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.rpViolet)
+                    }
+                    .buttonStyle(.plain)
                 }
                 }
             }

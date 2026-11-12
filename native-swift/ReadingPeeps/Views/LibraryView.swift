@@ -9,6 +9,7 @@ struct LibraryView: View {
     @State private var loadError: String?
     @State private var errorMessage: String?
     @State private var showAddBooks = false
+    @State private var rateExpandedKey: String?
 
     var body: some View {
         Group {
@@ -91,16 +92,28 @@ struct LibraryView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                if let s = book.synopsis, !s.isEmpty {
-                    SynopsisView(text: s)
-                }
-                HStack(spacing: 8) {
-                    Text("Your rating")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                if (book.myRating ?? 0) > 0 {
+                    HStack(spacing: 8) {
+                        Text("Your rating")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        StarRatingView(rating: book.myRating) { value in
+                            Task { await rate(bookKey: book.key, value: value) }
+                        }
+                    }
+                } else if rateExpandedKey == book.key {
                     StarRatingView(rating: book.myRating) { value in
                         Task { await rate(bookKey: book.key, value: value) }
                     }
+                } else {
+                    Button {
+                        rateExpandedKey = book.key
+                    } label: {
+                        Text("Rate")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.rpCoral)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.vertical, 2)
