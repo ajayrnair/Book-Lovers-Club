@@ -31,13 +31,16 @@ struct AuthView: View {
 
             Form {
                 Section {
-                    Picker("Account", selection: $mode) {
-                        Text("Sign in").tag(0)
-                        Text("Create account").tag(1)
+                    HStack(spacing: 4) {
+                        modeButton(0, "Sign in")
+                        modeButton(1, "Create account")
                     }
-                    .pickerStyle(.segmented)
-                    .listRowBackground(Color.clear)
+                    .padding(4)
+                    .background(Color.white.opacity(0.14))
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .listRowInsets(EdgeInsets())
                 }
+                .listRowBackground(Color.clear)
 
                 Section {
                     if mode == 1 {
@@ -96,9 +99,11 @@ struct AuthView: View {
                         Task { await handleApple(result) }
                     }
                     .signInWithAppleButtonStyle(.black)
-                    .frame(height: 44)
+                    .frame(height: 50)
+                    .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
+                    .listRowInsets(EdgeInsets())
                 }
-                .listRowBackground(Color.rpCream)
+                .listRowBackground(Color.clear)
 
                 Section {
                     Button {
@@ -135,6 +140,7 @@ struct AuthView: View {
                                 .autocorrectionDisabled()
                         } header: {
                             Text("We will email you a link to set a new password.")
+                                .foregroundStyle(Color.rpCream.opacity(0.75))
                         }
                         .listRowBackground(Color.rpCream)
                         Section {
@@ -156,14 +162,33 @@ struct AuthView: View {
                 .background(Color.rpPlumBg)
                 .navigationTitle("Forgot password")
                 .navigationBarTitleDisplayMode(.inline)
+                .toolbarBackground(Color.rpPlumBg, for: .navigationBar)
+                .toolbarBackgroundVisibility(.visible, for: .navigationBar)
+                .toolbarColorScheme(.dark, for: .navigationBar)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button(forgotSent ? "Done" : "Cancel") { showForgot = false }
+                            .foregroundStyle(Color.rpCream)
                     }
                 }
             }
             .presentationDetents([.medium])
         }
+    }
+
+    private func modeButton(_ value: Int, _ label: String) -> some View {
+        Button {
+            mode = value
+        } label: {
+            Text(label)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(mode == value ? Color.rpInk : Color.rpCream)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .background(mode == value ? Color.rpCream : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 
     private func sendReset() async {
