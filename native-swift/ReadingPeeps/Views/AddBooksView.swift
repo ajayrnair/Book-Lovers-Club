@@ -33,6 +33,7 @@ struct AddBooksView: View {
                     ProgressView()
                 } else {
                     List {
+                        searchSection
                         toSection
                         linkSection
                         if let statusMessage {
@@ -48,8 +49,6 @@ struct AddBooksView: View {
                 }
             }
             .navigationTitle("Add books")
-            .searchable(text: $query, prompt: "Title or author")
-            .onSubmit(of: .search) { Task { await search() } }
             .safeAreaInset(edge: .bottom) {
                 if !selectedResults.isEmpty {
                     Button {
@@ -72,6 +71,29 @@ struct AddBooksView: View {
     }
 
     // MARK: - sections
+
+    private var searchSection: some View {
+        Section {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Title or author", text: $query)
+                    .autocorrectionDisabled()
+                    .submitLabel(.search)
+                    .onSubmit { Task { await search() } }
+                if !query.isEmpty {
+                    Button {
+                        query = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        } header: { rpSectionHeader("Search") }
+        .listRowBackground(Color.rpCream)
+    }
 
     private var toSection: some View {
         Section {

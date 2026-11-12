@@ -26,6 +26,22 @@ struct MeView: View {
                     .listRowBackground(Color.rpCream)
                 }
                 Section {
+                    NavigationLink {
+                        AboutView()
+                    } label: {
+                        Label("About", systemImage: "info.circle")
+                    }
+                    NavigationLink {
+                        HelpView()
+                    } label: {
+                        Label("Help", systemImage: "questionmark.circle")
+                    }
+                    Link(destination: URL(string: "https://www.readingpeeps.com/privacy.html")!) {
+                        Label("Privacy", systemImage: "hand.raised")
+                    }
+                } header: { rpSectionHeader("About and help") }
+                .listRowBackground(Color.rpCream)
+                Section {
                     Button("Sign out") {
                         Task { await app.signOut() }
                     }
@@ -51,6 +67,67 @@ struct MeView: View {
                 Text("This removes your account, your ratings and your club memberships. This cannot be undone.")
             }
         }
+    }
+}
+
+/// What Reading Peeps is, in the same plain words as the website.
+struct AboutView: View {
+    var body: some View {
+        List {
+            Section {
+                Text("Reading Peeps keeps the logistics of a book club in one place: the shared library, the vote for the next book, where everyone is in the current book, and when you meet.")
+                Text("It is not a social network. There is no chat, no feed, and nothing designed to hold your attention. The conversation belongs in the room, with the book.")
+                Text("Free forever. No ads.")
+                Text("Made by a reader in Bothell, Washington.")
+                    .foregroundStyle(.secondary)
+            }
+            .listRowBackground(Color.rpCream)
+        }
+        .navigationTitle("About")
+        .brandScreen()
+    }
+}
+
+/// The support page, in app: invites, passwords, deleting, cost, contact.
+struct HelpView: View {
+    var body: some View {
+        List {
+            Section {
+                Text("An invite is single use and tied to the invited email address. Sign in with that same email to accept it.")
+            } header: { rpSectionHeader("Invites") }
+            .listRowBackground(Color.rpCream)
+            Section {
+                Text("There is no automatic reset yet. Email us and we will sort it out.")
+            } header: { rpSectionHeader("Forgot your password") }
+            .listRowBackground(Color.rpCream)
+            Section {
+                Text("Me, then Delete account. It removes your account, your ratings and your club memberships.")
+            } header: { rpSectionHeader("Delete your account") }
+            .listRowBackground(Color.rpCream)
+            Section {
+                Text("Club settings, if you are an admin. It asks for confirmation first.")
+            } header: { rpSectionHeader("Delete a club") }
+            .listRowBackground(Color.rpCream)
+            Section {
+                Text("Nothing. There are no ads and no payments, and it stays that way.")
+            } header: { rpSectionHeader("Cost") }
+            .listRowBackground(Color.rpCream)
+            Section {
+                Link("Ajay.r.nair@gmail.com", destination: URL(string: "mailto:Ajay.r.nair@gmail.com")!)
+                Link(destination: URL(string: "https://www.readingpeeps.com/privacy.html")!) {
+                    HStack {
+                        Text("Privacy, in plain words")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            } header: { rpSectionHeader("Contact") }
+            .listRowBackground(Color.rpCream)
+        }
+        .navigationTitle("Help")
+        .brandScreen()
     }
 }
 
