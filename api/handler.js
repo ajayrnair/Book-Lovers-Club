@@ -989,6 +989,41 @@ async function googleAuth(req, res, u) {
   } catch (e) { return fail(); }
 }
 
+// ---------- sign in with apple ----------
+// The iOS app runs the native Apple consent sheet and posts the identity
+// token here. Verify it against Apple's published keys, then map it to an
+// account: by the Apple subject id when known, else by the shared email
+// (linking the subject id), else a new account. Apple sends the person's
+// name only on first consent, and the app passes it along for new accounts.
+let appleKeyCache = { at: 0, keys: [] };
+async function applePublicKeys() {
+  if (appleKeyCache.keys.length && Date.now() - appleKeyCache.at < 6 * 3600e3) return appleKeyCache.keys;
+  const r = await fetch(process.env.APPLE_JWKS_URL || 'https://appleid.apple.com/auth/keys');
+  if (!r.ok) throw new Error('apple keys unavailable');
+  const j = await r.json();
+  appleKeyCache = { at: Date.now(), keys: j.keys || [] };
+  return appleKeyCache.keys;
+}
+async function verifyAppleIdentityToken(token) {
+  try {
+    const parts = String(token || '').split('.');
+    if (parts.length !== 3) return null;
+    const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString());
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+    if (header.alg !== 'RS256' || !header.kid) return null;
+    const jwk = (await applePublicKeys()).find((k) => k.kid === header.kid);
+    if (!jwk) return null;
+    const key = crypto.createPublicKey({ key: jwk, format: 'jwk' });
+    const ok = crypto.verify('RSA-SHA256', Buffer.from(parts[0] + '.' + parts[1]), key, Buffer.from(parts[2], 'base64url'));
+    if (!ok) return null;
+    if (payload.iss !== 'https://appleid.apple.com') return null;
+    if (payload.aud !== 'com.ajayrnair.readingpeeps') return null;
+    if (!payload.exp || payload.exp * 1000 < Date.now()) return null;
+    if (!payload.sub) return null;
+    return payload;
+  } catch (e) { return null; }
+}
+
 // ---------- main ----------
 module.exports = async (req, res) => {
   if (req.method === 'GET' || req.method === 'HEAD') {
@@ -1018,7 +1053,7 @@ module.exports = async (req, res) => {
   const SUPER_ADMIN_EMAILS = ['ajay.r.nair@gmail.com', 'hazel@readingpeeps.com'];
   const isSuperAdmin = !!me && SUPER_ADMIN_EMAILS.includes(me.email);
   const action = body.action || '';
-  const needAuth = !['signup', 'signin', 'track'].includes(action);
+  const needAuth = !['signup', 'signin', 'signinApple', 'track'].includes(action);
   if (needAuth && !me) return send(401, { error: 'Sign in first' });
   if (me) {
     let dirty = false;
@@ -1044,6 +1079,21 @@ module.exports = async (req, res) => {
       case 'signin': {
         const u = db.users.find((x) => x.email === (body.email || '').toLowerCase());
         if (!u || !checkPw(body.password || '', u.pass)) return send(400, { error: 'Email or password is wrong' });
+        const t = uid() + uid(); db.sessions[t] = u.id;
+        await writeDB(db);
+        return send(200, { token: t, user: { id: u.id, name: u.name, email: u.email } });
+      }
+      case 'signinApple': {
+        const claims = await verifyAppleIdentityToken(body.identityToken);
+        if (!claims) return send(400, { error: 'Apple sign in failed' });
+        const aEmail = (claims.email || '').toLowerCase();
+        let u = db.users.find((x) => x.appleSub && x.appleSub === claims.sub);
+        if (!u && aEmail) u = db.users.find((x) => x.email === aEmail);
+        if (!u) {
+          if (!aEmail) return send(400, { error: 'Apple did not share an email' });
+          u = { id: uid(), name: (body.name || '').trim() || aEmail.split('@')[0], email: aEmail, pass: null, appleSub: claims.sub, createdAt: nowISO() };
+          db.users.push(u);
+        } else if (!u.appleSub) u.appleSub = claims.sub;
         const t = uid() + uid(); db.sessions[t] = u.id;
         await writeDB(db);
         return send(200, { token: t, user: { id: u.id, name: u.name, email: u.email } });
