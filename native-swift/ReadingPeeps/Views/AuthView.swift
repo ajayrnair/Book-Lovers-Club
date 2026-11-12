@@ -75,6 +75,17 @@ struct AuthView: View {
                 .listRowBackground(Color.rpCream)
 
                 Section {
+                    SignInWithAppleButton(.signIn) { request in
+                        request.requestedScopes = [.fullName, .email]
+                    } onCompletion: { result in
+                        Task { await handleApple(result) }
+                    }
+                    .signInWithAppleButtonStyle(.black)
+                    .frame(height: 44)
+                }
+                .listRowBackground(Color.rpCream)
+
+                Section {
                     Button {
                         Task { await googleSignIn() }
                     } label: {
@@ -121,6 +132,32 @@ struct AuthView: View {
             errorMessage = errorText(error)
         }
         busy = false
+    }
+
+    private func handleApple(_ result: Result<ASAuthorization, Error>) async {
+        switch result {
+        case .failure(let error):
+            // Closing the Apple sheet is not an error worth showing.
+            if let e = error as? ASAuthorizationError, e.code == .canceled { return }
+            errorMessage = "Apple sign in failed. Please try again."
+        case .success(let authorization):
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                  let tokenData = credential.identityToken,
+                  let identityToken = String(data: tokenData, encoding: .utf8) else {
+                errorMessage = "Apple sign in failed. Please try again."
+                return
+            }
+            busy = true
+            errorMessage = nil
+            do {
+                let name = credential.fullName.map { PersonNameComponentsFormatter().string(from: $0) } ?? ""
+                let auth = try await APIClient.shared.signInWithApple(identityToken: identityToken, name: name)
+                await app.adoptSession(auth)
+            } catch {
+                errorMessage = errorText(error)
+            }
+            busy = false
+        }
     }
 
     private func googleSignIn() async {

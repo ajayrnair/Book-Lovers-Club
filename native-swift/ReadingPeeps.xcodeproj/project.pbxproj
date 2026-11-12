@@ -50,6 +50,7 @@
 		B10000000000000000000012 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B10000000000000000000013 /* MeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeView.swift; sourceTree = "<group>"; };
 		B10000000000000000000014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B10000000000000000000040 /* ReadingPeeps.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ReadingPeeps.entitlements; sourceTree = "<group>"; };
 		B10000000000000000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B10000000000000000000016 /* ReadingPeeps.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReadingPeeps.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -87,6 +88,7 @@
 				B1000000000000000000002D /* Views */,
 				B10000000000000000000015 /* Assets.xcassets */,
 				B10000000000000000000014 /* Info.plist */,
+				B10000000000000000000040 /* ReadingPeeps.entitlements */,
 			);
 			path = ReadingPeeps;
 			name = ReadingPeeps;
@@ -272,6 +274,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = E5FB8K783X;
+				CODE_SIGN_ENTITLEMENTS = ReadingPeeps/ReadingPeeps.entitlements;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ReadingPeeps/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -292,6 +295,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = E5FB8K783X;
+				CODE_SIGN_ENTITLEMENTS = ReadingPeeps/ReadingPeeps.entitlements;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ReadingPeeps/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;

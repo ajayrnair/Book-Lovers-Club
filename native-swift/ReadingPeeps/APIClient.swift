@@ -90,6 +90,10 @@ extension APIClient {
         try await call("signup", ["name": name, "email": email, "password": password])
     }
 
+    func signInWithApple(identityToken: String, name: String) async throws -> AuthResponse {
+        try await call("signinApple", ["identityToken": identityToken, "name": name])
+    }
+
     func signOut() async {
         try? await callDiscard("signout")
     }
