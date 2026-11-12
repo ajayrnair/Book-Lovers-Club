@@ -31,6 +31,7 @@ struct ClubView: View {
     @FocusState private var editorFocus: EditorField?
     @State private var confirmLeave = false
     @State private var showRevertPicker = false
+    @State private var showChangePicker = false
 
     private enum EditorField { case link, address }
 
@@ -93,6 +94,7 @@ struct ClubView: View {
             Button("Cancel", role: .cancel) {}
         }
         .sheet(isPresented: $showRevertPicker) { revertPicker }
+        .sheet(isPresented: $showChangePicker) { changePicker }
     }
 
     // MARK: - loading & syncing
@@ -224,6 +226,14 @@ struct ClubView: View {
                 Text("\(c.finishedBy.count) of \(c.members.count) finished")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                if c.isAdmin && c.library.count > 1 {
+                    Button { showChangePicker = true } label: {
+                        Label("Change book", systemImage: "arrow.left.arrow.right")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.rpCoral)
+                }
             } else {
                 Text("No book picked yet")
                     .foregroundStyle(.secondary)
@@ -844,6 +854,40 @@ struct ClubView: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    private var changePicker: some View {
+        NavigationStack {
+            List {
+                let others = (club?.library ?? []).filter { $0.key != club?.current?.key }
+                ForEach(others, id: \.key) { book in
+                    Button(book.title) {
+                        showChangePicker = false
+                        Task { await changeBook(book) }
+                    }
+                    .foregroundStyle(.primary)
+                }
+            }
+            .brandScreen()
+            .navigationTitle("Change the current book")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showChangePicker = false }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func changeBook(_ book: Book) async {
+        do {
+            try await withRetry {
+                try await APIClient.shared.callDiscard("setCurrent", ["clubId": clubId, "bookKey": book.key])
+            }
+            await load()
+            await app.refreshClubs()
+        } catch { present(error) }
     }
 
     private func revertTo(_ book: Book) async {

@@ -317,9 +317,11 @@ struct StarRatingView: View {
 
 let reactionPalette = ["❤️", "👏", "🔥", "😮", "😂", "🎉"]
 
-/// Emoji reaction chips on a finish, a rating, or a poll result. Existing
-/// reactions show as chips with counts; the plus opens the palette. Tapping
-/// an emoji you already left removes it (the server toggles).
+/// Emoji reactions on a finish, a rating, or a poll result. One small
+/// slot in a fixed place: an empty smiley when you have not reacted, your
+/// emoji in that same slot once you have. Tapping the slot opens the
+/// palette; tapping your own emoji there removes it, another replaces it.
+/// Other people's reactions sit beside the slot as small count chips.
 struct ReactionChipsView: View {
     let chips: [ReactionChip]
     var canReact: Bool = true
@@ -327,21 +329,25 @@ struct ReactionChipsView: View {
 
     @State private var paletteOpen = false
 
+    private var myEmoji: String? { chips.first(where: { $0.mine })?.emoji }
+
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             ForEach(chips, id: \.emoji) { chip in
-                Button {
-                    onReact(chip.emoji)
-                } label: {
-                    Text("\(chip.emoji) \(chip.count)")
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(chip.mine ? Color.rpCoral.opacity(0.18) : Color.secondary.opacity(0.10))
-                        .clipShape(Capsule())
+                let others = chip.count - (chip.mine ? 1 : 0)
+                if others > 0 {
+                    Button {
+                        onReact(chip.emoji)
+                    } label: {
+                        Text("\(chip.emoji) \(others)")
+                            .font(.caption2.weight(.medium))
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(Color.secondary.opacity(0.10))
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(chip.names.joined(separator: ", ")) reacted with \(chip.emoji)")
             }
             if canReact {
                 if paletteOpen {
@@ -351,9 +357,10 @@ struct ReactionChipsView: View {
                             onReact(emoji)
                         } label: {
                             Text(emoji)
-                                .font(.body)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 2)
+                                .font(.subheadline)
+                                .padding(3)
+                                .background(emoji == myEmoji ? Color.rpCoral.opacity(0.18) : Color.clear)
+                                .clipShape(Circle())
                         }
                         .buttonStyle(.plain)
                     }
@@ -361,14 +368,21 @@ struct ReactionChipsView: View {
                 Button {
                     withAnimation { paletteOpen.toggle() }
                 } label: {
-                    Image(systemName: paletteOpen ? "xmark" : "face.smiling")
-                        .font(paletteOpen ? .caption.weight(.semibold) : .body)
-                        .padding(5)
-                        .background(Color.secondary.opacity(0.10))
-                        .clipShape(Circle())
+                    Group {
+                        if !paletteOpen, let mine = myEmoji {
+                            Text(mine).font(.subheadline)
+                        } else {
+                            Image(systemName: paletteOpen ? "xmark" : "face.smiling")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(width: 24, height: 24)
+                    .background(!paletteOpen && myEmoji != nil ? Color.rpCoral.opacity(0.15) : Color.clear)
+                    .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Add a reaction")
+                .accessibilityLabel(myEmoji == nil ? "Add a reaction" : "Your reaction. Tap to change or remove it")
             }
         }
     }
