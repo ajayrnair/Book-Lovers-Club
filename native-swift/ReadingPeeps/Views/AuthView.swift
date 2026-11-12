@@ -163,7 +163,6 @@ struct AuthView: View {
                 .navigationTitle("Forgot password")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarBackground(Color.rpPlumBg, for: .navigationBar)
-                .toolbarBackgroundVisibility(.visible, for: .navigationBar)
                 .toolbarColorScheme(.dark, for: .navigationBar)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
