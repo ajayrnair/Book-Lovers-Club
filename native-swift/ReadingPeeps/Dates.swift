@@ -62,6 +62,20 @@ enum Dates {
         return plain.date(from: s)
     }
 
+    /// "now", "5m", "2h", "3d" for recent timestamps, else "Nov 17".
+    static func relativeLabel(iso: String) -> String {
+        guard let d = parseISO(iso) else { return "" }
+        let secs = Date().timeIntervalSince(d)
+        if secs < 90 { return "now" }
+        let mins = Int(secs / 60)
+        if mins < 60 { return "\(mins)m" }
+        let hours = mins / 60
+        if hours < 24 { return "\(hours)h" }
+        let days = hours / 24
+        if days < 7 { return "\(days)d" }
+        return shortDate(iso: iso)
+    }
+
     /// "Nov 17" for an ISO timestamp string.
     static func shortDate(iso: String) -> String {
         guard let d = parseISO(iso) else { return "" }

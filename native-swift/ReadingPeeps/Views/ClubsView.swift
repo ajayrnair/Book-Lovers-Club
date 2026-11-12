@@ -151,25 +151,70 @@ struct NotificationsView: View {
             } else if items.isEmpty {
                 ContentUnavailableView("Nothing yet", systemImage: "bell.slash", description: Text("Voting and meeting updates will land here."))
             } else {
-                List(items) { item in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(item.title)
-                            .font(.body.weight(.semibold))
-                        Text(item.body)
-                            .font(.subheadline)
-                        Text(Dates.shortDate(iso: item.createdAt))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                List {
+                    ForEach(items) { item in
+                        Section {
+                            notificationRow(item)
+                        }
                     }
-                    .padding(.vertical, 2)
                 }
-                .listRowBackground(Color.rpCream)
             }
         }
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .brandScreen()
+    }
+
+    private func notificationRow(_ item: NotificationItem) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: iconName(for: item.type))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 34, height: 34)
+                .background(iconColor(for: item.type))
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(item.title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    Text(Dates.relativeLabel(iso: item.createdAt))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Text(item.body)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            if !item.read {
+                Circle()
+                    .fill(Color.rpCoral)
+                    .frame(width: 8, height: 8)
+                    .padding(.top, 4)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private func iconName(for type: String) -> String {
+        switch type {
+        case "meeting", "meeting_reminder": return "calendar"
+        case "poll": return "chart.bar"
+        case "poll_result": return "book.fill"
+        default: return "bell.fill"
+        }
+    }
+
+    private func iconColor(for type: String) -> Color {
+        switch type {
+        case "meeting", "meeting_reminder": return Color.rpTeal
+        case "poll": return Color.rpViolet
+        case "poll_result": return Color.rpCoral
+        default: return Color.rpPlum
+        }
     }
 
     private func load() async {
