@@ -1332,7 +1332,7 @@ function viewPoll(){
       ${o.book.cover?`<img class="cover" src="${esc(o.book.cover)}" alt="" style="position:relative">`:'<div class="cover" style="position:relative"></div>'}
       <div class="grow" style="position:relative"><b>${esc(o.book.title)}</b><div class="muted">${esc(o.book.author)}</div>${mine?'<div style="color:#8b5cf6;font-weight:600;font-size:13px">Your vote</div>':''}${synHTML(o.book)}</div>
       ${mine?`<span style="position:relative;flex:none;background:#8b5cf6;color:#fff;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center">${icon('check',14)}</span>`:''}
-      <b style="position:relative;flex:none;min-width:20px;text-align:right">${o.votes} <span class="muted" style="font-weight:400;font-size:13px">${pct}%</span></b></div>`;
+      <b data-vcount="${o.book.key}" style="position:relative;flex:none;min-width:20px;text-align:right">${o.votes} <span class="muted" style="font-weight:400;font-size:13px">${pct}%</span></b></div>${(o.voters && o.voters.length) ? `<div class="voters hide" data-voters="${o.book.key}" style="margin:2px 8px 6px 52px"><span class="muted" style="font-size:13px">${o.voters.map(nm=>esc(nm)).join(', ')}</span></div>` : ''}`;
     }).join('')}
     ${isAdmin?'<button id="closePoll" class="ghost small" style="margin-top:10px">Close poll</button>':''}`;
   } else if(c.lastResult && c.lastResult.tie){
@@ -1349,6 +1349,7 @@ function viewPoll(){
   <button class="ghost small" id="back">‹ ${esc(c.name)}</button>
   <div class="card" style="margin-top:8px">${body}</div>`;
   $('#back').onclick = ()=>backTo(()=>viewClub());
+  app.querySelectorAll('[data-voters]').forEach(v=>{ const row = v.previousElementSibling; const cnt = document.querySelector('[data-vcount="' + v.dataset.voters + '"]'); if(cnt){ cnt.style.cursor = 'pointer'; cnt.title = 'See who voted'; cnt.onclick = (e)=>{ e.stopPropagation(); v.classList.toggle('hide'); }; } });
   app.querySelectorAll('[data-vote]').forEach(b=>{
     b.onclick = async ()=>{ try{ const j=await api('vote',{clubId:c.id, bookKey:b.dataset.vote}); track('vote', {feature:'poll', page:'poll', clubId:c.id}); currentClub=j.club; viewPoll(); }catch(e){ toast(e.message); } };
     b.onkeydown = (e)=>{ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); b.click(); } };

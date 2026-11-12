@@ -803,7 +803,7 @@ function pollView(db, club, userId) {
   Object.values(p.votes).forEach((k) => { if (counts[k] !== undefined) counts[k]++; });
   return {
     id: p.id, runoff: p.runoff, closesAt: p.closesAt, auto: !!p.auto,
-    options: p.options.map((k) => ({ book: bookView(db, k, null), votes: counts[k] })),
+    options: p.options.map((k) => ({ book: bookView(db, k, null), votes: counts[k], voters: Object.keys(p.votes).filter((u) => p.votes[u] === k).map((u) => { const usr = db.users.find((x) => x.id === u); return usr ? usr.name : ''; }).filter(Boolean) })),
     totalVotes: Object.keys(p.votes).length,
     myVote: userId ? (p.votes[userId] || null) : null,
   };
