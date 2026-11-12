@@ -6,6 +6,11 @@
 <title>Reading Peeps</title>
 <link rel="icon" type="image/svg+xml" href="/icon.svg">
 <meta name="theme-color" content="#3d1436">
+<meta name="description" content="Reading Peeps is a free website that handles book club logistics: the next book vote, a meeting date that works, reading progress, and reminders. No ads, no payments, nothing to install.">
+<meta property="og:title" content="Reading Peeps">
+<meta property="og:description" content="Book club logistics, handled. The next book vote, a meeting date that works, reading progress, and reminders. Free, with no ads and nothing built to keep you scrolling.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.readingpeeps.com/">
 <style>
   :root{--bg:#3d1436;--plum:#2e0e28;--card:#fff9f1;--ink:#2b1421;--muted:#8d6a7a;--accent:#c93a54;--accent2:#8b5cf6;--teal:#17a398;--line:#ecd9c6;--good:#2e7d32;--danger:#cf2233;--cream:#fff3e2;--r-lg:20px;--r-md:14px}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -167,6 +172,13 @@
   .rchip.mine{background:#ffe3da;border-color:#ff8a66}
   .rchip[data-radd]{line-height:1;padding:4px 8px}
   .bellbadge{background:#c93a54;color:#fff;border-radius:999px;padding:0 6px;font-size:12px;font-weight:700;margin-left:4px}
+  .vidwrap{position:relative;padding-top:56.25%;border-radius:12px;overflow:hidden;background:#2e0e28}
+  .vidwrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .footlinks{text-align:center;color:#d9a8c2;font-size:14px;margin:20px 0 4px;line-height:1.9}
+  .footlinks a{color:#ffd9a8}
+  .steps{margin:6px 0 2px;padding-left:20px}
+  .steps li{margin:8px 0}
+  .ldcta{display:flex;flex-direction:column;gap:10px;margin-top:14px}
 </style>
 </head>
 <body>
@@ -333,7 +345,7 @@ function paintStars(el, v){
 }
 
 // ---------- auth ----------
-function viewAuth(msg=''){
+function viewAuth(msg='', form='in'){
   track('page_view', {page:'auth'});
   disarmClubNav();
   navReplace('/');
@@ -359,12 +371,60 @@ function viewAuth(msg=''){
     <div class="err" id="upErr"></div>
     <button id="signup" style="width:100%">Create account</button>
     <div style="text-align:center;margin-top:12px"><a href="#" id="toSignin">Sign in</a></div>
-  </div>`;
+  </div>
+  <div class="footlinks"><a href="/privacy.html">Privacy</a> · <a href="/support.html">Support</a> · <a href="/libraries.html">For libraries</a></div>`;
+  if(form==='up'){ $('#formIn').classList.add('hide'); $('#formUp').classList.remove('hide'); }
   app.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{ location.href = '/api/auth/google'; });
   $('#toSignup').onclick = (e)=>{ e.preventDefault(); $('#formIn').classList.add('hide'); $('#formUp').classList.remove('hide'); };
   $('#toSignin').onclick = (e)=>{ e.preventDefault(); $('#formUp').classList.add('hide'); $('#formIn').classList.remove('hide'); };
   $('#signin').onclick = async ()=>{ try{ const j=await api('signin',{email:$('#inEmail').value, password:$('#inPw').value}); afterAuth(j); }catch(e){ $('#inErr').textContent=e.message; } };
   $('#signup').onclick = async ()=>{ try{ const j=await api('signup',{name:$('#upName').value, email:$('#upEmail').value, password:$('#upPw').value}); afterAuth(j); }catch(e){ $('#upErr').textContent=e.message; } };
+}
+function viewLanding(){
+  track('page_view', {page:'landing'});
+  disarmClubNav();
+  navReplace('/');
+  $('#tabs').classList.add('hide'); $('#signOut').classList.add('hide'); $('#bell').classList.add('hide');
+  app.innerHTML = `
+  <div class="brand"><img src="/icon.svg" alt=""><div class="bname">Reading Peeps</div></div>
+  <div class="card">
+    <h2 style="margin-top:2px">Book club logistics, handled.</h2>
+    <p>Reading Peeps holds the next book vote, the meeting date, reading progress, and reminders for your club, so the meeting can stay about the book and the people who came to talk about it.</p>
+    <div class="ldcta">
+      <button id="ldCreate">Create your free account</button>
+      <button class="ghost" id="ldSignin">Sign in</button>
+    </div>
+    <p class="muted" style="margin-top:12px;font-size:14px">Free forever. No ads. Runs in your browser, so there is nothing to install.</p>
+  </div>
+  <div class="card">
+    <div class="vidwrap"><iframe src="https://www.youtube-nocookie.com/embed/Pexo7FMrdb0" title="Meet Reading Peeps" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+    <p class="muted" style="text-align:center;font-size:14px;margin-top:10px">Meet Reading Peeps, in 54 seconds.</p>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">It usually looks like this</h3>
+    <p>The next book vote gets lost in a group chat. The meeting date takes twenty messages to settle. And the apps that promise to help either charge money, run ads, or are built to keep you scrolling, pulling your attention away from the book and away from each other.</p>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">How it works</h3>
+    <ol class="steps">
+      <li>Start a club and invite your people.</li>
+      <li>Vote on the next book from a shared library.</li>
+      <li>Everyone marks the days they are free in the meeting week, and the organizer picks the day that fits the most people.</li>
+      <li>Read, track your progress together, rate the book, and get a reminder before the meeting.</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">What it will never do</h3>
+    <p>No chat. No feed. No streaks. No ads. No payments. Reading Peeps only handles the logistics.</p>
+    <p><b>Focus on the book. Talk in the room. Leave the logistics to Reading Peeps.</b></p>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Run a book club at a library?</h3>
+    <p>Reading Peeps was built for clubs like yours, and it is free for libraries and their groups, forever. <a href="/libraries.html">See the page for libraries</a>.</p>
+  </div>
+  <div class="footlinks"><a href="/privacy.html">Privacy</a> · <a href="/support.html">Support</a> · <a href="/libraries.html">For libraries</a><br>Made by a reader in Bothell, Washington.</div>`;
+  $('#ldCreate').onclick = ()=>viewAuth('', 'up');
+  $('#ldSignin').onclick = ()=>viewAuth();
 }
 async function afterAuth(j){
   token = j.token; user = j.user; localStorage.setItem('blc_token', token);
@@ -385,7 +445,7 @@ document.addEventListener('keydown', (e)=>{
 
 // ---------- shell ----------
 async function boot(){
-  try{ const j = await api('me'); user = j.user; }catch(e){ return viewAuth(authMsg); }
+  try{ const j = await api('me'); user = j.user; }catch(e){ return authMsg ? viewAuth(authMsg) : viewLanding(); }
   $('#tabs').classList.remove('hide'); $('#signOut').classList.remove('hide'); $('#bell').classList.remove('hide');
   refreshBell();
   await refreshClubs();
@@ -1353,7 +1413,7 @@ async function viewStats(){
 // invite deep link
 const inv = new URLSearchParams(location.search).get('invite');
 if(inv){ localStorage.setItem('blc_invite', inv); history.replaceState({}, '', location.pathname); }
-if(token) boot(); else viewAuth();
+if(token) boot(); else if(authMsg) viewAuth(authMsg); else viewLanding();
 </script>
 <script defer src="/_vercel/insights/script.js"></script>
 </body>
