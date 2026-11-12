@@ -10,6 +10,10 @@ struct AuthView: View {
     @State private var busy = false
     @State private var errorMessage: String?
     @State private var google = GoogleAuthController()
+    @State private var showForgot = false
+    @State private var forgotEmail = ""
+    @State private var forgotSent = false
+    @State private var forgotBusy = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -74,6 +78,17 @@ struct AuthView: View {
                 }
                 .listRowBackground(Color.rpCream)
 
+                if mode == 0 {
+                    Section {
+                        Button("Forgot password?") {
+                            forgotEmail = email.trimmingCharacters(in: .whitespaces)
+                            forgotSent = false
+                            showForgot = true
+                        }
+                    }
+                    .listRowBackground(Color.rpCream)
+                }
+
                 Section {
                     SignInWithAppleButton(.signIn) { request in
                         request.requestedScopes = [.fullName, .email]
@@ -103,6 +118,63 @@ struct AuthView: View {
             .listRowBackground(Color.rpCream)
         }
         .background(Color.rpPlumBg)
+        .sheet(isPresented: $showForgot) {
+            NavigationStack {
+                Form {
+                    if forgotSent {
+                        Section {
+                            Text("If that email has an account, a reset link is on its way. It works once and expires in an hour. Open it, set a new password, then sign in here with it.")
+                        }
+                        .listRowBackground(Color.rpCream)
+                    } else {
+                        Section {
+                            TextField("Email", text: $forgotEmail)
+                                .textContentType(.emailAddress)
+                                .keyboardType(.emailAddress)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                        } header: {
+                            Text("We will email you a link to set a new password.")
+                        }
+                        .listRowBackground(Color.rpCream)
+                        Section {
+                            Button {
+                                Task { await sendReset() }
+                            } label: {
+                                HStack {
+                                    Spacer()
+                                    if forgotBusy { ProgressView() } else { Text("Email me a reset link") }
+                                    Spacer()
+                                }
+                            }
+                            .disabled(forgotBusy || forgotEmail.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
+                        .listRowBackground(Color.rpCream)
+                    }
+                }
+                .scrollContentBackground(.hidden)
+                .background(Color.rpPlumBg)
+                .navigationTitle("Forgot password")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(forgotSent ? "Done" : "Cancel") { showForgot = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
+    }
+
+    private func sendReset() async {
+        forgotBusy = true
+        do {
+            try await APIClient.shared.requestPasswordReset(email: forgotEmail.trimmingCharacters(in: .whitespaces))
+        } catch {
+            // The answer is the same either way, by design.
+        }
+        forgotSent = true
+        forgotBusy = false
     }
 
     private var formValid: Bool {

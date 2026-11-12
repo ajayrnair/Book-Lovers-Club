@@ -94,6 +94,10 @@ extension APIClient {
         try await call("signinApple", ["identityToken": identityToken, "name": name])
     }
 
+    func requestPasswordReset(email: String) async throws {
+        try await callDiscard("requestPasswordReset", ["email": email])
+    }
+
     func signOut() async {
         try? await callDiscard("signout")
     }

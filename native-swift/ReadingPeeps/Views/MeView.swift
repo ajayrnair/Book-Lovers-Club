@@ -97,7 +97,7 @@ struct HelpView: View {
             } header: { rpSectionHeader("Invites") }
             .listRowBackground(Color.rpCream)
             Section {
-                Text("There is no automatic reset yet. Email us and we will sort it out.")
+                Text("On the sign in screen, tap Forgot password. We email you a link that works once and expires in an hour. Set the new password in the browser, then sign in here with it.")
             } header: { rpSectionHeader("Forgot your password") }
             .listRowBackground(Color.rpCream)
             Section {
