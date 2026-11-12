@@ -73,13 +73,24 @@ struct AuthView: View {
                     } label: {
                         HStack {
                             Spacer()
-                            if busy { ProgressView() } else { Text(mode == 1 ? "Create account" : "Sign in") }
+                            if busy {
+                                ProgressView().tint(Color.rpCream)
+                            } else {
+                                Text(mode == 1 ? "Create account" : "Sign in")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(Color.rpCream)
+                            }
                             Spacer()
                         }
+                        .frame(height: 50)
+                        .background(formValid && !busy ? Color.rpCoral : Color.rpCoral.opacity(0.4))
+                        .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
                     }
+                    .buttonStyle(.plain)
                     .disabled(busy || !formValid)
+                    .listRowInsets(EdgeInsets())
                 }
-                .listRowBackground(Color.rpCream)
+                .listRowBackground(Color.clear)
 
                 if mode == 0 {
                     Section {
@@ -88,8 +99,13 @@ struct AuthView: View {
                             forgotSent = false
                             showForgot = true
                         }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.rpCoral)
+                        .frame(maxWidth: .infinity)
+                        .buttonStyle(.plain)
+                        .listRowInsets(EdgeInsets())
                     }
-                    .listRowBackground(Color.rpCream)
+                    .listRowBackground(Color.clear)
                 }
 
                 Section {
@@ -109,15 +125,25 @@ struct AuthView: View {
                     Button {
                         Task { await googleSignIn() }
                     } label: {
-                        HStack {
+                        HStack(spacing: 10) {
                             Spacer()
+                            Image("GoogleG")
+                                .resizable()
+                                .frame(width: 20, height: 20)
                             Text("Sign in with Google")
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(Color(red: 31.0 / 255.0, green: 31.0 / 255.0, blue: 31.0 / 255.0))
                             Spacer()
                         }
+                        .frame(height: 50)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
                     }
+                    .buttonStyle(.plain)
                     .disabled(busy)
+                    .listRowInsets(EdgeInsets())
                 }
-                .listRowBackground(Color.rpCream)
+                .listRowBackground(Color.clear)
             }
             .scrollContentBackground(.hidden)
             .listRowBackground(Color.rpCream)
