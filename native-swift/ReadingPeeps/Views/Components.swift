@@ -328,6 +328,7 @@ struct ReactionChipsView: View {
     var onReact: (String) -> Void
 
     @State private var paletteOpen = false
+    @State private var showWho = false
 
     private var myEmoji: String? { chips.first(where: { $0.mine })?.emoji }
 
@@ -337,7 +338,7 @@ struct ReactionChipsView: View {
                 let others = chip.count - (chip.mine ? 1 : 0)
                 if others > 0 {
                     Button {
-                        onReact(chip.emoji)
+                        showWho = true
                     } label: {
                         Text("\(chip.emoji) \(others)")
                             .font(.caption2.weight(.medium))
@@ -384,6 +385,23 @@ struct ReactionChipsView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(myEmoji == nil ? "Add a reaction" : "Your reaction. Tap to change or remove it")
             }
+        }
+        .sheet(isPresented: $showWho) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Reactions")
+                    .font(.headline)
+                ForEach(chips.filter { $0.count > 0 }, id: \.emoji) { chip in
+                    HStack(spacing: 9) {
+                        Text(chip.emoji).font(.title3)
+                        Text(chip.names.joined(separator: ", "))
+                            .foregroundStyle(.primary)
+                    }
+                }
+                Spacer()
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .presentationDetents([.medium])
         }
     }
 }
