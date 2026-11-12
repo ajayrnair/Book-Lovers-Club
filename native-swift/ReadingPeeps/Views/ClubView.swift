@@ -506,22 +506,27 @@ struct ClubView: View {
         let first = c.week.first!
         let last = c.week.last!
         if c.isAdmin {
-            HStack {
+            HStack(spacing: 8) {
                 Button {
                     Task { await shiftWeek(-1) }
                 } label: {
                     Text("‹ \(Dates.rangeLabel(first: Dates.shiftDay(first, by: -7), last: Dates.shiftDay(last, by: -7)))")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                Spacer()
                 Text(Dates.rangeLabel(first: first, last: last))
-                    .font(.body.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-                Spacer()
+                    .fixedSize(horizontal: true, vertical: false)
                 Button {
                     Task { await shiftWeek(1) }
                 } label: {
                     Text("\(Dates.rangeLabel(first: Dates.shiftDay(first, by: 7), last: Dates.shiftDay(last, by: 7))) ›")
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
             }
