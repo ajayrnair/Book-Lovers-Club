@@ -164,10 +164,14 @@ struct ClubView: View {
                                 badge: (c.lastResult?.winner ?? nil) == current.key ? "Won the club vote" : nil,
                                 coverWidth: 60)
                     if let result = c.lastResult, let winner = result.winner, winner == current.key {
-                        ReactionChipsView(chips: c.pollReactions ?? []) { emoji in
-                            Task { await react(type: "poll", bookKey: nil, subject: nil, emoji: emoji) }
+                        HStack {
+                            Spacer()
+                            ReactionChipsView(chips: c.pollReactions ?? [], overlayStyle: true) { emoji in
+                                Task { await react(type: "poll", bookKey: nil, subject: nil, emoji: emoji) }
+                            }
                         }
-                        .padding(.leading, 72)
+                        .offset(y: -9)
+                        .zIndex(1)
                     }
                 }
                 if let s = current.synopsis, !s.isEmpty {
@@ -211,10 +215,12 @@ struct ClubView: View {
                                     Spacer()
                                 }
                                 if r.rating != nil && r.userId != myId {
-                                    ReactionChipsView(chips: r.reactions ?? []) { emoji in
+                                    ReactionChipsView(chips: r.reactions ?? [], overlayStyle: true) { emoji in
                                         Task { await react(type: "rating", bookKey: current.key, subject: r.userId, emoji: emoji) }
                                     }
                                     .padding(.leading, 44)
+                                    .offset(y: -9)
+                                    .zIndex(1)
                                 }
                             }
                         }
@@ -297,13 +303,17 @@ struct ClubView: View {
             }
             ProgressView(value: Double(percent), total: 100)
                 .tint(finished ? .green : .rpTeal)
-            if finished && member.userId != myId, let current = c.current {
-                ReactionChipsView(chips: entry?.reactions ?? []) { emoji in
-                    Task { await react(type: "finish", bookKey: current.key, subject: member.userId, emoji: emoji) }
+                .overlay(alignment: .bottomLeading) {
+                    if finished && member.userId != myId, let current = c.current {
+                        ReactionChipsView(chips: entry?.reactions ?? [], overlayStyle: true) { emoji in
+                            Task { await react(type: "finish", bookKey: current.key, subject: member.userId, emoji: emoji) }
+                        }
+                        .padding(.leading, 44)
+                        .offset(y: 11)
+                    }
                 }
-                .padding(.leading, 44)
-            }
         }
+        .padding(.bottom, finished && member.userId != myId ? 12 : 0)
     }
 
     @ViewBuilder

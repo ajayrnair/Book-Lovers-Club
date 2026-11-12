@@ -325,6 +325,7 @@ let reactionPalette = ["❤️", "👏", "🔥", "😮", "😂", "🎉"]
 struct ReactionChipsView: View {
     let chips: [ReactionChip]
     var canReact: Bool = true
+    var overlayStyle: Bool = false
     var onReact: (String) -> Void
 
     @State private var paletteOpen = false
@@ -344,8 +345,9 @@ struct ReactionChipsView: View {
                             .font(.caption2.weight(.medium))
                             .padding(.horizontal, 7)
                             .padding(.vertical, 2)
-                            .background(Color.secondary.opacity(0.10))
+                            .background(overlayStyle ? Color.rpCream : Color.secondary.opacity(0.10))
                             .clipShape(Capsule())
+                            .shadow(color: .black.opacity(overlayStyle ? 0.10 : 0), radius: 2, y: 1)
                     }
                     .buttonStyle(.plain)
                 }
@@ -379,8 +381,9 @@ struct ReactionChipsView: View {
                         }
                     }
                     .frame(width: 24, height: 24)
-                    .background(!paletteOpen && myEmoji != nil ? Color.rpCoral.opacity(0.15) : Color.clear)
+                    .background(overlayStyle ? Color.rpCream : (!paletteOpen && myEmoji != nil ? Color.rpCoral.opacity(0.15) : Color.clear))
                     .clipShape(Circle())
+                    .shadow(color: .black.opacity(overlayStyle ? 0.10 : 0), radius: 2, y: 1)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(myEmoji == nil ? "Add a reaction" : "Your reaction. Tap to change or remove it")
