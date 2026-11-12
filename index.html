@@ -179,6 +179,10 @@
   .steps{margin:6px 0 2px;padding-left:20px}
   .steps li{margin:8px 0}
   .ldcta{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+  .clubstrip{position:relative}
+  .clubmenu{position:absolute;right:10px;top:calc(100% + 4px);background:var(--card);color:var(--ink);border-radius:14px;box-shadow:0 12px 32px rgba(20,4,16,.35);padding:6px;z-index:40;min-width:220px}
+  .cmitem{display:block;width:100%;text-align:left;background:none;border:0;color:var(--danger);font-weight:600;font-size:16px;padding:10px 12px;min-height:44px;border-radius:8px;cursor:pointer}
+  .minicover{width:22px;height:33px;object-fit:cover;border-radius:3px;flex:none}
 </style>
 </head>
 <body>
@@ -299,7 +303,8 @@ const ICONS = {
   clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
   chev: '<polyline points="9 18 15 12 9 6"/>',
   chevL: '<polyline points="15 18 9 12 15 6"/>',
-  list: '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>'
+  list: '<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>',
+  dots: '<circle cx="5" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="2" fill="currentColor" stroke="none"/>'
 };
 function icon(n, s=20){ return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`; }
 function showModal(html){ $('#modal').innerHTML = `<div class="overlay" id="ovl"><div class="sheet">${html}</div></div>`; $('#ovl').onclick = (e)=>{ if(e.target.id==='ovl') closeModal(); }; }
@@ -700,6 +705,7 @@ function clubFlipIds(c){
   return ids;
 }
 let clubNavOff = null;
+let progEditorOpen = false;
 function disarmClubNav(){ if(clubNavOff){ clubNavOff(); clubNavOff = null; } }
 function armClubNav(ids, idx){
   disarmClubNav();
@@ -852,9 +858,9 @@ function memberProgressHTML(c){
       : (p
         ? `<span class="pstat">${p.percent}%${(p.page !== null && p.page !== undefined) ? ` <span class="pg">· p. ${p.page}</span>` : ''}</span>`
         : '<span class="pstat" style="color:var(--muted);font-weight:500">Not started</span>');
-    const row = `<div class="prow"><div class="prow-top">${avatarHTML(m.name, m.userId)}<span class="pname">${m.userId===user.id ? 'You' : esc(m.name)}</span>${stat}</div><div class="progBar"><i style="width:${w}%"></i></div></div>`;
+    const row = `<div class="prow"><div class="prow-top">${avatarHTML(m.name, m.userId)}<span class="pname">${m.userId===user.id ? 'You' : esc(m.name)}</span>${stat}${m.userId===user.id ? `<button class="small ghost" id="progToggle">${progEditorOpen ? 'Done' : 'Update'}</button>` : ''}</div><div class="progBar"><i style="width:${w}%"></i></div></div>`;
     if(m.userId===user.id){
-      return row + myProgressHTML(c);
+      return progEditorOpen ? row + myProgressHTML(c) : row;
     }
     if(isFin && m.userId!==user.id && p){
       return row + `<div style="margin:1px 0 5px 44px">${reactionHTML(p.reactions || [], `data-rtype="finish" data-rbook="${esc(c.current.key)}" data-rsubject="${m.userId}"`)}</div>`;
@@ -863,6 +869,8 @@ function memberProgressHTML(c){
   }).join('')}</div>`;
 }
 function wireProgress(){
+  const tg = $('#progToggle');
+  if(tg) tg.onclick = ()=>{ progEditorOpen = !progEditorOpen; viewClub(); };
   const sl = $('#progSlider');
   if(!sl || !currentClub || !currentClub.current) return;
   const c = currentClub;
@@ -894,25 +902,27 @@ function wireProgress(){
   });
 }
 function currentSection(c){
-  let h = `<div class="card a-coral"><h3 style="margin-top:0">Current book</h3>`;
-  if(c.current){
-    const fin = c.finishedBy || [];
-    const rated = c.currentRatings.filter(r=>r.rating!==null&&r.rating!==undefined);
-    const avg = rated.length ? Math.round(rated.reduce((a,r)=>a+r.rating,0)/rated.length*10)/10 : null;
-    h += bookRow(c.current);
-    if(c.lastResult && c.lastResult.winner && c.current && c.lastResult.winner === c.current.key){
-      h += `<div style="margin-top:6px"><span class="pill">${icon('check',12)} Won the club vote</span><div style="margin-top:4px">${reactionHTML(c.pollReactions || [], 'data-rtype="poll"')}</div></div>`;
-    }
-    h += `<div class="row" id="rateSummary" style="margin-top:8px;cursor:pointer"><span class="grow muted">${rated.length?`Average ★ ${avg} (${rated.length} rating${rated.length>1?'s':''})`:'No ratings yet'}</span><span class="muted">Ratings ›</span></div>
-      <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div><div class="person">${avatarHTML(r.name, r.userId)}<span class="pname">${esc(r.name)}</span>${r.rating===null||r.rating===undefined?'<span class="notrated">Not rated</span>':`<span class="pill"><span class="pstar">★</span>${r.rating}</span>`}</div>${(r.rating!==null&&r.rating!==undefined&&r.userId!==user.id)?`<div style="margin:1px 0 4px 44px">${reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`)}</div>`:''}</div>`).join('')}</div>`;
-    h += memberProgressHTML(c);
-    h += `<div class="row" style="margin-top:8px"><button class="small ic ${c.myFinished?'':'ghost'}" id="finBtn">${c.myFinished?icon('check',16)+' Finished':'I finished reading'}</button>
-      <span class="muted">${fin.length} of ${c.members.length} finished</span></div>`;
-
-  } else {
-    h += '<div class="muted">No book picked yet</div>';
+  if(!c.current){
+    return `<div class="card a-coral"><h3 style="margin-top:0">Current book</h3><div class="muted">No book picked yet</div></div>`;
   }
-  return h + '</div>';
+  const fin = c.finishedBy || [];
+  const rated = c.currentRatings.filter(r=>r.rating!==null&&r.rating!==undefined);
+  const avg = rated.length ? Math.round(rated.reduce((a,r)=>a+r.rating,0)/rated.length*10)/10 : null;
+  const wonVote = !!(c.lastResult && c.lastResult.winner && c.lastResult.winner === c.current.key);
+  let h = `<div class="card a-coral"><h3 style="margin-top:0">Current book</h3>`;
+  h += bookRow(c.current, wonVote ? { badge: '\u2713 Won the club vote' } : {});
+  if(wonVote){
+    h += `<div style="margin-top:6px">${reactionHTML(c.pollReactions || [], 'data-rtype="poll"')}</div>`;
+  }
+  h += `<div class="row" id="rateSummary" style="margin-top:8px;cursor:pointer"><span class="grow muted">${rated.length?`Average \u2605 ${avg} (${rated.length} rating${rated.length>1?'s':''})`:'No ratings yet'}</span><span class="muted">Ratings \u203a</span></div>
+      <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div><div class="person">${avatarHTML(r.name, r.userId)}<span class="pname">${esc(r.name)}</span>${r.rating===null||r.rating===undefined?'<span class="notrated">Not rated</span>':`<span class="pill"><span class="pstar">\u2605</span>${r.rating}</span>`}</div>${(r.rating!==null&&r.rating!==undefined&&r.userId!==user.id)?`<div style="margin:1px 0 4px 44px">${reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`)}</div>`:''}</div>`).join('')}</div>`;
+  h += '</div>';
+  let p = `<div class="card"><h3 style="margin-top:0">Reading progress</h3>`;
+  p += memberProgressHTML(c);
+  p += `<div class="row" style="margin-top:8px"><button class="small ic ${c.myFinished?'':'ghost'}" id="finBtn">${c.myFinished?icon('check',16)+' Finished':'I finished reading'}</button>
+      <span class="muted">${fin.length} of ${c.members.length} finished</span></div>`;
+  p += '</div>';
+  return h + p;
 }
 // ---------- in-app date/time pickers (replace native inputs; inline expansion only) ----------
 let closeOpenPicker = null;
@@ -1076,7 +1086,8 @@ function clubStripHTML(c){
   <span class="cs-side">${multi && idx > 0 ? `<button class="iconbtn" id="clubPrev" aria-label="Previous club">${icon('chevL',22)}</button>` : ''}</span>
   <div class="cs-main"><h2 class="cs-title">${esc(c.name)}${c.private?'<span class="badge">Private</span>':''}</h2>${sub}</div>
   <span class="cs-side">${multi && idx < ids.length - 1 ? `<button class="iconbtn" id="clubNext" aria-label="Next club">${icon('chev',22)}</button>` : ''}</span>
-  <button class="iconbtn" id="clubList" aria-label="All clubs">${icon('list',22)}</button>${c.role==='admin'?`<button class="iconbtn" id="gear" aria-label="Settings">${icon('gear',22)}</button>`:''}
+  <button class="iconbtn" id="clubList" aria-label="All clubs">${icon('list',22)}</button>${c.role==='admin'?`<button class="iconbtn" id="gear" aria-label="Settings">${icon('gear',22)}</button>`:''}<button class="iconbtn" id="clubMenuBtn" aria-label="Club options">${icon('dots',22)}</button>
+  <div class="clubmenu hide" id="clubMenu"><button class="cmitem" id="cmLeave">Leave club</button></div>
   </div>`;
 }
 function viewClub(){
@@ -1087,11 +1098,10 @@ function viewClub(){
   app.innerHTML = `
   ${clubStripHTML(c)}
   ${currentSection(c)}
+  <div class="card row setrow a-teal" id="libRow"><span style="color:#17a398">${icon('book',20)}</span><b>Library</b>${c.library.filter(b=>b.cover).slice(0,3).map(b=>`<img class="minicover" src="${esc(b.cover)}" alt="">`).join('')}<span class="grow"></span><span class="muted">${c.library.length} book${c.library.length===1?'':'s'}</span><span class="muted">›</span></div>
   ${nextBookSection(c)}
   ${meetingSection(c)}
-  ${discussionSection(c)}
-  <div class="card row setrow a-teal" id="libRow"><span style="color:#17a398">${icon('book',20)}</span><b class="grow">Library</b><span class="muted">${c.library.length} book${c.library.length===1?'':'s'}</span><span class="muted">›</span></div>
-  <div style="margin-top:10px"><button id="leave" class="ghost small">Leave club</button></div>`;
+  ${discussionSection(c)}`;
   const flipIds = clubFlipIds(c), flipIdx = flipIds.indexOf(c.id);
   if($('#clubPrev')) $('#clubPrev').onclick = ()=>openClub(flipIds[flipIdx - 1]);
   if($('#clubNext')) $('#clubNext').onclick = ()=>openClub(flipIds[flipIdx + 1]);
@@ -1140,7 +1150,13 @@ function viewClub(){
     if($('#maddr')) $('#maddr').onchange = ()=>saveMeeting(false);
     wireDatePicker('pickDate', async (v)=>{ try{ const j=await api('pickDate',{clubId:c.id, date:v}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } });
   }
-  $('#leave').onclick=async()=>{ await api('leaveClub',{clubId:c.id}); await refreshClubs(); currentClub=null; viewHome(); };
+  if($('#clubMenuBtn')) $('#clubMenuBtn').onclick = ()=>{ const m = $('#clubMenu'); if(m) m.classList.toggle('hide'); };
+  if($('#cmLeave')) $('#cmLeave').onclick = ()=>{
+    const m = $('#clubMenu'); if(!m) return;
+    m.innerHTML = `<div style="padding:8px 10px 2px"><b>Leave ${esc(c.name)}?</b><div class="muted" style="font-size:14px;margin-top:2px">You can rejoin later if the club is public or you are invited again.</div></div><div class="row" style="padding:8px 10px 10px"><button class="small danger" id="cmLeaveYes">Leave club</button><button class="small ghost" id="cmLeaveNo">Cancel</button></div>`;
+    $('#cmLeaveNo').onclick = ()=>viewClub();
+    $('#cmLeaveYes').onclick = async ()=>{ try{ await api('leaveClub',{clubId:c.id}); await refreshClubs(); currentClub=null; toast('You left ' + c.name); viewHome(); }catch(e){ toast(e.message); } };
+  };
 }
 
 // ---------- library page ----------
@@ -1243,17 +1259,22 @@ function viewDiscussionTemplatePage(){
   const c = currentClub; if(!c || c.role!=='admin') return viewClub();
   nav('/club/' + c.id + '/settings/discussion');
   const tpl = (c.discussion && c.discussion.template) || [];
+  const rowHTML = (q)=>`<div class="row tplrow" style="margin:6px 0"><input type="text" class="tplq grow" value="${esc(q)}" placeholder="Question" maxlength="500"><button class="ghost small" data-deltpl>Remove</button></div>`;
   app.innerHTML = `
-  <button class="ghost small" id="back">‹ Settings</button>
+  <button class="ghost small" id="back">\u2039 Settings</button>
   <h2>Discussion questions</h2>
   <div class="card"><h3 style="margin-top:0">Template</h3>
-  <div class="muted" style="margin-bottom:8px">These questions start the list for every new book. Members can add more for each book. One question per line.</div>
-  <textarea id="tplText" rows="8" placeholder="What stayed with you after the last chapter?">${esc(tpl.join('\n'))}</textarea>
-  <div style="margin-top:8px"><button id="tplSave" class="small">Save template</button></div>
+  <div class="muted" style="margin-bottom:8px">These questions start the list for every new book. Members can add more for each book.</div>
+  <div id="tplRows">${tpl.map(rowHTML).join('')}</div>
+  <div style="margin-top:6px"><button class="qadd" id="tplAdd" aria-label="Add a question">${icon('plus',20)}</button></div>
+  <div style="margin-top:10px"><button id="tplSave" class="small">Save template</button></div>
   <div id="tplOut"></div></div>`;
   $('#back').onclick = ()=>backTo(()=>viewSettings());
+  const wireDel = ()=>{ app.querySelectorAll('[data-deltpl]').forEach(b=>b.onclick=()=>{ const r = b.closest('.tplrow'); if(r) r.remove(); }); };
+  wireDel();
+  $('#tplAdd').onclick = ()=>{ $('#tplRows').insertAdjacentHTML('beforeend', rowHTML('')); wireDel(); const rows = app.querySelectorAll('.tplq'); if(rows.length) rows[rows.length-1].focus(); };
   $('#tplSave').onclick = async ()=>{
-    const questions = $('#tplText').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    const questions = [...app.querySelectorAll('.tplq')].map(i=>i.value.trim()).filter(Boolean);
     try{ const j = await api('setDiscussionTemplate', { clubId: c.id, questions }); currentClub = j.club; $('#tplOut').innerHTML = '<div class="muted" style="margin-top:8px">Saved</div>'; }
     catch(e){ toast(e.message); }
   };

@@ -58,6 +58,10 @@ function normalizeDB(db) {
     club.discussionTemplate = club.discussionTemplate || [];
     club.reactions = club.reactions || [];
     club.meeting = { type: 'online', link: '', address: '', date: '', ...(club.meeting || {}) };
+    if (club.format === 'in-person' && club.meeting.type === 'online' && !club.meeting.date && !club.meeting.link && !club.meeting.address) {
+      club.meeting.type = 'inperson';
+      if (club.location && club.location.label) club.meeting.address = club.location.label;
+    }
   });
   const userIds = new Set((db.users || []).map((u) => u.id));
   db.notifications = (db.notifications || []).filter((n) => userIds.has(n.userId));
@@ -1235,7 +1239,7 @@ module.exports = async (req, res) => {
           members: [{ userId: me.id, role: 'admin', joinedAt: nowISO() }],
           library: [], current: null, meetingFrequencyWeeks: 2,
           cycleEnd: new Date(Date.now() + (2 * 7 + 7) * 864e5).toISOString(),
-          autoPoll: false, meeting: { type: 'online', link: '', address: '', date: '' },
+          autoPoll: false, meeting: { type: identity.format === 'in-person' ? 'inperson' : 'online', link: '', address: identity.format === 'in-person' && identity.location && identity.location.label ? identity.location.label : '', date: '' },
           availability: {}, finished: {}, rsvps: {}, poll: null, lastResult: null,
         };
         db.clubs.push(club); await writeDB(db);
@@ -1416,6 +1420,10 @@ module.exports = async (req, res) => {
           identity = parsedIdentity.identity;
         }
         if (identity) Object.assign(club, identity);
+        if (identity && hasField(body, 'format') && club.meeting && !club.meeting.date) {
+          club.meeting.type = identity.format === 'in-person' ? 'inperson' : 'online';
+          if (identity.format === 'in-person' && !club.meeting.address && identity.location && identity.location.label) club.meeting.address = identity.location.label;
+        }
         if (body.meetingFrequencyWeeks) {
           const w = Math.min(8, Math.max(1, Number(body.meetingFrequencyWeeks)));
           club.meetingFrequencyWeeks = w;
