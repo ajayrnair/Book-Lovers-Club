@@ -168,9 +168,10 @@
   .brand .bname{font-size:27px;font-weight:800;letter-spacing:-.02em;margin-top:12px;color:#ffe9d2}
   :focus-visible{outline:2px solid #ff8a66;outline-offset:2px}
   .reactions{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap}
-  .rchip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:1px 8px;font-size:13px;line-height:1.5;cursor:pointer;color:inherit;font-family:inherit}
+  .rchip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:0 7px;font-size:12.5px;line-height:1.6;cursor:pointer;color:inherit;font-family:inherit}
   .rchip.mine{background:#ffe3da;border-color:#ff8a66}
-  .rchip[data-radd]{line-height:1;padding:4px 8px}
+  .rslot{width:23px;height:23px;border-radius:50%;border:1px solid var(--line);background:transparent;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;line-height:1;cursor:pointer;padding:0;color:var(--muted);font-family:inherit}
+  .rslot.mine{background:#ffe3da;border-color:#ff8a66;color:inherit}
   .bellbadge{background:#c93a54;color:#fff;border-radius:999px;padding:0 6px;font-size:12px;font-weight:700;margin-left:4px}
   .vidwrap{position:relative;padding-top:56.25%;border-radius:12px;overflow:hidden;background:#2e0e28}
   .vidwrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
@@ -983,6 +984,9 @@ function currentSection(c){
   }
   h += `<div class="row" id="rateSummary" style="margin-top:8px;cursor:pointer"><span class="grow muted">${rated.length?`Average \u2605 ${avg} (${rated.length} rating${rated.length>1?'s':''})`:'No ratings yet'}</span><span class="muted">Ratings \u203a</span></div>
       <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div><div class="person">${avatarHTML(r.name, r.userId)}<span class="pname">${esc(r.name)}</span>${r.rating===null||r.rating===undefined?'<span class="notrated">Not rated</span>':`<span class="pill"><span class="pstar">\u2605</span>${r.rating}</span>`}</div>${(r.rating!==null&&r.rating!==undefined&&r.userId!==user.id)?`<div style="margin:1px 0 4px 44px">${reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`)}</div>`:''}</div>`).join('')}</div>`;
+  if(c.role==='admin' && c.library.length > 1){
+    h += `<div style="margin-top:8px"><button class="small ghost" id="changeBookBtn">Change book</button></div><div id="changeBookPanel" class="hide" style="margin-top:4px">${c.library.filter(b=>b.key!==c.current.key).map(b=>`<button class="cmitem" data-change="${esc(b.key)}" style="color:var(--ink);display:block;width:100%;text-align:left;background:none;border:none;padding:8px 10px;cursor:pointer;font-size:15px">${esc(b.title)}</button>`).join('')}</div>`;
+  }
   h += '</div>';
   let p = `<div class="card"><h3 style="margin-top:0">Reading progress</h3>`;
   p += memberProgressHTML(c);
@@ -1125,9 +1129,18 @@ function avatarHTML(name, userId){
 }
 const REACTION_EMOJIS = ['❤️','👏','🔥','😮','😂','🎉'];
 function reactionHTML(chips, attrs){
-  const chipsH = (chips||[]).map(ch=>`<button class="rchip ${ch.mine?'mine':''}" ${attrs} data-emoji="${ch.emoji}" title="${esc((ch.names||[]).join(', '))}">${ch.emoji} ${ch.count}</button>`).join('');
-  const palette = REACTION_EMOJIS.map(e=>`<button class="rchip" ${attrs} data-emoji="${e}">${e}</button>`).join('');
-  return `<span class="reactions">${chipsH}<span class="rpal hide" style="display:none;gap:4px">${palette}</span><button class="rchip" data-radd aria-label="Add a reaction"><svg width="16" height="16" viewBox="0 0 24 24" style="vertical-align:-2px" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="10" r="1.15" fill="currentColor"/><circle cx="15" cy="10" r="1.15" fill="currentColor"/><path d="M8 14.2 Q12 17.4 16 14.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button></span>`;
+  const list = chips || [];
+  const mine = list.find(ch=>ch.mine);
+  const othersH = list.map(ch=>{
+    const n = ch.count - (ch.mine ? 1 : 0);
+    return n > 0 ? `<button class="rchip" ${attrs} data-emoji="${ch.emoji}" title="${esc((ch.names||[]).join(', '))}">${ch.emoji} ${n}</button>` : '';
+  }).join('');
+  const palette = REACTION_EMOJIS.map(e=>`<button class="rchip${mine && mine.emoji===e ? ' mine' : ''}" ${attrs} data-emoji="${e}">${e}</button>`).join('');
+  const smiley = `<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="10" r="1.15" fill="currentColor"/><circle cx="15" cy="10" r="1.15" fill="currentColor"/><path d="M8 14.2 Q12 17.4 16 14.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+  const slot = mine
+    ? `<button class="rslot mine" data-radd aria-label="Your reaction. Tap to change or remove it">${mine.emoji}</button>`
+    : `<button class="rslot" data-radd aria-label="Add a reaction">${smiley}</button>`;
+  return `<span class="reactions">${othersH}<span class="rpal hide" style="display:none;gap:3px">${palette}</span>${slot}</span>`;
 }
 function discussionSection(c){
   if(!c.current) return '';
@@ -1183,6 +1196,8 @@ function viewClub(){
   if($('#startPoll')) $('#startPoll').onclick=()=>viewPoll();
   if($('#addBooksBtn')) $('#addBooksBtn').onclick=()=>viewLibrary();
   if($('#finBtn')) $('#finBtn').onclick=async()=>{ const j = c.myFinished ? await api('toggleFinished',{clubId:c.id}) : await api('setProgress',{clubId:c.id, bookKey:c.current.key, percent:100}); track('finish_toggle', {feature:'progress', page:'club', clubId:c.id}); currentClub=j.club; viewClub(); };
+  if($('#changeBookBtn')) $('#changeBookBtn').onclick = ()=>{ const p = $('#changeBookPanel'); if(p) p.classList.toggle('hide'); };
+  document.querySelectorAll('[data-change]').forEach(btn=>{ btn.onclick = async ()=>{ try{ const j = await api('setCurrent',{clubId:c.id, bookKey: btn.getAttribute('data-change')}); currentClub = j.club; toast(j.club.current.title + ' is now the current book'); viewClub(); }catch(e){ toast(e.message); } }; });
   app.querySelectorAll('[data-radd]').forEach(b=>b.onclick=()=>{ const pal = b.parentElement.querySelector('.rpal'); if(pal){ const open = pal.style.display!=='none'; pal.style.display = open ? 'none' : 'inline-flex'; pal.classList.toggle('hide', open); } });
   app.querySelectorAll('[data-rtype]').forEach(b=>b.onclick=async()=>{ try{ const j = await api('react', { clubId: c.id, type: b.dataset.rtype, bookKey: b.dataset.rbook || undefined, subjectUserId: b.dataset.rsubject || undefined, emoji: b.dataset.emoji }); track('reaction', {feature:'reactions', page:'club', clubId:c.id}); currentClub = j.club; viewClub(); }catch(e){ toast(e.message); } });
   if($('#qGroupAdd')) $('#qGroupAdd').onclick=async()=>{ const v=$('#qGroup').value.trim(); if(!v) return; try{ const j=await api('addDiscussionQuestion',{clubId:c.id, text:v, scope:'group'}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };

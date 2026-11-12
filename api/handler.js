@@ -1557,6 +1557,11 @@ module.exports = async (req, res) => {
         if (!club.library.includes(body.bookKey)) club.library.push(body.bookKey);
         club.pendingWinner = null;
         setCurrentBook(db, club, body.bookKey);
+        await notifyMembers(db, club, {
+          exceptUserId: me.id, type: 'poll_result', dedupeKey: 'bookchange:' + club.id + ':' + nowISO(),
+          title: 'Current book changed in ' + club.name,
+          body: bookTitleOf(db, body.bookKey) + ' is now the club\u2019s current book.',
+        });
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
@@ -1669,9 +1674,10 @@ module.exports = async (req, res) => {
           return send(400, { error: 'Unknown reaction target' });
         }
         club.reactions = club.reactions || [];
-        const idx = club.reactions.findIndex((r) => r.userId === me.id && r.type === type && r.bookKey === bookKey && r.subjectUserId === subjectUserId && r.at === at && r.emoji === body.emoji);
+        const idx = club.reactions.findIndex((r) => r.userId === me.id && r.type === type && r.bookKey === bookKey && r.subjectUserId === subjectUserId && r.at === at);
+        const existing = idx >= 0 ? club.reactions[idx] : null;
         if (idx >= 0) club.reactions.splice(idx, 1);
-        else club.reactions.push({ id: uid(), type, bookKey, subjectUserId, at, userId: me.id, emoji: body.emoji, createdAt: nowISO() });
+        if (!existing || existing.emoji !== body.emoji) club.reactions.push({ id: uid(), type, bookKey, subjectUserId, at, userId: me.id, emoji: body.emoji, createdAt: nowISO() });
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }
