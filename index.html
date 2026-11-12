@@ -168,7 +168,12 @@
   .brand .bname{font-size:27px;font-weight:800;letter-spacing:-.02em;margin-top:12px;color:#ffe9d2}
   :focus-visible{outline:2px solid #ff8a66;outline-offset:2px}
   .reactions{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap}
-  .rchip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:0 7px;font-size:12.5px;line-height:1.6;cursor:pointer;color:inherit;font-family:inherit}
+  .rchip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:0 7px;font-size:12.5px;line-height:1.6;cursor:pointer;color:inherit;font-family:inherit;min-height:0;min-width:0}
+  .reactions{position:relative}
+  .rwho{position:absolute;top:calc(100% + 6px);left:0;z-index:6;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(46,14,40,.18);padding:7px 10px;min-width:150px;max-width:240px}
+  .reactions.absr .rwho{left:auto;right:0}
+  .rwho-row{display:flex;gap:7px;align-items:baseline;font-size:13px;padding:2px 0;color:var(--ink);text-align:left}
+  .rwho-row .re{font-size:14px}
   .rchip.mine{background:#ffe3da;border-color:#ff8a66}
   .rslot{width:23px;height:23px;min-height:0;min-width:0;border-radius:50%;border:1px solid var(--line);background:transparent;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;line-height:1;cursor:pointer;padding:0;color:var(--muted);font-family:inherit}
   .pwrap{position:relative;padding-bottom:12px}
@@ -1136,14 +1141,15 @@ function reactionHTML(chips, attrs, cls){
   const mine = list.find(ch=>ch.mine);
   const othersH = list.map(ch=>{
     const n = ch.count - (ch.mine ? 1 : 0);
-    return n > 0 ? `<button class="rchip" ${attrs} data-emoji="${ch.emoji}" title="${esc((ch.names||[]).join(', '))}">${ch.emoji} ${n}</button>` : '';
+    return n > 0 ? `<button class="rchip" ${attrs} data-rwho="1" aria-label="See who reacted">${ch.emoji} ${n}</button>` : '';
   }).join('');
+  const whoH = list.some(ch=>ch.count > 0) ? `<span class="rwho hide">${list.filter(ch=>ch.count > 0).map(ch=>`<span class="rwho-row"><span class="re">${ch.emoji}</span><span>${(ch.names||[]).map(nm=>nm === user.name ? 'You' : esc(nm)).join(', ')}</span></span>`).join('')}</span>` : '';
   const palette = REACTION_EMOJIS.map(e=>`<button class="rchip${mine && mine.emoji===e ? ' mine' : ''}" ${attrs} data-emoji="${e}">${e}</button>`).join('');
   const smiley = `<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="10" r="1.15" fill="currentColor"/><circle cx="15" cy="10" r="1.15" fill="currentColor"/><path d="M8 14.2 Q12 17.4 16 14.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
   const slot = mine
     ? `<button class="rslot mine" data-radd aria-label="Your reaction. Tap to change or remove it">${mine.emoji}</button>`
     : `<button class="rslot" data-radd aria-label="Add a reaction">${smiley}</button>`;
-  return `<span class="reactions ${cls || ''}">${othersH}<span class="rpal hide" style="display:none;gap:3px">${palette}</span>${slot}</span>`;
+  return `<span class="reactions ${cls || ''}">${othersH}<span class="rpal hide" style="display:none;gap:3px">${palette}</span>${slot}${whoH}</span>`;
 }
 function discussionSection(c){
   if(!c.current) return '';
@@ -1202,7 +1208,8 @@ function viewClub(){
   if($('#changeBookBtn')) $('#changeBookBtn').onclick = ()=>{ const p = $('#changeBookPanel'); if(p) p.classList.toggle('hide'); };
   document.querySelectorAll('[data-change]').forEach(btn=>{ btn.onclick = async ()=>{ try{ const j = await api('setCurrent',{clubId:c.id, bookKey: btn.getAttribute('data-change')}); currentClub = j.club; toast(j.club.current.title + ' is now the current book'); viewClub(); }catch(e){ toast(e.message); } }; });
   app.querySelectorAll('[data-radd]').forEach(b=>b.onclick=()=>{ const pal = b.parentElement.querySelector('.rpal'); if(pal){ const open = pal.style.display!=='none'; pal.style.display = open ? 'none' : 'inline-flex'; pal.classList.toggle('hide', open); } });
-  app.querySelectorAll('[data-rtype]').forEach(b=>b.onclick=async()=>{ try{ const j = await api('react', { clubId: c.id, type: b.dataset.rtype, bookKey: b.dataset.rbook || undefined, subjectUserId: b.dataset.rsubject || undefined, emoji: b.dataset.emoji }); track('reaction', {feature:'reactions', page:'club', clubId:c.id}); currentClub = j.club; viewClub(); }catch(e){ toast(e.message); } });
+  app.querySelectorAll('[data-rwho]').forEach(b=>b.onclick=()=>{ const wrap = b.closest('.reactions'); const panel = wrap ? wrap.querySelector('.rwho') : null; if(!panel) return; const opening = panel.classList.contains('hide'); app.querySelectorAll('.rwho').forEach(x=>x.classList.add('hide')); if(opening) panel.classList.remove('hide'); });
+  app.querySelectorAll('[data-rtype]').forEach(b=>{ if(b.hasAttribute('data-rwho')) return; b.onclick=async()=>{ try{ const j = await api('react', { clubId: c.id, type: b.dataset.rtype, bookKey: b.dataset.rbook || undefined, subjectUserId: b.dataset.rsubject || undefined, emoji: b.dataset.emoji }); track('reaction', {feature:'reactions', page:'club', clubId:c.id}); currentClub = j.club; viewClub(); }catch(e){ toast(e.message); } }});
   if($('#qGroupAdd')) $('#qGroupAdd').onclick=async()=>{ const v=$('#qGroup').value.trim(); if(!v) return; try{ const j=await api('addDiscussionQuestion',{clubId:c.id, text:v, scope:'group'}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
   if($('#qMineAdd')) $('#qMineAdd').onclick=async()=>{ const v=$('#qMine').value.trim(); if(!v) return; try{ const j=await api('addDiscussionQuestion',{clubId:c.id, text:v, scope:'private'}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } };
   app.querySelectorAll('[data-delq]').forEach(b=>b.onclick=async()=>{ const [scope, qid] = b.dataset.delq.split(':'); try{ const j=await api('removeDiscussionQuestion',{clubId:c.id, questionId:qid, scope}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } });
