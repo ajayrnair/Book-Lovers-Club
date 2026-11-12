@@ -240,6 +240,8 @@ async function dispatchRoute(){
     else if(p === '/add'){ addReturn = null; setTab('add'); viewAdd(); }
     else if(p === '/me') viewMe();
     else if(p === '/me/stats') viewStats();
+    else if(p === '/about') viewAbout();
+    else if(p === '/help') viewHelp();
     else if(p === '/notifications') viewNotifications();
     else if(m = p.match(/^\/club\/([\w-]+)\/settings\/(members|frequency|discussion|delete)\/?$/)){
       if(await ensureClub(m[1])) ({members: viewMembersPage, frequency: viewFrequencyPage, discussion: viewDiscussionTemplatePage, delete: viewDeleteClubPage})[m[2]]();
@@ -1386,15 +1388,48 @@ function viewMe(){
   app.innerHTML = `<div class="card"><h3 style="margin-top:0">${esc(user.name)}</h3><div class="muted">${esc(user.email)}</div></div>
   <h2>My clubs</h2>${myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b></div><span>›</span></div>`).join('')||'<div class="muted">No clubs yet</div>'}
   ${['ajay.r.nair@gmail.com','hazel@readingpeeps.com'].includes(user.email)?'<div class="card row" id="statsRow"><div class="grow"><b>Stats</b></div><span>›</span></div>':''}
+  <div class="card"><h3 style="margin-top:0">About and help</h3>
+  <div class="row setrow" id="aboutRow"><div class="grow"><b>About</b></div><span>›</span></div>
+  <div class="row setrow" id="helpRow"><div class="grow"><b>Help</b></div><span>›</span></div>
+  <a class="row setrow" href="/privacy.html" style="color:inherit;text-decoration:none"><div class="grow"><b>Privacy</b></div><span>›</span></a></div>
   <div class="card"><div id="delAcctBox"><button id="delAcct" class="ghost small danger">Delete account</button></div></div>`;
   app.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openClub(el.dataset.open));
   const sr = $('#statsRow'); if(sr) sr.onclick = ()=>viewStats();
+  $('#aboutRow').onclick = ()=>viewAbout();
+  $('#helpRow').onclick = ()=>viewHelp();
   $('#delAcct').onclick = ()=>{
     $('#delAcctBox').innerHTML = `<div class="muted" style="margin-bottom:8px">Delete your account and all your data?</div>
     <div class="row"><button id="delAcctYes" class="danger small">Delete account</button><button id="delAcctNo" class="ghost small">Cancel</button></div>`;
     $('#delAcctNo').onclick = ()=>viewMe();
     $('#delAcctYes').onclick = async ()=>{ try{ await api('deleteAccount'); token=''; user=null; currentClub=null; myClubs=[]; localStorage.removeItem('blc_token'); viewAuth(); }catch(e){ toast(e.message); } };
   };
+}
+function viewAbout(){
+  track('page_view', {page:'about'});
+  disarmClubNav();
+  nav('/about');
+  app.innerHTML = `<button class="ghost small" id="back">\u2039 Me</button>
+  <h2>About</h2>
+  <div class="card"><p style="margin-top:0">Reading Peeps keeps the logistics of a book club in one place: the shared library, the vote for the next book, where everyone is in the current book, and when you meet.</p>
+  <p>It is not a social network. There is no chat, no feed, and nothing designed to hold your attention. The conversation belongs in the room, with the book.</p>
+  <p>Free forever. No ads. Runs in your browser, and as an app on iPhone.</p>
+  <p class="muted" style="margin-bottom:0">Made by a reader in Bothell, Washington.</p></div>`;
+  $('#back').onclick = ()=>backTo(()=>viewMe());
+}
+function viewHelp(){
+  track('page_view', {page:'help'});
+  disarmClubNav();
+  nav('/help');
+  app.innerHTML = `<button class="ghost small" id="back">\u2039 Me</button>
+  <h2>Help</h2>
+  <div class="card"><h3 style="margin-top:0">Invites</h3><p style="margin-bottom:0">An invite is single use and tied to the invited email address. Sign in with that same email to accept it.</p></div>
+  <div class="card"><h3 style="margin-top:0">Forgot your password</h3><p style="margin-bottom:0">There is no automatic reset yet. Email us and we will sort it out.</p></div>
+  <div class="card"><h3 style="margin-top:0">Delete your account</h3><p style="margin-bottom:0">Me, then Delete account. It removes your account, your ratings and your club memberships.</p></div>
+  <div class="card"><h3 style="margin-top:0">Delete a club</h3><p style="margin-bottom:0">Club settings, if you are an admin. It asks for confirmation first.</p></div>
+  <div class="card"><h3 style="margin-top:0">Cost</h3><p style="margin-bottom:0">Nothing. There are no ads and no payments, and it stays that way.</p></div>
+  <div class="card"><h3 style="margin-top:0">Contact</h3><p style="margin-bottom:0"><a href="mailto:Ajay.r.nair@gmail.com">Ajay.r.nair@gmail.com</a></p></div>
+  <div class="card row setrow"><a class="grow" href="/privacy.html" style="color:inherit;text-decoration:none"><b>Privacy, in plain words</b></a><span>›</span></div>`;
+  $('#back').onclick = ()=>backTo(()=>viewMe());
 }
 async function viewStats(){
   disarmClubNav();
