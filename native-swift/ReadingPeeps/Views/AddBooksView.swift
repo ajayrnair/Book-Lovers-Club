@@ -49,6 +49,7 @@ struct AddBooksView: View {
                 }
             }
             .navigationTitle("Add books")
+            .brandBar()
             .safeAreaInset(edge: .bottom) {
                 if !selectedResults.isEmpty {
                     Button {

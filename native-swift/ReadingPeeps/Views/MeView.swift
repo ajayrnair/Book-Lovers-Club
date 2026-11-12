@@ -53,6 +53,7 @@ struct MeView: View {
                 .listRowBackground(Color.rpCream)
             }
             .navigationTitle("Me")
+            .brandBar()
             .brandScreen()
             .errorAlert($errorMessage)
             .confirmationDialog("Delete your account?", isPresented: $confirmDelete, titleVisibility: .visible) {

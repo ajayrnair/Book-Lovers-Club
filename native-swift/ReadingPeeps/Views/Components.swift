@@ -87,6 +87,29 @@ extension View {
     func brandScreen() -> some View { modifier(BrandScreen()) }
 }
 
+/// The branding header: logo and wordmark centered in the top bar, the
+/// same on every tab. Mirrors the Clubs tab, which set the pattern.
+struct BrandBar: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 7) {
+                        LogoView(size: 24)
+                        Text("Reading Peeps")
+                            .font(.headline)
+                            .foregroundStyle(Color.rpCream)
+                    }
+                }
+            }
+    }
+}
+
+extension View {
+    func brandBar() -> some View { modifier(BrandBar()) }
+}
+
 /// Section header text for branded screens: the plum page shows through
 /// behind section headers, so they are set in soft cream instead of the
 /// system gray that would vanish on plum.
