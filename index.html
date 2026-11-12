@@ -174,6 +174,12 @@
   .reactions.absr .rwho{left:auto;right:0}
   .rwho-row{display:flex;gap:7px;align-items:baseline;font-size:13px;padding:2px 0;color:var(--ink);text-align:left}
   .rwho-row .re{font-size:14px}
+  .nrow{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;margin-bottom:8px}
+  .ntile{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;flex:none}
+  .ntitle{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nbody{font-size:14px;color:var(--muted);margin-top:1px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .ntime{font-size:12px;color:var(--muted);flex:none;padding-top:2px}
+  .ndot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;margin-top:6px}
   .rchip.mine{background:#ffe3da;border-color:#ff8a66}
   .rslot{width:23px;height:23px;min-height:0;min-width:0;border-radius:50%;border:1px solid var(--line);background:transparent;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;line-height:1;cursor:pointer;padding:0;color:var(--muted);font-family:inherit}
   .pwrap{position:relative;padding-bottom:12px}
@@ -549,6 +555,13 @@ async function refreshBell(){
   if(!user) return;
   try{ const j = await api('notifications'); paintBell(j.unread || 0); }catch(e){}
 }
+function relTime(iso){ const t = new Date(iso).getTime(); if(isNaN(t)) return ''; const sec = Math.max(0, (Date.now() - t) / 1000); if(sec < 90) return 'now'; const m = Math.floor(sec / 60); if(m < 60) return m + 'm'; const h = Math.floor(m / 60); if(h < 24) return h + 'h'; const d = Math.floor(h / 24); if(d < 7) return d + 'd'; return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
+function notifTile(type){
+  if(type === 'meeting' || type === 'meeting_reminder') return `<span class="ntile" style="background:#17a398">${icon('calendar', 17)}</span>`;
+  if(type === 'poll') return `<span class="ntile" style="background:#8b5cf6">${icon('chart', 17)}</span>`;
+  if(type === 'poll_result') return `<span class="ntile" style="background:#c93a54">${icon('book', 17)}</span>`;
+  return `<span class="ntile" style="background:#8d6a7a">${icon('list', 17)}</span>`;
+}
 async function viewNotifications(){
   track('page_view', {page:'notifications'});
   nav('/notifications');
@@ -557,7 +570,7 @@ async function viewNotifications(){
   const list = j.notifications || [];
   app.innerHTML = `<button class="ghost small" id="nBack">‹ Back</button>
   <h2>Notifications</h2>
-  ${list.length ? list.map(n=>`<div class="card" style="margin-bottom:8px"><b>${esc(n.title)}</b><div style="margin-top:2px">${esc(n.body)}</div><div class="muted" style="margin-top:4px;font-size:13px">${new Date(n.createdAt).toLocaleString(undefined,{month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})}</div></div>`).join('') : '<div class="card muted">Nothing yet. Voting and meeting updates will land here.</div>'}`;
+  ${list.length ? list.map(n=>`<div class="card nrow">${notifTile(n.type)}<div class="grow" style="min-width:0"><div class="ntitle">${esc(n.title)}</div><div class="nbody">${esc(n.body)}</div></div><div class="ntime">${relTime(n.createdAt)}</div>${n.readAt ? '' : '<span class="ndot"></span>'}</div>`).join('') : '<div class="card muted">Nothing yet. Voting and meeting updates will land here.</div>'}`;
   $('#nBack').onclick = ()=>backTo(()=>{ if(currentClub) viewClub(); else viewHome(); });
   try{ await api('markNotificationsRead', {via:'web'}); }catch(e){}
   paintBell(0);
@@ -825,7 +838,7 @@ function bookRow(b, opts={}){
     ${b.cover?`<img class="cover" src="${esc(b.cover)}" alt="">`:'<div class="cover"></div>'}
     <div class="grow"><b>${esc(b.title)}</b>${opts.badge?`<span class="badge">${esc(opts.badge)}</span>`:''}<div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>
     ${ratingsLine(b)}
-    ${b.memberCount?`<div class="muted">Members ★ ${b.memberAverage} (${b.memberCount})</div>`:''}
+    ${b.memberCount && !opts.hideMemberAvg ? `<div class="muted">Members ★ ${b.memberAverage} (${b.memberCount})</div>` : ''}
     ${opts.subline?`<div class="muted">${esc(opts.subline)}</div>`:''}
     ${synHTML(b)}
     </div>
@@ -989,7 +1002,7 @@ function currentSection(c){
   const avg = rated.length ? Math.round(rated.reduce((a,r)=>a+r.rating,0)/rated.length*10)/10 : null;
   const wonVote = !!(c.lastResult && c.lastResult.winner && c.lastResult.winner === c.current.key);
   let h = `<div class="card a-coral"><h3 style="margin-top:0">Current book</h3>`;
-  h += `<div class="pwrap">${bookRow(c.current, wonVote ? { badge: '\u2713 Won the club vote' } : {})}${wonVote ? reactionHTML(c.pollReactions || [], 'data-rtype="poll"', 'absr') : ''}</div>`;
+  h += `<div class="pwrap">${bookRow(c.current, { hideMemberAvg: true, ...(wonVote ? { badge: '\u2713 Won the club vote' } : {}) })}${wonVote ? reactionHTML(c.pollReactions || [], 'data-rtype="poll"', 'absr') : ''}</div>`;
   h += `<div class="row" id="rateSummary" style="margin-top:8px;cursor:pointer"><span class="grow muted">${rated.length?`Average \u2605 ${avg} (${rated.length} rating${rated.length>1?'s':''})`:'No ratings yet'}</span><span class="muted">Ratings \u203a</span></div>
       <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div class="pwrap"><div class="person">${avatarHTML(r.name, r.userId)}<span class="pname">${esc(r.name)}</span>${r.rating===null||r.rating===undefined?'<span class="notrated">Not rated</span>':`<span class="pill"><span class="pstar">\u2605</span>${r.rating}</span>`}</div>${(r.rating!==null&&r.rating!==undefined&&r.userId!==user.id)?reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`, 'abs'):''}</div>`).join('')}</div>`;
   if(c.role==='admin' && c.library.length > 1){
