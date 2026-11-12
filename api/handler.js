@@ -647,7 +647,10 @@ function hasUpcomingDate(club) {
   return !isNaN(d.getTime()) && d.getTime() >= Date.now() - 864e5;
 }
 function setCurrentBook(db, club, key) {
-  if (club.current && club.current !== key) club.previousBook = club.current;
+  if (club.current && club.current !== key) {
+    club.previousBook = club.current;
+    club.bookHistory = [club.current, ...(club.bookHistory || []).filter((k) => k !== club.current && k !== key)].slice(0, 20);
+  }
   club.current = key;
   seedDiscussion(club);
 }
@@ -748,6 +751,7 @@ function publicClub(db, club, userId) {
     lastResult: club.lastResult || null,
     pendingWinner: club.pendingWinner ? bookView(db, club.pendingWinner, userId) : null,
     previousBook: club.previousBook ? bookView(db, club.previousBook, userId) : null,
+    history: (club.bookHistory || []).map((k) => bookView(db, k, userId)),
     pollReactions: club.lastResult && club.lastResult.winner ? reactionChips(db, club, userId, (x) => x.type === 'poll' && x.at === club.lastResult.at) : [],
     discussion: {
       template: club.discussionTemplate || [],
@@ -1563,13 +1567,30 @@ module.exports = async (req, res) => {
         if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
         if (!club.previousBook) return send(400, { error: 'No previous book to go back to' });
         const back = club.previousBook;
-        club.previousBook = club.current || null;
-        club.current = back;
-        seedDiscussion(club);
+        club.pendingWinner = null;
+        setCurrentBook(db, club, back);
         await notifyMembers(db, club, {
           exceptUserId: me.id, type: 'poll_result', dedupeKey: 'revert:' + club.id + ':' + nowISO(),
           title: 'Current book changed in ' + club.name,
           body: bookTitleOf(db, back) + ' is the club\u2019s current book again.',
+        });
+        await writeDB(db);
+        return send(200, { club: publicClub(db, club, me.id) });
+      }
+      case 'revertTo': {
+        const club = db.clubs.find((c) => c.id === body.clubId);
+        if (!club) return send(404, { error: 'Club not found' });
+        const mem = club.members.find((m) => m.userId === me.id);
+        if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
+        const key = body.bookKey;
+        if (!key || (!(club.bookHistory || []).includes(key) && !club.library.includes(key))) return send(400, { error: 'That book is not in this club\u2019s history or library' });
+        if (club.current === key) return send(200, { club: publicClub(db, club, me.id) });
+        club.pendingWinner = null;
+        setCurrentBook(db, club, key);
+        await notifyMembers(db, club, {
+          exceptUserId: me.id, type: 'poll_result', dedupeKey: 'revert:' + club.id + ':' + nowISO(),
+          title: 'Current book changed in ' + club.name,
+          body: bookTitleOf(db, key) + ' is the club\u2019s current book again.',
         });
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
