@@ -865,6 +865,10 @@ function pollCandidatesOf(c){
 function nextBookSection(c){
   const isAdmin = c.role==='admin';
   const cand = pollCandidatesOf(c);
+  if(c.pendingWinner){
+    const w = c.pendingWinner;
+    return `<div class="card a-violet"><h3 style="margin-top:0">Next book</h3><div class="row"><div class="grow"><b>${esc(w.title)}</b>${w.author?`<div class="muted">${esc(w.author)}</div>`:''}<div class="muted" style="margin-top:2px">Won the vote. It becomes the current book when the meeting date is set.</div></div></div></div>`;
+  }
   let inner = '';
   if(c.poll){
     const opts = c.poll.options || [];
@@ -1063,6 +1067,7 @@ function meetingSection(c){
   Object.values(c.availability||{}).forEach(days=>days.forEach(d=>overlap[d]=(overlap[d]||0)+1));
   let h = `<div class="card a-violet"><h3 style="margin-top:0">Group meeting</h3>
   <div class="muted">Meets every ${c.meetingFrequencyWeeks} week${c.meetingFrequencyWeeks>1?'s':''}</div>`;
+  if(isAdmin && c.pendingWinner) h += `<div class="muted" style="margin-top:6px">${esc(c.pendingWinner.title)} won the vote. Picking the meeting date makes it the current book.</div>`;
   if(c.week && c.week.length){
     const wFirst = c.week[0], wLast = c.week[c.week.length-1];
     if(isAdmin){
@@ -1150,7 +1155,7 @@ function clubStripHTML(c){
   <div class="cs-main"><h2 class="cs-title">${esc(c.name)}${c.private?'<span class="badge">Private</span>':''}</h2>${sub}</div>
   <span class="cs-side">${multi && idx < ids.length - 1 ? `<button class="iconbtn" id="clubNext" aria-label="Next club">${icon('chev',22)}</button>` : ''}</span>
   <button class="iconbtn" id="clubList" aria-label="All clubs">${icon('list',22)}</button>${c.role==='admin'?`<button class="iconbtn" id="gear" aria-label="Settings">${icon('gear',22)}</button>`:''}<button class="iconbtn" id="clubMenuBtn" aria-label="Club options">${icon('dots',22)}</button>
-  <div class="clubmenu hide" id="clubMenu"><button class="cmitem" id="cmLeave">Leave club</button></div>
+  <div class="clubmenu hide" id="clubMenu">${c.role==='admin' && c.previousBook ? `<button class="cmitem" id="cmRevert" style="color:var(--ink)">Revert to ${esc(c.previousBook.title)}</button>` : ''}<button class="cmitem" id="cmLeave">Leave club</button></div>
   </div>`;
 }
 function viewClub(){
@@ -1214,6 +1219,12 @@ function viewClub(){
     wireDatePicker('pickDate', async (v)=>{ try{ const j=await api('pickDate',{clubId:c.id, date:v}); currentClub=j.club; viewClub(); }catch(e){ toast(e.message); } });
   }
   if($('#clubMenuBtn')) $('#clubMenuBtn').onclick = ()=>{ const m = $('#clubMenu'); if(m) m.classList.toggle('hide'); };
+  if($('#cmRevert')) $('#cmRevert').onclick = ()=>{
+    const m = $('#clubMenu'); if(!m) return;
+    m.innerHTML = `<div style="padding:8px 10px 2px"><b>Make ${esc(c.previousBook.title)} the current book again?</b><div class="muted" style="font-size:14px;margin-top:2px">${esc(c.current ? c.current.title : 'The current book')} becomes the previous book, so you can undo this the same way.</div></div><div class="row" style="padding:8px 10px 10px"><button class="small" id="cmRevertYes">Make it current</button><button class="small ghost" id="cmRevertNo">Cancel</button></div>`;
+    $('#cmRevertNo').onclick = ()=>viewClub();
+    $('#cmRevertYes').onclick = async ()=>{ try{ const j = await api('revertCurrent',{clubId:c.id}); currentClub = j.club; toast(j.club.current.title + ' is the current book again'); viewClub(); }catch(e){ toast(e.message); } };
+  };
   if($('#cmLeave')) $('#cmLeave').onclick = ()=>{
     const m = $('#clubMenu'); if(!m) return;
     m.innerHTML = `<div style="padding:8px 10px 2px"><b>Leave ${esc(c.name)}?</b><div class="muted" style="font-size:14px;margin-top:2px">You can rejoin later if the club is public or you are invited again.</div></div><div class="row" style="padding:8px 10px 10px"><button class="small danger" id="cmLeaveYes">Leave club</button><button class="small ghost" id="cmLeaveNo">Cancel</button></div>`;
