@@ -417,10 +417,6 @@ struct ClubView: View {
                 Text("For the group")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                if d.group.isEmpty {
-                    Text("No questions yet")
-                        .foregroundStyle(.secondary)
-                }
                 ForEach(d.group) { q in
                     HStack(alignment: .top, spacing: 8) {
                         VStack(alignment: .leading, spacing: 1) {
@@ -456,10 +452,6 @@ struct ClubView: View {
                 Text("Yours, only you see these")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                if d.mine.isEmpty {
-                    Text("None yet")
-                        .foregroundStyle(.secondary)
-                }
                 ForEach(d.mine) { q in
                     HStack(alignment: .top, spacing: 8) {
                         Text(q.text)
