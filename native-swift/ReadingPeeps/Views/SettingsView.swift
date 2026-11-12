@@ -12,7 +12,7 @@ struct ClubSettingsView: View {
     @State private var freqWeeks = 2
     @State private var autoPoll = false
     @State private var confirmDelete = false
-    @State private var templateText = ""
+    @State private var templateRows: [String] = []
     @State private var templateLoaded = false
     @State private var templateSaved = false
 
@@ -39,8 +39,23 @@ struct ClubSettingsView: View {
                     } header: { rpSectionHeader("Meeting frequency") }
                     .listRowBackground(Color.rpCream)
                     Section {
-                        TextField("One question per line", text: $templateText, axis: .vertical)
-                            .lineLimit(4...10)
+                        ForEach(templateRows.indices, id: \.self) { i in
+                            HStack(spacing: 8) {
+                                TextField("Question", text: templateBinding(i), axis: .vertical)
+                                    .lineLimit(1...4)
+                                Button(role: .destructive) {
+                                    templateRows.remove(at: i)
+                                } label: {
+                                    Image(systemName: "minus.circle.fill")
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        Button {
+                            templateRows.append("")
+                        } label: {
+                            Label("Add question", systemImage: "plus.circle.fill")
+                        }
                         Button("Save template") {
                             Task { await saveTemplate() }
                         }
@@ -86,7 +101,7 @@ struct ClubSettingsView: View {
             freqWeeks = fresh.meetingFrequencyWeeks
             autoPoll = fresh.autoPoll
             if !templateLoaded {
-                templateText = (fresh.discussion?.template ?? []).joined(separator: "\n")
+                templateRows = fresh.discussion?.template ?? []
                 templateLoaded = true
             }
         } catch {
@@ -131,9 +146,16 @@ struct ClubSettingsView: View {
         } catch { errorMessage = errorText(error) }
     }
 
+    private func templateBinding(_ index: Int) -> Binding<String> {
+        Binding(
+            get: { index < templateRows.count ? templateRows[index] : "" },
+            set: { if index < templateRows.count { templateRows[index] = $0 } }
+        )
+    }
+
     private func saveTemplate() async {
-        let questions = templateText.split(separator: "\n")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
+        let questions = templateRows
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         do {
             let updated: ClubResponse = try await APIClient.shared.call("setDiscussionTemplate", ["clubId": clubId, "questions": questions])

@@ -40,15 +40,15 @@ struct ClubView: View {
             if let club {
                 List {
                     currentBookSection(club)
-                    nextBookSection(club)
-                    meetingSection(club)
-                    discussionSection(club)
                     Section {
                         NavigationLink(value: Route.library(clubId)) {
                             Label("Library", systemImage: "books.vertical")
                         }
                     }
                     .listRowBackground(Color.rpCream)
+                    nextBookSection(club)
+                    meetingSection(club)
+                    discussionSection(club)
                 }
                 .refreshable { await load() }
                 .brandScreen()
@@ -150,23 +150,11 @@ struct ClubView: View {
             if let current = c.current {
                 VStack(alignment: .leading, spacing: 5) {
                     BookRowView(title: current.title, author: current.author, year: current.year,
-                                cover: current.cover, ratings: ratingsText(for: current), coverWidth: 60)
+                                cover: current.cover, ratings: ratingsText(for: current), coverWidth: 60,
+                                badge: (c.lastResult?.winner ?? nil) == current.key ? "Won the club vote" : nil)
                     if let result = c.lastResult, let winner = result.winner, winner == current.key {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 5) {
-                                Image(systemName: "checkmark")
-                                    .font(.caption2.weight(.bold))
-                                Text("Won the club vote")
-                                    .font(.caption.weight(.semibold))
-                            }
-                            .foregroundStyle(Color.rpInk)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 3)
-                            .background(Color.rpPill)
-                            .clipShape(Capsule())
-                            ReactionChipsView(chips: c.pollReactions ?? []) { emoji in
-                                Task { await react(type: "poll", bookKey: nil, subject: nil, emoji: emoji) }
-                            }
+                        ReactionChipsView(chips: c.pollReactions ?? []) { emoji in
+                            Task { await react(type: "poll", bookKey: nil, subject: nil, emoji: emoji) }
                         }
                         .padding(.leading, 72)
                     }

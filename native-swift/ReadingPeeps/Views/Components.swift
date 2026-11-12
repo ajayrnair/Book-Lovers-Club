@@ -167,15 +167,32 @@ struct BookRowView: View {
     let year: String?
     let cover: String?
     var ratings: String = ""
+    var badge: String? = nil
     var coverWidth: CGFloat = 44
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             CoverView(urlString: cover, width: coverWidth)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.body)
-                    .lineLimit(2)
+                HStack(alignment: .center, spacing: 6) {
+                    Text(title)
+                        .font(.body)
+                        .lineLimit(2)
+                    if let badge {
+                        HStack(spacing: 3) {
+                            Image(systemName: "checkmark")
+                                .font(.caption2.weight(.bold))
+                            Text(badge)
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(Color.rpInk)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(Color.rpPill)
+                        .clipShape(Capsule())
+                        .fixedSize()
+                    }
+                }
                 if let subtitle = subtitleText {
                     Text(subtitle)
                         .font(.subheadline)
