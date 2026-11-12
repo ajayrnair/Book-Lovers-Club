@@ -217,6 +217,9 @@ struct Club: Codable, Equatable, Identifiable {
     let lastResult: LastResult?
     let pollReactions: [ReactionChip]?
     let discussion: Discussion?
+    let pendingWinner: Book?
+    let previousBook: Book?
+    let history: [Book]?
 
     var isAdmin: Bool { role == "admin" }
 

@@ -30,6 +30,7 @@ struct ClubView: View {
     @State private var savedVisible = false
     @FocusState private var editorFocus: EditorField?
     @State private var confirmLeave = false
+    @State private var showRevertPicker = false
 
     private enum EditorField { case link, address }
 
@@ -69,6 +70,11 @@ struct ClubView: View {
                         }
                     }
                     Menu {
+                        if club.isAdmin && (!(club.history ?? []).isEmpty || club.library.count > 1) {
+                            Button { showRevertPicker = true } label: {
+                                Label("Revert to a previous book", systemImage: "arrow.uturn.backward")
+                            }
+                        }
                         Button("Leave club", role: .destructive) { confirmLeave = true }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -86,6 +92,7 @@ struct ClubView: View {
             Button("Leave", role: .destructive) { Task { await leave() } }
             Button("Cancel", role: .cancel) {}
         }
+        .sheet(isPresented: $showRevertPicker) { revertPicker }
     }
 
     // MARK: - loading & syncing
@@ -324,6 +331,18 @@ struct ClubView: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                     }
+                }
+            } header: { rpSectionHeader("Next book") }
+            .listRowBackground(Color.rpCream)
+        } else if let pending = c.pendingWinner {
+            Section {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(pending.title)
+                        .font(.body)
+                    Text("Won the club vote. It becomes the current book when the meeting date is set.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
                 }
             } header: { rpSectionHeader("Next book") }
             .listRowBackground(Color.rpCream)
@@ -788,6 +807,52 @@ struct ClubView: View {
             }
             APIClient.shared.track("progress_set", page: "club", feature: "progress", clubId: c.id)
             await load()
+        } catch { present(error) }
+    }
+
+    private func revertRow(_ book: Book) -> some View {
+        Button(book.title) {
+            showRevertPicker = false
+            Task { await revertTo(book) }
+        }
+        .foregroundStyle(.primary)
+    }
+
+    private var revertPicker: some View {
+        NavigationStack {
+            List {
+                if let hist = club?.history, !hist.isEmpty {
+                    Section("Previous books") {
+                        ForEach(hist, id: \.key) { book in revertRow(book) }
+                    }
+                }
+                let histKeys = Set((club?.history ?? []).map { $0.key })
+                let others = (club?.library ?? []).filter { $0.key != club?.current?.key && !histKeys.contains($0.key) }
+                if !others.isEmpty {
+                    Section("Library") {
+                        ForEach(others, id: \.key) { book in revertRow(book) }
+                    }
+                }
+            }
+            .brandScreen()
+            .navigationTitle("Revert to a previous book")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showRevertPicker = false }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    private func revertTo(_ book: Book) async {
+        do {
+            try await withRetry {
+                try await APIClient.shared.callDiscard("revertTo", ["clubId": clubId, "bookKey": book.key])
+            }
+            await load()
+            await app.refreshClubs()
         } catch { present(error) }
     }
 
