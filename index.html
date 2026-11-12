@@ -205,6 +205,8 @@ const $ = (s, el=document) => el.querySelector(s);
 const app = $('#app');
 let token = localStorage.getItem('blc_token') || '';
 if(location.hash.startsWith('#t=')){ token = location.hash.slice(3); localStorage.setItem('blc_token', token); history.replaceState(null, '', '/'); }
+let resetToken = '';
+if(location.hash.startsWith('#reset=')){ resetToken = location.hash.slice(7); history.replaceState(null, '', '/'); }
 const authMsg = new URLSearchParams(location.search).get('auth') === 'failed' ? 'Google sign in did not work' : '';
 if(authMsg) history.replaceState(null, '', '/');
 let user = null, myClubs = [], currentClub = null, tab = 'home';
@@ -242,6 +244,8 @@ async function dispatchRoute(){
     else if(p === '/me/stats') viewStats();
     else if(p === '/about') viewAbout();
     else if(p === '/help') viewHelp();
+    else if(p === '/forgot') viewForgot();
+    else if(p === '/reset') viewResetPassword();
     else if(p === '/notifications') viewNotifications();
     else if(m = p.match(/^\/club\/([\w-]+)\/settings\/(members|frequency|discussion|delete)\/?$/)){
       if(await ensureClub(m[1])) ({members: viewMembersPage, frequency: viewFrequencyPage, discussion: viewDiscussionTemplatePage, delete: viewDeleteClubPage})[m[2]]();
@@ -369,6 +373,7 @@ function viewAuth(msg='', form='in'){
     <div class="ordiv">or</div>
     <button class="gbtn" data-g>${gLogo}<span>Sign in with Google</span></button>
     <div style="text-align:center;margin-top:12px"><a href="#" id="toSignup">Create account</a></div>
+    <div style="text-align:center;margin-top:8px"><a href="#" id="toForgot">Forgot your password?</a></div>
   </div>
   <div class="card hide" id="formUp">
     <h2 style="margin-top:2px">Create account</h2>
@@ -383,9 +388,65 @@ function viewAuth(msg='', form='in'){
   if(form==='up'){ $('#formIn').classList.add('hide'); $('#formUp').classList.remove('hide'); }
   app.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{ location.href = '/api/auth/google'; });
   $('#toSignup').onclick = (e)=>{ e.preventDefault(); $('#formIn').classList.add('hide'); $('#formUp').classList.remove('hide'); };
+  $('#toForgot').onclick = (e)=>{ e.preventDefault(); viewForgot($('#inEmail').value); };
   $('#toSignin').onclick = (e)=>{ e.preventDefault(); $('#formUp').classList.add('hide'); $('#formIn').classList.remove('hide'); };
   $('#signin').onclick = async ()=>{ try{ const j=await api('signin',{email:$('#inEmail').value, password:$('#inPw').value}); afterAuth(j); }catch(e){ $('#inErr').textContent=e.message; } };
   $('#signup').onclick = async ()=>{ try{ const j=await api('signup',{name:$('#upName').value, email:$('#upEmail').value, password:$('#upPw').value}); afterAuth(j); }catch(e){ $('#upErr').textContent=e.message; } };
+}
+function viewForgot(email=''){
+  track('page_view', {page:'forgot'});
+  disarmClubNav();
+  navReplace('/');
+  $('#tabs').classList.add('hide'); $('#signOut').classList.add('hide'); $('#bell').classList.add('hide');
+  app.innerHTML = `
+  <div class="brand"><img src="/icon.svg" alt=""><div class="bname">Reading Peeps</div></div>
+  <div class="card" id="forgotCard">
+    <h2 style="margin-top:2px">Forgot your password</h2>
+    <p class="muted">We will email you a link to set a new one. The link works once and expires in an hour.</p>
+    <input type="email" id="fgEmail" data-enter="fgSend" placeholder="Email" autocomplete="email" value="${esc(email)}">
+    <div class="err" id="fgErr"></div>
+    <button id="fgSend" style="width:100%">Email me a reset link</button>
+    <div style="text-align:center;margin-top:12px"><a href="#" id="fgBack">Back to sign in</a></div>
+  </div>`;
+  $('#fgBack').onclick = (e)=>{ e.preventDefault(); user ? boot() : viewAuth(); };
+  $('#fgSend').onclick = async ()=>{
+    const em = $('#fgEmail').value.trim();
+    if(!em){ $('#fgErr').textContent = 'Type your email first'; return; }
+    try{
+      await api('requestPasswordReset', {email: em});
+      $('#forgotCard').innerHTML = `<h2 style="margin-top:2px">Check your email</h2>
+      <p class="muted">If that email has an account, a reset link is on its way. It works once and expires in an hour.</p>
+      <div style="text-align:center;margin-top:12px"><a href="#" id="fgBack2">Back to sign in</a></div>`;
+      $('#fgBack2').onclick = (e)=>{ e.preventDefault(); user ? boot() : viewAuth(); };
+    }catch(e){ $('#fgErr').textContent = e.message; }
+  };
+}
+function viewResetPassword(){
+  track('page_view', {page:'reset'});
+  disarmClubNav();
+  navReplace('/');
+  $('#tabs').classList.add('hide'); $('#signOut').classList.add('hide'); $('#bell').classList.add('hide');
+  app.innerHTML = `
+  <div class="brand"><img src="/icon.svg" alt=""><div class="bname">Reading Peeps</div></div>
+  <div class="card">
+    <h2 style="margin-top:2px">Set a new password</h2>
+    <input type="password" id="rpPw" data-enter="rpSave" placeholder="New password, at least 8 characters" autocomplete="new-password">
+    <input type="password" id="rpPw2" data-enter="rpSave" placeholder="Type it again" autocomplete="new-password">
+    <div class="err" id="rpErr"></div>
+    <button id="rpSave" style="width:100%">Save and sign in</button>
+    <div style="text-align:center;margin-top:12px"><a href="#" id="rpNew">Ask for a new link</a></div>
+  </div>`;
+  $('#rpNew').onclick = (e)=>{ e.preventDefault(); viewForgot(); };
+  $('#rpSave').onclick = async ()=>{
+    const pw = $('#rpPw').value, pw2 = $('#rpPw2').value;
+    if(pw.length < 8){ $('#rpErr').textContent = 'Use at least 8 characters'; return; }
+    if(pw !== pw2){ $('#rpErr').textContent = 'The two passwords do not match'; return; }
+    try{
+      const j = await api('resetPassword', {token: resetToken, password: pw});
+      resetToken = '';
+      afterAuth(j);
+    }catch(e){ $('#rpErr').textContent = e.message; }
+  };
 }
 function viewLanding(){
   track('page_view', {page:'landing'});
@@ -1423,7 +1484,7 @@ function viewHelp(){
   app.innerHTML = `<button class="ghost small" id="back">\u2039 Me</button>
   <h2>Help</h2>
   <div class="card"><h3 style="margin-top:0">Invites</h3><p style="margin-bottom:0">An invite is single use and tied to the invited email address. Sign in with that same email to accept it.</p></div>
-  <div class="card"><h3 style="margin-top:0">Forgot your password</h3><p style="margin-bottom:0">There is no automatic reset yet. Email us and we will sort it out.</p></div>
+  <div class="card"><h3 style="margin-top:0">Forgot your password</h3><p style="margin-bottom:0">On the sign in screen, tap Forgot your password. We email you a link that works once and expires in an hour.</p></div>
   <div class="card"><h3 style="margin-top:0">Delete your account</h3><p style="margin-bottom:0">Me, then Delete account. It removes your account, your ratings and your club memberships.</p></div>
   <div class="card"><h3 style="margin-top:0">Delete a club</h3><p style="margin-bottom:0">Club settings, if you are an admin. It asks for confirmation first.</p></div>
   <div class="card"><h3 style="margin-top:0">Cost</h3><p style="margin-bottom:0">Nothing. There are no ads and no payments, and it stays that way.</p></div>
@@ -1469,7 +1530,7 @@ async function viewStats(){
 // invite deep link
 const inv = new URLSearchParams(location.search).get('invite');
 if(inv){ localStorage.setItem('blc_invite', inv); history.replaceState({}, '', location.pathname); }
-if(token) boot(); else if(authMsg) viewAuth(authMsg); else viewLanding();
+if(resetToken) viewResetPassword(); else if(token) boot(); else if(authMsg) viewAuth(authMsg); else viewLanding();
 </script>
 <script defer src="/_vercel/insights/script.js"></script>
 </body>

@@ -320,6 +320,35 @@ function bookTitleOf(db, key) {
   const b = (db.books || {})[key];
   return b && b.title ? b.title : 'A book';
 }
+async function sendResetEmail(apiKey, { to, link }) {
+  const base = process.env.RESEND_API_BASE || 'https://api.resend.com';
+  const subject = 'Reset your Reading Peeps password';
+  const text = [
+    'Someone asked to reset the password for this Reading Peeps account.',
+    '',
+    `Set a new password here: ${link}`,
+    '',
+    'This link works once and expires in an hour.',
+    'If you did not ask for this, ignore this email. Your password stays the same.',
+  ].join('\n');
+  const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#fff9f1;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#3a1b2e">
+  <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:12px;padding:28px;border:1px solid #f0e2d4">
+    <p style="margin:0 0 12px;font-size:18px">Reset your <strong>Reading Peeps</strong> password</p>
+    <p style="margin:0 0 8px;font-size:15px">Someone asked to reset the password for this account.</p>
+    <p style="margin:20px 0"><a href="${escHtml(link)}" style="display:inline-block;background:#c93a54;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600">Set a new password</a></p>
+    <p style="margin:0 0 8px;font-size:14px">Or open this link: <a href="${escHtml(link)}" style="color:#c93a54">${escHtml(link)}</a></p>
+    <p style="margin:0;font-size:13px;color:#8a6d7d">This link works once and expires in an hour. If you did not ask for this, ignore this email. Your password stays the same.</p>
+  </div>
+</body></html>`;
+  const r = await fetch(base + '/emails', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ from: 'Reading Peeps <notifications@readingpeeps.com>', to, subject, text, html }),
+  });
+  if (!r.ok) throw new Error('reset email failed ' + r.status);
+  return await r.json().catch(() => ({}));
+}
+
 async function sendNoticeEmail(apiKey, { to, subject, text }) {
   const base = process.env.RESEND_API_BASE || 'https://api.resend.com';
   const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#fff9f1;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#3a1b2e">
@@ -1053,7 +1082,7 @@ module.exports = async (req, res) => {
   const SUPER_ADMIN_EMAILS = ['ajay.r.nair@gmail.com', 'hazel@readingpeeps.com'];
   const isSuperAdmin = !!me && SUPER_ADMIN_EMAILS.includes(me.email);
   const action = body.action || '';
-  const needAuth = !['signup', 'signin', 'signinApple', 'track'].includes(action);
+  const needAuth = !['signup', 'signin', 'signinApple', 'requestPasswordReset', 'resetPassword', 'track'].includes(action);
   if (needAuth && !me) return send(401, { error: 'Sign in first' });
   if (me) {
     let dirty = false;
@@ -1094,6 +1123,44 @@ module.exports = async (req, res) => {
           u = { id: uid(), name: (body.name || '').trim() || aEmail.split('@')[0], email: aEmail, pass: null, appleSub: claims.sub, createdAt: nowISO() };
           db.users.push(u);
         } else if (!u.appleSub) u.appleSub = claims.sub;
+        const t = uid() + uid(); db.sessions[t] = u.id;
+        await writeDB(db);
+        return send(200, { token: t, user: { id: u.id, name: u.name, email: u.email } });
+      }
+      case 'requestPasswordReset': {
+        // Always the same answer, account or not, so the form cannot be
+        // used to probe which emails have accounts.
+        const email = (body.email || '').toLowerCase();
+        const u = db.users.find((x) => x.email === email);
+        if (u) {
+          const recent = u.resetAt && Date.now() - new Date(u.resetAt).getTime() < 2 * 60e3;
+          if (!recent) {
+            const raw = uid() + uid() + uid();
+            u.resetHash = crypto.createHash('sha256').update(raw).digest('hex');
+            u.resetExpires = new Date(Date.now() + 3600e3).toISOString();
+            u.resetAt = nowISO();
+            await writeDB(db);
+            const apiKey = process.env.RESEND_API_KEY || '';
+            if (apiKey) {
+              const origin = 'https://' + (req.headers['x-forwarded-host'] || req.headers.host || 'www.readingpeeps.com');
+              try { await sendResetEmail(apiKey, { to: u.email, link: `${origin}/#reset=${raw}` }); } catch (e) { }
+            }
+          }
+        }
+        return send(200, { ok: true });
+      }
+      case 'resetPassword': {
+        const raw = String(body.token || '');
+        const pw = String(body.password || '');
+        if (pw.length < 8) return send(400, { error: 'Use at least 8 characters' });
+        const hash = crypto.createHash('sha256').update(raw).digest('hex');
+        const u = raw ? db.users.find((x) => x.resetHash && x.resetHash === hash) : null;
+        if (!u || !u.resetExpires || new Date(u.resetExpires).getTime() < Date.now()) {
+          return send(400, { error: 'That link has expired or was already used. Ask for a new one.' });
+        }
+        u.pass = hashPw(pw);
+        delete u.resetHash; delete u.resetExpires; delete u.resetAt;
+        Object.keys(db.sessions).forEach((t) => { if (db.sessions[t] === u.id) delete db.sessions[t]; });
         const t = uid() + uid(); db.sessions[t] = u.id;
         await writeDB(db);
         return send(200, { token: t, user: { id: u.id, name: u.name, email: u.email } });
