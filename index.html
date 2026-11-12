@@ -170,7 +170,13 @@
   .reactions{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap}
   .rchip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:0 7px;font-size:12.5px;line-height:1.6;cursor:pointer;color:inherit;font-family:inherit}
   .rchip.mine{background:#ffe3da;border-color:#ff8a66}
-  .rslot{width:23px;height:23px;border-radius:50%;border:1px solid var(--line);background:transparent;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;line-height:1;cursor:pointer;padding:0;color:var(--muted);font-family:inherit}
+  .rslot{width:23px;height:23px;min-height:0;min-width:0;border-radius:50%;border:1px solid var(--line);background:transparent;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;line-height:1;cursor:pointer;padding:0;color:var(--muted);font-family:inherit}
+  .pwrap{position:relative;padding-bottom:12px}
+  .reactions.abs{position:absolute;left:44px;bottom:0;z-index:2}
+  .reactions.absr{position:absolute;right:2px;bottom:0;z-index:2}
+  .reactions.abs .rchip,.reactions.absr .rchip{background:var(--card)}
+  .reactions.abs .rslot,.reactions.absr .rslot{background:var(--card)}
+  .reactions.abs .rslot.mine,.reactions.absr .rslot.mine{background:#ffe3da}
   .rslot.mine{background:#ffe3da;border-color:#ff8a66;color:inherit}
   .bellbadge{background:#c93a54;color:#fff;border-radius:999px;padding:0 6px;font-size:12px;font-weight:700;margin-left:4px}
   .vidwrap{position:relative;padding-top:56.25%;border-radius:12px;overflow:hidden;background:#2e0e28}
@@ -931,7 +937,7 @@ function memberProgressHTML(c){
       return progEditorOpen ? row + myProgressHTML(c) : row;
     }
     if(isFin && m.userId!==user.id && p){
-      return row + `<div style="margin:1px 0 5px 44px">${reactionHTML(p.reactions || [], `data-rtype="finish" data-rbook="${esc(c.current.key)}" data-rsubject="${m.userId}"`)}</div>`;
+      return `<div class="pwrap">${row}${reactionHTML(p.reactions || [], `data-rtype="finish" data-rbook="${esc(c.current.key)}" data-rsubject="${m.userId}"`, 'abs')}</div>`;
     }
     return row;
   }).join('')}</div>`;
@@ -978,12 +984,9 @@ function currentSection(c){
   const avg = rated.length ? Math.round(rated.reduce((a,r)=>a+r.rating,0)/rated.length*10)/10 : null;
   const wonVote = !!(c.lastResult && c.lastResult.winner && c.lastResult.winner === c.current.key);
   let h = `<div class="card a-coral"><h3 style="margin-top:0">Current book</h3>`;
-  h += bookRow(c.current, wonVote ? { badge: '\u2713 Won the club vote' } : {});
-  if(wonVote){
-    h += `<div style="margin-top:6px">${reactionHTML(c.pollReactions || [], 'data-rtype="poll"')}</div>`;
-  }
+  h += `<div class="pwrap">${bookRow(c.current, wonVote ? { badge: '\u2713 Won the club vote' } : {})}${wonVote ? reactionHTML(c.pollReactions || [], 'data-rtype="poll"', 'absr') : ''}</div>`;
   h += `<div class="row" id="rateSummary" style="margin-top:8px;cursor:pointer"><span class="grow muted">${rated.length?`Average \u2605 ${avg} (${rated.length} rating${rated.length>1?'s':''})`:'No ratings yet'}</span><span class="muted">Ratings \u203a</span></div>
-      <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div><div class="person">${avatarHTML(r.name, r.userId)}<span class="pname">${esc(r.name)}</span>${r.rating===null||r.rating===undefined?'<span class="notrated">Not rated</span>':`<span class="pill"><span class="pstar">\u2605</span>${r.rating}</span>`}</div>${(r.rating!==null&&r.rating!==undefined&&r.userId!==user.id)?`<div style="margin:1px 0 4px 44px">${reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`)}</div>`:''}</div>`).join('')}</div>`;
+      <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div class="pwrap"><div class="person">${avatarHTML(r.name, r.userId)}<span class="pname">${esc(r.name)}</span>${r.rating===null||r.rating===undefined?'<span class="notrated">Not rated</span>':`<span class="pill"><span class="pstar">\u2605</span>${r.rating}</span>`}</div>${(r.rating!==null&&r.rating!==undefined&&r.userId!==user.id)?reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`, 'abs'):''}</div>`).join('')}</div>`;
   if(c.role==='admin' && c.library.length > 1){
     h += `<div style="margin-top:8px"><button class="small ghost" id="changeBookBtn">Change book</button></div><div id="changeBookPanel" class="hide" style="margin-top:4px">${c.library.filter(b=>b.key!==c.current.key).map(b=>`<button class="cmitem" data-change="${esc(b.key)}" style="color:var(--ink);display:block;width:100%;text-align:left;background:none;border:none;padding:8px 10px;cursor:pointer;font-size:15px">${esc(b.title)}</button>`).join('')}</div>`;
   }
@@ -1128,7 +1131,7 @@ function avatarHTML(name, userId){
   return `<span class="avatar" style="background:${AV_COLORS[h % AV_COLORS.length]}">${esc(initials.toUpperCase())}</span>`;
 }
 const REACTION_EMOJIS = ['❤️','👏','🔥','😮','😂','🎉'];
-function reactionHTML(chips, attrs){
+function reactionHTML(chips, attrs, cls){
   const list = chips || [];
   const mine = list.find(ch=>ch.mine);
   const othersH = list.map(ch=>{
@@ -1140,7 +1143,7 @@ function reactionHTML(chips, attrs){
   const slot = mine
     ? `<button class="rslot mine" data-radd aria-label="Your reaction. Tap to change or remove it">${mine.emoji}</button>`
     : `<button class="rslot" data-radd aria-label="Add a reaction">${smiley}</button>`;
-  return `<span class="reactions">${othersH}<span class="rpal hide" style="display:none;gap:3px">${palette}</span>${slot}</span>`;
+  return `<span class="reactions ${cls || ''}">${othersH}<span class="rpal hide" style="display:none;gap:3px">${palette}</span>${slot}</span>`;
 }
 function discussionSection(c){
   if(!c.current) return '';
@@ -1149,10 +1152,10 @@ function discussionSection(c){
   const grow = (q, scope)=>`<div class="row" style="padding:3px 0;align-items:flex-start"><span class="grow" style="font-size:15px">${esc(q.text)}${scope==='group' && q.byName ? ` <span class="muted" style="font-size:13px">· ${esc(q.byName)}</span>` : ''}</span>${(scope==='private' || q.mine || isAdmin) ? `<button class="ghost small" data-delq="${scope}:${q.id}">Remove</button>` : ''}</div>`;
   return `<div class="card a-teal"><h3 style="margin-top:0">Discussion questions</h3>
   <div class="muted" style="margin-bottom:4px">For the group</div>
-  ${d.group.length ? d.group.map(q=>grow(q,'group')).join('') : '<div class="muted">No questions yet</div>'}
+  ${d.group.map(q=>grow(q,'group')).join('')}
   <div class="row" style="margin-top:8px"><input type="text" id="qGroup" class="grow" placeholder="Add a question for the group" maxlength="500"><button class="qadd" id="qGroupAdd" aria-label="Add question">${icon('plus',20)}</button></div>
   <div class="muted" style="margin:14px 0 4px">Yours, only you see these</div>
-  ${d.mine.length ? d.mine.map(q=>grow(q,'private')).join('') : '<div class="muted">None yet</div>'}
+  ${d.mine.map(q=>grow(q,'private')).join('')}
   <div class="row" style="margin-top:8px"><input type="text" id="qMine" class="grow" placeholder="Add a private question" maxlength="500"><button class="qadd" id="qMineAdd" aria-label="Add question">${icon('plus',20)}</button></div>
   </div>`;
 }
