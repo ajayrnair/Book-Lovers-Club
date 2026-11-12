@@ -150,8 +150,9 @@ struct ClubView: View {
             if let current = c.current {
                 VStack(alignment: .leading, spacing: 5) {
                     BookRowView(title: current.title, author: current.author, year: current.year,
-                                cover: current.cover, ratings: ratingsText(for: current), coverWidth: 60,
-                                badge: (c.lastResult?.winner ?? nil) == current.key ? "Won the club vote" : nil)
+                                cover: current.cover, ratings: ratingsText(for: current),
+                                badge: (c.lastResult?.winner ?? nil) == current.key ? "Won the club vote" : nil,
+                                coverWidth: 60)
                     if let result = c.lastResult, let winner = result.winner, winner == current.key {
                         ReactionChipsView(chips: c.pollReactions ?? []) { emoji in
                             Task { await react(type: "poll", bookKey: nil, subject: nil, emoji: emoji) }
