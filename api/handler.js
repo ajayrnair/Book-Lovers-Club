@@ -1237,6 +1237,9 @@ module.exports = async (req, res) => {
         const userList = db.users.map((u) => ({ name: u.name, email: u.email, createdAt: u.createdAt, isTest: isTestUser(u), isSuperAdmin: SUPER_ADMIN_EMAILS.includes(u.email) }));
         const clubList = db.clubs.map((c) => ({
           name: c.name, private: !!c.private, memberCount: (c.members || []).length,
+          // First cycle (PM definition, proxy): a poll closed, its winner was promoted to
+          // current (lastResult persists after pickDate), and a meeting date is set.
+          firstCycle: !!(c.lastResult && c.lastResult.winner && c.current && c.meeting && c.meeting.date),
           ...(full ? { members: (c.members || []).map((m) => { const u = byId[m.userId]; return u ? { name: u.name, email: u.email, role: m.role } : { userId: m.userId, role: m.role, missing: true }; }) } : {}),
         }));
         const notifStats = (() => {
@@ -1294,7 +1297,7 @@ module.exports = async (req, res) => {
             test: userList.filter((u) => u.isTest).length,
             ...(full ? { list: userList } : {}),
           },
-          clubs: { total: clubList.length, list: clubList },
+          clubs: { total: clubList.length, withFirstCycle: clubList.filter((c) => c.firstCycle).length, list: clubList },
         });
       }
       case 'deleteTestUser': {

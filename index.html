@@ -571,8 +571,9 @@ async function viewNotifications(){
   const list = j.notifications || [];
   app.innerHTML = `<button class="ghost small" id="nBack">‹ Back</button>
   <h2>Notifications</h2>
-  ${list.length ? list.map(n=>`<div class="card nrow">${notifTile(n.type)}<div class="grow" style="min-width:0"><div class="ntitle">${esc(n.title)}</div><div class="nbody">${esc(n.body)}</div></div><div class="ntime">${relTime(n.createdAt)}</div>${n.readAt ? '' : '<span class="ndot"></span>'}</div>`).join('') : '<div class="card muted">Nothing yet. Voting and meeting updates will land here.</div>'}`;
+  ${list.length ? list.map(n=>`<div class="card nrow" ${n.clubId ? `data-nclub="${n.clubId}" style="cursor:pointer"` : ''}>${notifTile(n.type)}<div class="grow" style="min-width:0"><div class="ntitle">${esc(n.title)}</div><div class="nbody">${esc(n.body)}</div></div><div class="ntime">${relTime(n.createdAt)}</div>${n.readAt ? '' : '<span class="ndot"></span>'}</div>`).join('') : '<div class="card muted">Nothing yet. Voting and meeting updates will land here.</div>'}`;
   $('#nBack').onclick = ()=>backTo(()=>{ if(currentClub) viewClub(); else viewHome(); });
+  app.querySelectorAll('[data-nclub]').forEach(el=>el.onclick=()=>openClub(el.dataset.nclub));
   try{ await api('markNotificationsRead', {via:'web'}); }catch(e){}
   paintBell(0);
 }
@@ -841,7 +842,7 @@ function bookRow(b, opts={}){
     ${ratingsLine(b)}
     ${b.memberCount && !opts.hideMemberAvg ? `<div class="muted">Members ★ ${b.memberAverage} (${b.memberCount})</div>` : ''}
     ${opts.subline?`<div class="muted">${esc(opts.subline)}</div>`:''}
-    ${synHTML(b)}
+    ${opts.noSyn ? '' : synHTML(b)}
     </div>
     ${opts.rateLabel && !(b.myRating > 0) ? `<button class="ratelink" data-rateopen="${b.key}">Rate</button><span class="ratebox hide" data-ratebox="${b.key}">${rateStrip(b)}</span>` : `${opts.rateLabel ? '<span class="muted" style="font-size:13px;align-self:center">Your rating</span>' : ''}${rateStrip(b)}`}
     ${opts.current?`<button class="small ghost" data-setcurrent="${b.key}">Reading now</button>`:''}
@@ -1292,9 +1293,9 @@ function viewLibrary(){
   const read = rest.filter(b=>(b.finishedBy||[]).length>0);
   const toread = rest.filter(b=>!(b.finishedBy||[]).length);
   const groups = [];
-  if(cur) groups.push({ title:'Current book', books:[cur], opts:()=>({ badge:'Current book', rateLabel:true }) });
-  if(toread.length) groups.push({ title:'To read', books:toread, opts:()=>({ rateLabel:true }) });
-  if(read.length) groups.push({ title:'Read', books:read, opts:(b)=>({ rateLabel:true, subline:`Finished by ${(b.finishedBy||[]).length} of ${c.members.length}` }) });
+  if(cur) groups.push({ title:'Current book', books:[cur], opts:()=>({ badge:'Current book', rateLabel:true, noSyn:true }) });
+  if(toread.length) groups.push({ title:'To read', books:toread, opts:()=>({ rateLabel:true, noSyn:true }) });
+  if(read.length) groups.push({ title:'Read', books:read, opts:(b)=>({ rateLabel:true, noSyn:true, subline:`Finished by ${(b.finishedBy||[]).length} of ${c.members.length}` }) });
   app.innerHTML = `
   <button class="ghost small" id="back">‹ ${esc(c.name)}</button>
   <div class="row"><h2 class="grow">Library</h2><button class="small ic" id="addBtn">${icon('plus',16)} Add books</button></div>
