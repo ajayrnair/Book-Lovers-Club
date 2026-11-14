@@ -123,7 +123,7 @@ enum Dates {
         return f.string(from: d)
     }
 
-    /// Default poll end: a week out, or the day before the meeting if sooner.
+    /// Default poll end: the day before the meeting when one is set, else a week out. Mirrors the web app and the server.
     static func defaultPollEnd(meetingDate: String) -> String {
         if !meetingDate.isEmpty, parseDay(meetingDate) != nil {
             return shiftDay(meetingDate, by: -1)

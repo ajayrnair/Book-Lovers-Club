@@ -894,7 +894,7 @@ function nextBookSection(c){
   const cand = pollCandidatesOf(c);
   if(c.pendingWinner){
     const w = c.pendingWinner;
-    return `<div class="card a-violet"><h3 style="margin-top:0">Next book</h3><div class="row"><div class="grow"><b>${esc(w.title)}</b>${w.author?`<div class="muted">${esc(w.author)}</div>`:''}<div class="muted" style="margin-top:2px">Won the vote. It becomes the current book when the meeting date is set.</div></div></div></div>`;
+    return `<div class="card a-violet"><h3 style="margin-top:0">Next book</h3><div class="row"><div class="grow"><b>${esc(w.title)}</b>${w.author?`<div class="muted">${esc(w.author)}</div>`:''}<div class="muted" style="margin-top:2px">Won the club vote. It becomes the current book when the meeting date is set.</div></div></div></div>`;
   }
   let inner = '';
   if(c.poll){
@@ -1094,7 +1094,7 @@ function meetingSection(c){
   Object.values(c.availability||{}).forEach(days=>days.forEach(d=>overlap[d]=(overlap[d]||0)+1));
   let h = `<div class="card a-violet"><h3 style="margin-top:0">Group meeting</h3>
   <div class="muted">Meets every ${c.meetingFrequencyWeeks} week${c.meetingFrequencyWeeks>1?'s':''}</div>`;
-  if(isAdmin && c.pendingWinner) h += `<div class="muted" style="margin-top:6px">${esc(c.pendingWinner.title)} won the vote. Picking the meeting date makes it the current book.</div>`;
+  if(isAdmin && c.pendingWinner) h += `<div class="muted" style="margin-top:6px">${esc(c.pendingWinner.title)} won the club vote. Picking the meeting date makes it the current book.</div>`;
   if(c.week && c.week.length){
     const wFirst = c.week[0], wLast = c.week[c.week.length-1];
     if(isAdmin){
@@ -1307,12 +1307,11 @@ function viewLibrary(){
 
 // ---------- poll page ----------
 function pollDefaultEnd(c){
-  const week = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
   if(c.meeting && c.meeting.date){
     const d = new Date(c.meeting.date + 'T12:00:00');
-    if(!isNaN(d.getTime())){ d.setDate(d.getDate() - 1); const ds = d.toISOString().slice(0, 10); return ds < week ? ds : week; }
+    if(!isNaN(d.getTime())){ d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); }
   }
-  return week;
+  return new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
 }
 function viewPoll(){
   track('page_view', {page:'poll', clubId: currentClub ? currentClub.id : undefined});
