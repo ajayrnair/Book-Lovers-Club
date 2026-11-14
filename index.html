@@ -185,7 +185,6 @@
   .rchip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:0 7px;font-size:12.5px;line-height:1.6;cursor:pointer;color:inherit;font-family:inherit;min-height:0;min-width:0}
   .reactions{position:relative}
   .rwho{position:absolute;top:calc(100% + 6px);left:0;z-index:6;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(46,14,40,.18);padding:7px 10px;min-width:150px;max-width:240px}
-  .reactions.absr .rwho{left:auto;right:0}
   .rwho-row{display:flex;gap:7px;align-items:baseline;font-size:13px;padding:2px 0;color:var(--ink);text-align:left}
   .rwho-row .re{font-size:14px}
   .nrow{display:flex;gap:10px;align-items:flex-start;padding:16px;margin-bottom:8px}
@@ -197,12 +196,8 @@
   .ratelink{background:none;border:0;color:var(--accent);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:6px 2px;min-height:0;min-width:0}
   .rchip.mine{background:#ffe3da;border-color:#ff8a66}
   .rslot{width:23px;height:23px;min-height:0;min-width:0;border-radius:50%;border:1px solid var(--line);background:transparent;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;line-height:1;cursor:pointer;padding:0;color:var(--muted);font-family:inherit}
-  .pwrap{position:relative;padding-bottom:27px}
-  .reactions.abs{position:absolute;left:44px;bottom:0;z-index:2}
-  .reactions.absr{position:absolute;right:2px;bottom:0;z-index:2}
-  .reactions.abs .rchip,.reactions.absr .rchip{background:var(--card)}
-  .reactions.abs .rslot,.reactions.absr .rslot{background:var(--card)}
-  .reactions.abs .rslot.mine,.reactions.absr .rslot.mine{background:#ffe3da}
+  .rline{margin:6px 0 0 44px}
+  .rline.book{flex-basis:100%;margin:-6px 0 0 62px}
   .rslot.mine{background:#ffe3da;border-color:#ff8a66;color:inherit}
   #bell{position:relative}
   .bellbadge{position:absolute;top:-6px;right:-6px;background:#c93a54;color:#fff;border-radius:999px;padding:0 6px;font-size:12px;font-weight:700}
@@ -861,6 +856,7 @@ function bookRow(b, opts={}){
     </div>
     ${opts.rateLabel && !(b.myRating > 0) ? `<button class="ratelink" data-rateopen="${b.key}">Rate</button><span class="ratebox hide" data-ratebox="${b.key}">${rateStrip(b)}</span>` : `${opts.rateLabel ? '<span class="muted" style="font-size:13px">Your rating</span>' : ''}${rateStrip(b)}`}
     ${opts.current?`<button class="small ghost" data-setcurrent="${b.key}">Reading now</button>`:''}
+    ${opts.after?`<div class="rline book">${opts.after}</div>`:''}
   </div>`;
 }
 function wireRates(rerender){
@@ -967,12 +963,13 @@ function memberProgressHTML(c){
       : (p
         ? `<span class="pstat">${p.percent}%${(p.page !== null && p.page !== undefined) ? ` <span class="pg">· p. ${p.page}</span>` : ''}</span>`
         : '<span class="pstat" style="color:var(--muted);font-weight:500">Not started</span>');
-    const row = `<div class="prow"><div class="prow-top">${avatarHTML(m.name, m.userId)}<span class="pname">${m.userId===user.id ? 'You' : esc(m.name)}</span>${m.userId===user.id ? `<button class="small ghost" id="progToggle">${progEditorOpen ? 'Done' : 'Update'}</button>` : ''}${stat}</div><div class="progBar"><i style="width:${w}%"></i></div></div>`;
+    const rowOpen = `<div class="prow"><div class="prow-top">${avatarHTML(m.name, m.userId)}<span class="pname">${m.userId===user.id ? 'You' : esc(m.name)}</span>${m.userId===user.id ? `<button class="small ghost" id="progToggle">${progEditorOpen ? 'Done' : 'Update'}</button>` : ''}${stat}</div><div class="progBar"><i style="width:${w}%"></i></div>`;
+    const row = rowOpen + '</div>';
     if(m.userId===user.id){
       return progEditorOpen ? row + myProgressHTML(c) : row;
     }
     if(isFin && m.userId!==user.id && p){
-      return `<div class="pwrap">${row}${reactionHTML(p.reactions || [], `data-rtype="finish" data-rbook="${esc(c.current.key)}" data-rsubject="${m.userId}"`, 'abs')}</div>`;
+      return rowOpen + `<div class="rline">${reactionHTML(p.reactions || [], `data-rtype="finish" data-rbook="${esc(c.current.key)}" data-rsubject="${m.userId}"`, '')}</div></div>`;
     }
     return row;
   }).join('')}</div>`;
@@ -1019,9 +1016,9 @@ function currentSection(c){
   const avg = rated.length ? Math.round(rated.reduce((a,r)=>a+r.rating,0)/rated.length*10)/10 : null;
   const wonVote = !!(c.lastResult && c.lastResult.winner && c.lastResult.winner === c.current.key);
   let h = `<div class="card a-coral"><h3 style="margin-top:0">Current book</h3>`;
-  h += `<div class="pwrap">${bookRow(c.current, { hideMemberAvg: true, ...(wonVote ? { badge: '\u2713 Won the club vote' } : {}) })}${wonVote ? reactionHTML(c.pollReactions || [], 'data-rtype="poll"', 'absr') : ''}</div>`;
+  h += bookRow(c.current, { hideMemberAvg: true, ...(wonVote ? { badge: '\u2713 Won the club vote' } : {}), ...(wonVote ? { after: reactionHTML(c.pollReactions || [], 'data-rtype="poll"', '') } : {}) });
   h += `<div class="row" id="rateSummary" style="margin-top:8px;cursor:pointer"><span class="grow muted">${rated.length?`Average \u2605 ${avg} (${rated.length} rating${rated.length>1?'s':''})`:'No ratings yet'}</span><span class="muted">Ratings \u203a</span></div>
-      <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div class="pwrap"><div class="person">${avatarHTML(r.name, r.userId)}<span class="pname">${esc(r.name)}</span>${r.rating===null||r.rating===undefined?'<span class="notrated">Not rated</span>':`<span class="pill"><span class="pstar">\u2605</span>${r.rating}</span>`}</div>${(r.rating!==null&&r.rating!==undefined&&r.userId!==user.id)?reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`, 'abs'):''}</div>`).join('')}</div>`;
+      <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div><div class="person">${avatarHTML(r.name, r.userId)}<span class="pname">${esc(r.name)}</span>${r.rating===null||r.rating===undefined?'<span class="notrated">Not rated</span>':`<span class="pill"><span class="pstar">\u2605</span>${r.rating}</span>`}</div>${(r.rating!==null&&r.rating!==undefined&&r.userId!==user.id)?`<div class="rline">${reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`, '')}</div>`:''}</div>`).join('')}</div>`;
   if(c.role==='admin' && c.library.length > 1){
     h += `<div style="margin-top:8px"><button id="changeBookBtn" style="background:none;border:none;padding:0;color:var(--accent);font-weight:600;font-size:15px;cursor:pointer">Change book</button></div><div id="changeBookPanel" class="hide" style="margin-top:4px">${c.library.filter(b=>b.key!==c.current.key).map(b=>`<button class="cmitem" data-change="${esc(b.key)}" style="color:var(--ink);display:block;width:100%;text-align:left;background:none;border:none;padding:8px 10px;cursor:pointer;font-size:15px">${esc(b.title)}</button>`).join('')}</div>`;
   }
