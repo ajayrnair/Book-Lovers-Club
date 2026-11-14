@@ -70,4 +70,12 @@ extension Color {
         Color(red: 27.0 / 255.0, green: 143.0 / 255.0, blue: 168.0 / 255.0),
         Color(red: 249.0 / 255.0, green: 93.0 / 255.0, blue: 106.0 / 255.0),
     ]
+    /// Book cloth palette for generated covers: the avatar hues deepened toward plum, same order.
+    static let rpCoverColors: [Color] = [
+        Color(red: 155.0 / 255.0, green: 45.0 / 255.0, blue: 71.0 / 255.0),
+        Color(red: 111.0 / 255.0, green: 69.0 / 255.0, blue: 184.0 / 255.0),
+        Color(red: 30.0 / 255.0, green: 118.0 / 255.0, blue: 118.0 / 255.0),
+        Color(red: 33.0 / 255.0, green: 104.0 / 255.0, blue: 130.0 / 255.0),
+        Color(red: 188.0 / 255.0, green: 69.0 / 255.0, blue: 86.0 / 255.0),
+    ]
 }

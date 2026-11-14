@@ -2,8 +2,101 @@ import SwiftUI
 
 // ---------- covers ----------
 
+/// A designed cover generated from the book's own title and author, used
+/// whenever cover art is missing, loading, or failed. A pure function of
+/// title, author, and width: the same book renders the same cover
+/// everywhere, matching the web template (design language section 17).
+struct GeneratedCoverView: View {
+    let title: String
+    let author: String?
+    let width: CGFloat
+
+    private var displayTitle: String {
+        let t = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !t.isEmpty { return t }
+        let a = (author ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return a.isEmpty ? "Untitled" : a
+    }
+
+    private var coverColor: Color {
+        let s = displayTitle.lowercased().split(whereSeparator: { $0.isWhitespace }).joined(separator: " ")
+        var h: UInt32 = 0
+        for u in s.utf16 { h = h &* 31 &+ UInt32(u) }
+        return Color.rpCoverColors[Int(h % UInt32(Color.rpCoverColors.count))]
+    }
+
+    private var tier: Int { width >= 56 ? 0 : (width >= 34 ? 1 : 2) } // 0 full, 1 row, 2 mini
+
+    private var step: (size: CGFloat, lines: Int) {
+        let n = displayTitle.count
+        if tier == 0 {
+            switch n {
+            case ...20: return (12, 4)
+            case 21...38: return (10.5, 5)
+            case 39...64: return (9.5, 6)
+            default: return (8.5, 7)
+            }
+        }
+        switch n {
+        case ...20: return (10, 3)
+        case 21...38: return (9, 4)
+        default: return (8, 5)
+        }
+    }
+
+    private var titleText: some View {
+        Text(displayTitle)
+            .font(.system(size: step.size, weight: .bold, design: .serif))
+            .foregroundStyle(Color.rpCream)
+            .lineLimit(step.lines)
+            .truncationMode(.tail)
+    }
+
+    var body: some View {
+        ZStack(alignment: .leading) {
+            coverColor
+            if tier != 1 {
+                Rectangle()
+                    .fill(Color.white.opacity(0.30))
+                    .frame(width: 2)
+                    .offset(x: 3)
+            }
+            if tier == 0 {
+                VStack(alignment: .leading, spacing: 0) {
+                    titleText
+                    Spacer(minLength: 2)
+                    if let raw = author, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                       !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Rectangle()
+                                .fill(Color.white.opacity(0.65))
+                                .frame(width: 14, height: 1)
+                            Text(raw.trimmingCharacters(in: .whitespacesAndNewlines))
+                                .font(.system(size: 7.5, weight: .semibold))
+                                .tracking(0.5)
+                                .textCase(.uppercase)
+                                .lineLimit(2)
+                                .foregroundStyle(Color.rpCream)
+                        }
+                    }
+                }
+                .padding(.leading, 7)
+                .padding(.trailing, 5)
+                .padding(.vertical, 5)
+            } else if tier == 1 {
+                titleText
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 5)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 struct CoverView: View {
     let urlString: String?
+    var title: String = ""
+    var author: String? = nil
     var width: CGFloat = 44
 
     var body: some View {
@@ -15,24 +108,16 @@ struct CoverView: View {
                     case .success(let image):
                         image.resizable().aspectRatio(contentMode: .fill)
                     default:
-                        placeholder
+                        GeneratedCoverView(title: title, author: author, width: width)
                     }
                 }
             } else {
-                placeholder
+                GeneratedCoverView(title: title, author: author, width: width)
             }
         }
         .frame(width: width, height: height)
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.25), lineWidth: 0.5))
-    }
-
-    private var placeholder: some View {
-        ZStack {
-            Color.secondary.opacity(0.15)
-            Image(systemName: "book.closed")
-                .foregroundStyle(.secondary)
-        }
     }
 }
 
@@ -195,7 +280,7 @@ struct BookRowView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            CoverView(urlString: cover, width: coverWidth)
+            CoverView(urlString: cover, title: title, author: author, width: coverWidth)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .center, spacing: 6) {
                     Text(title)

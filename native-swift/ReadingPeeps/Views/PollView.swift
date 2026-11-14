@@ -73,7 +73,7 @@ struct PollView: View {
                     Task { await vote(bookKey: option.book.key) }
                 } label: {
                     HStack(alignment: .top, spacing: 12) {
-                        CoverView(urlString: option.book.cover)
+                        CoverView(urlString: option.book.cover, title: option.book.title, author: option.book.author)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(option.book.title)
                                 .foregroundStyle(.primary)
