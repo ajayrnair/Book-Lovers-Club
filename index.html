@@ -184,6 +184,7 @@
   .reactions{display:inline-flex;gap:4px;align-items:center;flex-wrap:wrap}
   .rchip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:0 7px;font-size:12.5px;line-height:1.6;cursor:pointer;color:inherit;font-family:inherit;min-height:0;min-width:0}
   .reactions{position:relative}
+  .reactions.rtext .rwho{left:auto;right:0}
   .rwho{position:absolute;top:calc(100% + 6px);left:0;z-index:6;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(46,14,40,.18);padding:7px 10px;min-width:150px;max-width:240px}
   .rwho-row{display:flex;gap:7px;align-items:baseline;font-size:13px;padding:2px 0;color:var(--ink);text-align:left}
   .rwho-row .re{font-size:14px}
@@ -963,13 +964,10 @@ function memberProgressHTML(c){
       : (p
         ? `<span class="pstat">${p.percent}%${(p.page !== null && p.page !== undefined) ? ` <span class="pg">· p. ${p.page}</span>` : ''}</span>`
         : '<span class="pstat" style="color:var(--muted);font-weight:500">Not started</span>');
-    const rowOpen = `<div class="prow"><div class="prow-top">${avatarHTML(m.name, m.userId)}<span class="pname">${m.userId===user.id ? 'You' : esc(m.name)}</span>${m.userId===user.id ? `<button class="small ghost" id="progToggle">${progEditorOpen ? 'Done' : 'Update'}</button>` : ''}${stat}</div><div class="progBar"><i style="width:${w}%"></i></div>`;
+    const rowOpen = `<div class="prow"><div class="prow-top">${avatarHTML(m.name, m.userId)}<span class="pname">${m.userId===user.id ? 'You' : esc(m.name)}</span>${m.userId===user.id ? `<button class="small ghost" id="progToggle">${progEditorOpen ? 'Done' : 'Update'}</button>` : ''}${stat}${(isFin && m.userId!==user.id && p) ? reactionHTML(p.reactions || [], `data-rtype="finish" data-rbook="${esc(c.current.key)}" data-rsubject="${m.userId}"`, 'rtext') : ''}</div><div class="progBar"><i style="width:${w}%"></i></div>`;
     const row = rowOpen + '</div>';
     if(m.userId===user.id){
       return progEditorOpen ? row + myProgressHTML(c) : row;
-    }
-    if(isFin && m.userId!==user.id && p){
-      return rowOpen + `<div class="rline">${reactionHTML(p.reactions || [], `data-rtype="finish" data-rbook="${esc(c.current.key)}" data-rsubject="${m.userId}"`, '')}</div></div>`;
     }
     return row;
   }).join('')}</div>`;
