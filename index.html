@@ -197,8 +197,8 @@
   .ratelink{background:none;border:0;color:var(--accent);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:6px 2px;min-height:0;min-width:0}
   .rchip.mine{background:#ffe3da;border-color:#ff8a66}
   .rslot{width:23px;height:23px;min-height:0;min-width:0;border-radius:50%;border:1px solid var(--line);background:transparent;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;line-height:1;cursor:pointer;padding:0;color:var(--muted);font-family:inherit}
-  .rline{margin:6px 0 0 44px}
-  .rline.book{flex-basis:100%;margin:-6px 0 0 62px}
+  .rgroup{margin-left:auto;display:inline-flex;align-items:center;gap:6px}
+  #rateList .pill{margin-left:0}
   .rslot.mine{background:#ffe3da;border-color:#ff8a66;color:inherit}
   #bell{position:relative}
   .bellbadge{position:absolute;top:-6px;right:-6px;background:#c93a54;color:#fff;border-radius:999px;padding:0 6px;font-size:12px;font-weight:700}
@@ -849,7 +849,7 @@ function wireSyn(){
 function bookRow(b, opts={}){
   return `<div class="book">
     ${bookCoverHTML(b, 'cover')}
-    <div class="grow"><b>${esc(b.title)}</b>${opts.badge?`<span class="badge">${esc(opts.badge)}</span>`:''}<div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>
+    <div class="grow"><b>${esc(b.title)}</b>${opts.badge?`<span class="badge">${esc(opts.badge)}</span>`:''}${opts.inline || ''}<div class="muted">${esc(b.author)}${b.year?' · '+b.year:''}</div>
     ${ratingsLine(b)}
     ${b.memberCount && !opts.hideMemberAvg ? `<div class="muted">Members ★ ${b.memberAverage} (${b.memberCount})</div>` : ''}
     ${opts.subline?`<div class="muted">${esc(opts.subline)}</div>`:''}
@@ -857,7 +857,6 @@ function bookRow(b, opts={}){
     </div>
     ${opts.rateLabel && !(b.myRating > 0) ? `<button class="ratelink" data-rateopen="${b.key}">Rate</button><span class="ratebox hide" data-ratebox="${b.key}">${rateStrip(b)}</span>` : `${opts.rateLabel ? '<span class="muted" style="font-size:13px">Your rating</span>' : ''}${rateStrip(b)}`}
     ${opts.current?`<button class="small ghost" data-setcurrent="${b.key}">Reading now</button>`:''}
-    ${opts.after?`<div class="rline book">${opts.after}</div>`:''}
   </div>`;
 }
 function wireRates(rerender){
@@ -1014,9 +1013,9 @@ function currentSection(c){
   const avg = rated.length ? Math.round(rated.reduce((a,r)=>a+r.rating,0)/rated.length*10)/10 : null;
   const wonVote = !!(c.lastResult && c.lastResult.winner && c.lastResult.winner === c.current.key);
   let h = `<div class="card a-coral"><h3 style="margin-top:0">Current book</h3>`;
-  h += bookRow(c.current, { hideMemberAvg: true, ...(wonVote ? { badge: '\u2713 Won the club vote' } : {}), ...(wonVote ? { after: reactionHTML(c.pollReactions || [], 'data-rtype="poll"', '') } : {}) });
+  h += bookRow(c.current, { hideMemberAvg: true, ...(wonVote ? { badge: '\u2713 Won the club vote' } : {}), ...(wonVote ? { inline: reactionHTML(c.pollReactions || [], 'data-rtype="poll"', 'rtext') } : {}) });
   h += `<div class="row" id="rateSummary" style="margin-top:8px;cursor:pointer"><span class="grow muted">${rated.length?`Average \u2605 ${avg} (${rated.length} rating${rated.length>1?'s':''})`:'No ratings yet'}</span><span class="muted">Ratings \u203a</span></div>
-      <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div><div class="person">${avatarHTML(r.name, r.userId)}<span class="pname">${esc(r.name)}</span>${r.rating===null||r.rating===undefined?'<span class="notrated">Not rated</span>':`<span class="pill"><span class="pstar">\u2605</span>${r.rating}</span>`}</div>${(r.rating!==null&&r.rating!==undefined&&r.userId!==user.id)?`<div class="rline">${reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`, '')}</div>`:''}</div>`).join('')}</div>`;
+      <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div><div class="person">${avatarHTML(r.name, r.userId)}<span class="pname">${esc(r.name)}</span>${r.rating===null||r.rating===undefined?'<span class="notrated">Not rated</span>':`<span class="rgroup">${(r.userId!==user.id)?reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`, 'rtext'):''}<span class="pill"><span class="pstar">\u2605</span>${r.rating}</span></span>`}</div></div>`).join('')}</div>`;
   if(c.role==='admin' && c.library.length > 1){
     h += `<div style="margin-top:8px"><button id="changeBookBtn" style="background:none;border:none;padding:0;color:var(--accent);font-weight:600;font-size:15px;cursor:pointer">Change book</button></div><div id="changeBookPanel" class="hide" style="margin-top:4px">${c.library.filter(b=>b.key!==c.current.key).map(b=>`<button class="cmitem" data-change="${esc(b.key)}" style="color:var(--ink);display:block;width:100%;text-align:left;background:none;border:none;padding:8px 10px;cursor:pointer;font-size:15px">${esc(b.title)}</button>`).join('')}</div>`;
   }

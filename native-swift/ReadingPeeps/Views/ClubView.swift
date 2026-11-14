@@ -162,13 +162,9 @@ struct ClubView: View {
                     BookRowView(title: current.title, author: current.author, year: current.year,
                                 cover: current.cover, ratings: ratingsText(for: current),
                                 badge: (c.lastResult?.winner ?? nil) == current.key ? "Won the club vote" : nil,
+                                reactionChips: (c.lastResult?.winner ?? nil) == current.key ? (c.pollReactions ?? []) : nil,
+                                onReact: { emoji in Task { await react(type: "poll", bookKey: nil, subject: nil, emoji: emoji) } },
                                 coverWidth: 60)
-                    if let result = c.lastResult, let winner = result.winner, winner == current.key {
-                        ReactionChipsView(chips: c.pollReactions ?? []) { emoji in
-                            Task { await react(type: "poll", bookKey: nil, subject: nil, emoji: emoji) }
-                        }
-                        .padding(.leading, 72)
-                    }
                 }
                 if let s = current.synopsis, !s.isEmpty {
                     SynopsisView(text: s)
@@ -189,13 +185,17 @@ struct ClubView: View {
                 if !c.currentRatings.isEmpty {
                     DisclosureGroup("Ratings") {
                         ForEach(c.currentRatings, id: \.userId) { r in
-                            VStack(alignment: .leading, spacing: 5) {
-                                HStack(spacing: 10) {
+                            HStack(spacing: 10) {
                                     AvatarView(name: r.name, userId: r.userId)
                                     Text(r.userId == myId ? "You" : r.name)
                                         .font(.body.weight(.semibold))
                                         .lineLimit(1)
                                     Spacer()
+                                    if r.rating != nil && r.userId != myId {
+                                        ReactionChipsView(chips: r.reactions ?? []) { emoji in
+                                            Task { await react(type: "rating", bookKey: current.key, subject: r.userId, emoji: emoji) }
+                                        }
+                                    }
                                     if let rating = r.rating {
                                         Text("★ \(trimNumber(rating))")
                                             .font(.subheadline.weight(.bold))
@@ -210,13 +210,7 @@ struct ClubView: View {
                                             .foregroundStyle(.secondary)
                                     }
                                 }
-                                if r.rating != nil && r.userId != myId {
-                                    ReactionChipsView(chips: r.reactions ?? []) { emoji in
-                                        Task { await react(type: "rating", bookKey: current.key, subject: r.userId, emoji: emoji) }
-                                    }
-                                    .padding(.leading, 44)
-                                }
-                            }
+
                         }
                     }
                 }
@@ -294,15 +288,14 @@ struct ClubView: View {
                 }
                 Spacer(minLength: 8)
                 progressStat(entry: entry, finished: finished)
+                if finished && member.userId != myId, let current = c.current {
+                    ReactionChipsView(chips: entry?.reactions ?? []) { emoji in
+                        Task { await react(type: "finish", bookKey: current.key, subject: member.userId, emoji: emoji) }
+                    }
+                }
             }
             ProgressView(value: Double(percent), total: 100)
                 .tint(.rpTeal)
-            if finished && member.userId != myId, let current = c.current {
-                ReactionChipsView(chips: entry?.reactions ?? []) { emoji in
-                    Task { await react(type: "finish", bookKey: current.key, subject: member.userId, emoji: emoji) }
-                }
-                .padding(.leading, 44)
-            }
         }
     }
 

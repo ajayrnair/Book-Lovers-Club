@@ -276,6 +276,8 @@ struct BookRowView: View {
     let cover: String?
     var ratings: String = ""
     var badge: String? = nil
+    var reactionChips: [ReactionChip]? = nil
+    var onReact: ((String) -> Void)? = nil
     var coverWidth: CGFloat = 44
 
     var body: some View {
@@ -299,6 +301,9 @@ struct BookRowView: View {
                         .background(Color.rpBadge)
                         .clipShape(Capsule())
                         .fixedSize()
+                    }
+                    if let reactionChips, let onReact {
+                        ReactionChipsView(chips: reactionChips, onReact: onReact)
                     }
                 }
                 if let subtitle = subtitleText {
