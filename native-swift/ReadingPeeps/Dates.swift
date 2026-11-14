@@ -125,11 +125,9 @@ enum Dates {
 
     /// Default poll end: a week out, or the day before the meeting if sooner.
     static func defaultPollEnd(meetingDate: String) -> String {
-        let week = dayString(Date().addingTimeInterval(7 * 86400))
         if !meetingDate.isEmpty, parseDay(meetingDate) != nil {
-            let before = shiftDay(meetingDate, by: -1)
-            return before < week ? before : week
+            return shiftDay(meetingDate, by: -1)
         }
-        return week
+        return dayString(Date().addingTimeInterval(7 * 86400))
     }
 }

@@ -595,16 +595,14 @@ function capClose(club, iso) {
   return new Date(t).toISOString();
 }
 function defaultClose(club) {
-  const weekCap = Date.now() + 7 * 864e5;
   if (club.meeting && club.meeting.date) {
     const d = new Date(club.meeting.date + 'T12:00:00');
     if (!isNaN(d.getTime())) {
       d.setDate(d.getDate() - 1);
-      const t = new Date(d.toISOString().slice(0, 10) + 'T23:59:59').getTime();
-      return new Date(Math.min(t, weekCap)).toISOString();
+      return new Date(d.toISOString().slice(0, 10) + 'T23:59:59').toISOString();
     }
   }
-  return new Date(weekCap).toISOString();
+  return new Date(Date.now() + 7 * 864e5).toISOString();
 }
 // Reactions: a fixed small palette, one tap to add, same tap again to remove.
 // Targets are a member's finish of a book, a member's rating of a book, or a
@@ -1799,7 +1797,7 @@ module.exports = async (req, res) => {
         let closesAt = defaultClose(club);
         if (body.endDate && /^\d{4}-\d{2}-\d{2}$/.test(body.endDate)) {
           const t = new Date(body.endDate + 'T23:59:59').getTime();
-          if (!isNaN(t) && t > Date.now()) closesAt = new Date(Math.min(t, new Date(closesAt).getTime())).toISOString();
+          if (!isNaN(t) && t > Date.now() && t < Date.now() + 90 * 864e5) closesAt = new Date(t).toISOString();
         }
         club.poll = { id: uid(), options: candidates, votes: {}, runoff: false, closesAt, createdAt: nowISO(), auto: false };
         await notifyMembers(db, club, {
@@ -1826,6 +1824,19 @@ module.exports = async (req, res) => {
         if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
         settlePoll(db, club);
         if (club.lastResult) await notifyPollResult(db, club, club.lastResult, me.id);
+        await writeDB(db);
+        return send(200, { club: publicClub(db, club, me.id) });
+      }
+      case 'setPollClose': {
+        const club = db.clubs.find((c) => c.id === body.clubId);
+        if (!club || !club.poll) return send(404, { error: 'No poll running' });
+        const mem = club.members.find((m) => m.userId === me.id);
+        if (!mem || mem.role !== 'admin') return send(403, { error: 'Admins only' });
+        if (!body.endDate || !/^\d{4}-\d{2}-\d{2}$/.test(body.endDate)) return send(400, { error: 'Pick a date' });
+        const t = new Date(body.endDate + 'T23:59:59').getTime();
+        if (isNaN(t) || t <= Date.now()) return send(400, { error: 'The closing date must be in the future' });
+        if (t > Date.now() + 90 * 864e5) return send(400, { error: 'That date is too far out' });
+        club.poll.closesAt = new Date(t).toISOString();
         await writeDB(db);
         return send(200, { club: publicClub(db, club, me.id) });
       }

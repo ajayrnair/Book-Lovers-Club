@@ -1334,7 +1334,9 @@ function viewPoll(){
       ${mine?`<span style="position:relative;flex:none;background:#8b5cf6;color:#fff;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center">${icon('check',14)}</span>`:''}
       <b data-vcount="${o.book.key}" style="position:relative;flex:none;min-width:20px;text-align:right">${o.votes} <span class="muted" style="font-weight:400;font-size:13px">${pct}%</span></b></div>${(o.voters && o.voters.length) ? `<div class="voters hide" data-voters="${o.book.key}" style="margin:2px 8px 6px 52px"><span class="muted" style="font-size:13px">${o.voters.map(nm=>esc(nm)).join(', ')}</span></div>` : ''}`;
     }).join('')}
-    ${isAdmin?'<button id="closePoll" class="ghost small" style="margin-top:10px">Close poll</button>':''}`;
+    ${isAdmin?`<div class="muted" style="margin:14px 0 0">Closing date</div>
+    ${pickerFieldHTML('pollCloseDate', 'date', new Date(c.poll.closesAt).toISOString().slice(0,10))}
+    <div class="row" style="margin-top:10px;gap:8px"><button id="setPollClose" class="ghost small">Change closing date</button><button id="closePoll" class="ghost small">Close poll now</button></div>`:''}`;
   } else if(c.lastResult && c.lastResult.tie){
     body = `<h3 style="margin-top:0">Tie</h3>${isAdmin?'<button id="runoff" class="small">One day runoff</button> '+c.lastResult.tie.map(k=>{const b=c.library.find(x=>x.key===k); return b?`<button class="small ghost" data-pick="${k}">Pick ${esc(b.title)}</button>`:'';}).join(' '):'<div class="muted">The admin picks the winner</div>'}`;
   } else if(isAdmin && pollCandidatesOf(c).length>=2){
@@ -1356,6 +1358,8 @@ function viewPoll(){
   });
   app.querySelectorAll('[data-pick]').forEach(b=>b.onclick=async()=>{ const j=await api('adminPick',{clubId:c.id, bookKey:b.dataset.pick}); currentClub=j.club; viewClub(); });
   if($('#closePoll')) $('#closePoll').onclick=async()=>{ const j=await api('closePoll',{clubId:c.id}); currentClub=j.club; await refreshClubs(); viewClub(); };
+  if($('#pollCloseDate')) wireDatePicker('pollCloseDate');
+  if($('#setPollClose')) $('#setPollClose').onclick=async()=>{ try{ const j=await api('setPollClose',{clubId:c.id, endDate:$('#pollCloseDate').value}); currentClub=j.club; await refreshClubs(); viewPoll(); toast('Closing date updated'); }catch(e){ toast(e.message); } };
   if($('#runoff')) $('#runoff').onclick=async()=>{ const j=await api('runoff',{clubId:c.id}); currentClub=j.club; viewPoll(); };
   if($('#pollEnd')) wireDatePicker('pollEnd');
   wireSyn();

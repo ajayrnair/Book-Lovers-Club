@@ -14,6 +14,8 @@ struct PollView: View {
     @State private var voterTitle = ""
     @State private var voterNames: [String] = []
     @State private var endDateTouched = false
+    @State private var closeDate = Date()
+    @State private var closeDateTouched = false
 
     var body: some View {
         Group {
@@ -128,7 +130,12 @@ struct PollView: View {
         .listRowBackground(Color.rpCream)
         if c.isAdmin {
             Section {
-                Button("Close poll", role: .destructive) {
+                DatePicker("Closing date", selection: $closeDate, displayedComponents: .date)
+                    .onChange(of: closeDate) { _, _ in closeDateTouched = true }
+                Button("Change closing date") {
+                    Task { await setPollClose() }
+                }
+                Button("Close poll now", role: .destructive) {
                     Task { await closePoll() }
                 }
             }
@@ -192,7 +199,7 @@ struct PollView: View {
                 }
             } header: { rpSectionHeader(c.current != nil ? "Pick the next book" : "Pick a book") }
             footer: {
-                Text("Defaults to one day before the next meeting, and never runs past a week.")
+                Text("Defaults to one day before the next meeting, or a week from now when no meeting is set.")
             }
             .listRowBackground(Color.rpCream)
         }
@@ -212,6 +219,9 @@ struct PollView: View {
                 f.dateFormat = "yyyy-MM-dd"
                 if let d = f.date(from: def) { endDate = d }
             }
+            if !closeDateTouched, let p = fresh.poll, let d = Dates.parseISO(p.closesAt) {
+                closeDate = d
+            }
         } catch {
             if club == nil { loadError = errorText(error) }
             else { errorMessage = errorText(error) }
@@ -222,6 +232,18 @@ struct PollView: View {
         do {
             try await APIClient.shared.callDiscard("vote", ["clubId": clubId, "bookKey": bookKey])
             APIClient.shared.track("vote", page: "poll", feature: "poll", clubId: clubId)
+            await load()
+        } catch { errorMessage = errorText(error) }
+    }
+
+    private func setPollClose() async {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        let end = f.string(from: closeDate)
+        do {
+            try await APIClient.shared.callDiscard("setPollClose", ["clubId": clubId, "endDate": end])
+            closeDateTouched = false
             await load()
         } catch { errorMessage = errorText(error) }
     }
