@@ -50,7 +50,7 @@
   button.gbtn svg{flex:none;display:block}
   .muted{color:var(--muted);font-size:14px}
   .err{color:#b3261e;font-size:14px;min-height:18px}
-  .book{display:flex;flex-wrap:wrap;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .book{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}
   .book:last-child{border-bottom:0}
   .cover{width:50px;height:74px;object-fit:cover;border-radius:6px;background:#f3e2d3;flex:none}
   .coverwrap{position:relative;display:inline-block;width:50px;height:74px;flex:none;border-radius:6px;overflow:hidden}
@@ -83,8 +83,6 @@
   .hide{display:none}
   a{color:var(--accent)}
   .badge{font-size:11px;font-weight:700;background:#fde8d8;color:var(--accent);border-radius:999px;padding:3px 8px;margin-left:6px;vertical-align:2px}
-  .voteBar{height:6px;background:#f3ddc8;border-radius:3px;overflow:hidden}
-  .voteBar i{display:block;height:100%;background:var(--accent2)}
   .ratewrap{display:inline-flex;align-items:center;gap:2px;flex:none}
   .ratestars{display:inline-flex;gap:2px;padding:5px 3px;cursor:pointer;touch-action:none;border-radius:10px;line-height:0}
   .ratestars:focus-visible{outline:2px solid #ff8a66;outline-offset:1px}
@@ -95,7 +93,7 @@
   .st .stfg{fill:var(--accent);stroke:var(--accent);stroke-width:1.4}
   .rateclear{background:none;border:0;color:var(--muted);min-height:34px;padding:4px 8px;font-size:13px;font-weight:600;cursor:pointer}
   .prog{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
-  .prog input[type=range]{width:100%;accent-color:var(--accent);height:36px;margin:0;cursor:pointer;background:none;border:0;padding:0}
+  .prog input[type=range]{width:100%;accent-color:var(--teal);height:36px;margin:0;cursor:pointer;background:none;border:0;padding:0}
   .prog .pinputs{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:2px}
   .prog .pfield{display:inline-flex;align-items:center;gap:6px}
   .prog input[type=number]{width:82px;padding:9px 8px;margin:0;text-align:center}
@@ -105,6 +103,8 @@
   .pill{display:inline-flex;align-items:center;gap:4px;flex:none;background:#f7e3ee;color:var(--plum);border-radius:999px;padding:2px 10px;font-size:14px;font-weight:700;white-space:nowrap}
   .pill .pstar{color:var(--accent)}
   .notrated{color:var(--muted);font-size:14px}
+  .person .pill,.person .notrated{margin-left:auto}
+  .card>h3:first-child{margin-top:0}
   .prow{padding:7px 0}
   .prow .prow-top{display:flex;align-items:center;gap:10px}
   .prow .pstat{margin-left:auto;font-size:15px;font-weight:700;white-space:nowrap}
@@ -115,8 +115,8 @@
   .qadd{width:44px;height:44px;min-height:44px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;flex:none}
   .tbar{display:flex;align-items:center;gap:8px;margin-top:5px;font-size:14px}
   .tbar-n{width:104px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .tbar-t{flex:1;height:10px;background:#f7e3ee;border-radius:999px;overflow:hidden}
-  .tbar-t i{display:block;height:100%;background:var(--accent);border-radius:999px}
+  .tbar-t{flex:1;height:6px;background:#f3ddc8;border-radius:3px;overflow:hidden}
+  .tbar-t i{display:block;height:100%;background:var(--accent);border-radius:3px}
   .tdays{display:flex;gap:4px;align-items:flex-end;height:66px;margin-top:8px}
   .tday{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%}
   .tday i{display:block;width:100%;background:var(--accent);border-radius:4px 4px 0 0;min-height:3px}
@@ -141,8 +141,8 @@
   .a-violet button.danger{background:var(--danger);color:#fff}
   .a-violet .day.on{background:#8b5cf6;border-color:#8b5cf6}
   .clubstrip{display:flex;align-items:flex-start;gap:2px;margin:16px 0 4px}
-  .clubstrip .cs-side{width:44px;flex:none;display:flex;justify-content:center}
-  .clubstrip .cs-main{flex:1;min-width:0;text-align:center}
+  .clubstrip .cs-side{flex:1;display:flex;justify-content:flex-start;align-items:center;gap:2px}
+  .clubstrip .cs-main{flex:none;max-width:56%;min-width:0;text-align:center}
   .clubstrip .cs-title{margin:2px 0 0;font-size:22px;line-height:1.25}
   .cs-dots{display:flex;gap:5px;justify-content:center;margin-top:6px}
   .cs-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,233,210,.35)}
@@ -188,23 +188,24 @@
   .reactions.absr .rwho{left:auto;right:0}
   .rwho-row{display:flex;gap:7px;align-items:baseline;font-size:13px;padding:2px 0;color:var(--ink);text-align:left}
   .rwho-row .re{font-size:14px}
-  .nrow{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;margin-bottom:8px}
+  .nrow{display:flex;gap:10px;align-items:flex-start;padding:16px;margin-bottom:8px}
   .ntile{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;flex:none}
   .ntitle{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .nbody{font-size:14px;color:var(--muted);margin-top:1px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .ntime{font-size:12px;color:var(--muted);flex:none;padding-top:2px}
   .ndot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;margin-top:6px}
-  .ratelink{background:none;border:0;color:var(--accent);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:6px 2px;min-height:0;min-width:0;align-self:center}
+  .ratelink{background:none;border:0;color:var(--accent);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:6px 2px;min-height:0;min-width:0}
   .rchip.mine{background:#ffe3da;border-color:#ff8a66}
   .rslot{width:23px;height:23px;min-height:0;min-width:0;border-radius:50%;border:1px solid var(--line);background:transparent;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;line-height:1;cursor:pointer;padding:0;color:var(--muted);font-family:inherit}
-  .pwrap{position:relative;padding-bottom:12px}
+  .pwrap{position:relative;padding-bottom:27px}
   .reactions.abs{position:absolute;left:44px;bottom:0;z-index:2}
   .reactions.absr{position:absolute;right:2px;bottom:0;z-index:2}
   .reactions.abs .rchip,.reactions.absr .rchip{background:var(--card)}
   .reactions.abs .rslot,.reactions.absr .rslot{background:var(--card)}
   .reactions.abs .rslot.mine,.reactions.absr .rslot.mine{background:#ffe3da}
   .rslot.mine{background:#ffe3da;border-color:#ff8a66;color:inherit}
-  .bellbadge{background:#c93a54;color:#fff;border-radius:999px;padding:0 6px;font-size:12px;font-weight:700;margin-left:4px}
+  #bell{position:relative}
+  .bellbadge{position:absolute;top:-6px;right:-6px;background:#c93a54;color:#fff;border-radius:999px;padding:0 6px;font-size:12px;font-weight:700}
   .vidwrap{position:relative;padding-top:56.25%;border-radius:12px;overflow:hidden;background:#2e0e28}
   .vidwrap iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
   .footlinks{text-align:center;color:#d9a8c2;font-size:14px;margin:20px 0 4px;line-height:1.9}
@@ -585,7 +586,7 @@ async function viewNotifications(){
   const list = j.notifications || [];
   app.innerHTML = `<button class="ghost small" id="nBack">‹ Back</button>
   <h2>Notifications</h2>
-  ${list.length ? list.map(n=>`<div class="card nrow" ${n.clubId ? `data-nclub="${n.clubId}" style="cursor:pointer"` : ''}>${notifTile(n.type)}<div class="grow" style="min-width:0"><div class="ntitle">${esc(n.title)}</div><div class="nbody">${esc(n.body)}</div></div><div class="ntime">${relTime(n.createdAt)}</div>${n.readAt ? '' : '<span class="ndot"></span>'}</div>`).join('') : '<div class="card muted">Nothing yet. Voting and meeting updates will land here.</div>'}`;
+  ${list.length ? list.map(n=>`<div class="card nrow" ${n.clubId ? `data-nclub="${n.clubId}" style="cursor:pointer"` : ''}>${notifTile(n.type)}<div class="grow" style="min-width:0"><div class="ntitle">${esc(n.title)}</div><div class="nbody">${esc(n.body)}</div></div><div class="ntime">${relTime(n.createdAt)}</div>${n.readAt ? '<span class="ndot" style="visibility:hidden"></span>' : '<span class="ndot"></span>'}</div>`).join('') : '<div class="card muted">Nothing yet. Voting and meeting updates will land here.</div>'}`;
   $('#nBack').onclick = ()=>backTo(()=>{ if(currentClub) viewClub(); else viewHome(); });
   app.querySelectorAll('[data-nclub]').forEach(el=>el.onclick=()=>openClub(el.dataset.nclub));
   try{ await api('markNotificationsRead', {via:'web'}); }catch(e){}
@@ -602,7 +603,7 @@ async function viewHome(){
   nav('/clubs');
   app.innerHTML = `<h2>My clubs</h2><div id="mine"></div>
   <div class="card row setrow" id="exploreRow"><div class="grow"><b>Explore clubs</b><div class="muted">Find a club or start your own</div></div><span class="muted">›</span></div>`;
-  const renderMine = ()=>{ $('#mine').innerHTML = myClubs.length ? myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b>${c.private?'<span class="badge">Private</span>':''}${c.current ? `<div class="muted">Reading ${esc(c.current.title)}${c.meeting && c.meeting.date ? ' · Meets ' + fmtDate(c.meeting.date) : ''}</div>` : ''}<div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div></div><span>›</span></div>`).join('') : '<div class="muted">No clubs yet</div>';
+  const renderMine = ()=>{ $('#mine').innerHTML = myClubs.length ? myClubs.map(c=>`<div class="card row" data-open="${c.id}"><div class="grow"><b>${esc(c.name)}</b>${c.private?'<span class="badge">Private</span>':''}${c.current ? `<div class="muted">Reading ${esc(c.current.title)}${c.meeting && c.meeting.date ? ' · Meets ' + fmtDate(c.meeting.date) : ''}</div>` : `<div class="muted">${c.memberCount} member${c.memberCount>1?'s':''}</div>`}</div><span class="muted">›</span></div>`).join('') : '<div class="muted">No clubs yet</div>';
     app.querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>openClub(el.dataset.open)); };
   renderMine();
   $('#exploreRow').onclick = ()=>viewExplore();
@@ -642,7 +643,7 @@ function wirePlacePicker(p, store){
   const renderList = ()=>{
     const t = (q.value || '').trim().toLowerCase();
     const hits = PLACES.filter(x=>!t || x.label.toLowerCase().includes(t)).slice(0, 8);
-    list.innerHTML = hits.map(x=>`<div class="row setrow" data-place="${esc(x.label)}" style="padding:9px 2px;border-bottom:1px solid var(--line)"><span class="grow">${esc(x.label)}</span><span class="muted">›</span></div>`).join('') || '<div class="muted">No places match</div>';
+    list.innerHTML = hits.map(x=>`<div class="row setrow" data-place="${esc(x.label)}" style="padding:9px 2px 9px 14px;border-bottom:1px solid var(--line)"><span class="grow">${esc(x.label)}</span><span class="muted">›</span></div>`).join('') || '<div class="muted">No places match</div>';
     list.querySelectorAll('[data-place]').forEach(el=>el.onclick=()=>{ store.place = PLACES.find(x=>x.label === el.dataset.place) || null; showPicked(); });
   };
   const showPicked = ()=>{
@@ -858,7 +859,7 @@ function bookRow(b, opts={}){
     ${opts.subline?`<div class="muted">${esc(opts.subline)}</div>`:''}
     ${opts.noSyn ? '' : synHTML(b)}
     </div>
-    ${opts.rateLabel && !(b.myRating > 0) ? `<button class="ratelink" data-rateopen="${b.key}">Rate</button><span class="ratebox hide" data-ratebox="${b.key}">${rateStrip(b)}</span>` : `${opts.rateLabel ? '<span class="muted" style="font-size:13px;align-self:center">Your rating</span>' : ''}${rateStrip(b)}`}
+    ${opts.rateLabel && !(b.myRating > 0) ? `<button class="ratelink" data-rateopen="${b.key}">Rate</button><span class="ratebox hide" data-ratebox="${b.key}">${rateStrip(b)}</span>` : `${opts.rateLabel ? '<span class="muted" style="font-size:13px">Your rating</span>' : ''}${rateStrip(b)}`}
     ${opts.current?`<button class="small ghost" data-setcurrent="${b.key}">Reading now</button>`:''}
   </div>`;
 }
@@ -966,7 +967,7 @@ function memberProgressHTML(c){
       : (p
         ? `<span class="pstat">${p.percent}%${(p.page !== null && p.page !== undefined) ? ` <span class="pg">· p. ${p.page}</span>` : ''}</span>`
         : '<span class="pstat" style="color:var(--muted);font-weight:500">Not started</span>');
-    const row = `<div class="prow"><div class="prow-top">${avatarHTML(m.name, m.userId)}<span class="pname">${m.userId===user.id ? 'You' : esc(m.name)}</span>${stat}${m.userId===user.id ? `<button class="small ghost" id="progToggle">${progEditorOpen ? 'Done' : 'Update'}</button>` : ''}</div><div class="progBar"><i style="width:${w}%"></i></div></div>`;
+    const row = `<div class="prow"><div class="prow-top">${avatarHTML(m.name, m.userId)}<span class="pname">${m.userId===user.id ? 'You' : esc(m.name)}</span>${m.userId===user.id ? `<button class="small ghost" id="progToggle">${progEditorOpen ? 'Done' : 'Update'}</button>` : ''}${stat}</div><div class="progBar"><i style="width:${w}%"></i></div></div>`;
     if(m.userId===user.id){
       return progEditorOpen ? row + myProgressHTML(c) : row;
     }
@@ -1126,7 +1127,7 @@ function meetingSection(c){
     <span class="muted grow" id="goingCount" style="text-align:right;cursor:pointer">${going.length} going ›</span></div>`;
   } else {
     h += '<div class="muted" style="margin-top:8px">Pick the days you are available</div>';
-    h += `<div class="row" style="margin:8px 0">${c.week.map(d=>{const dt=new Date(d+'T12:00:00'); const mine=(c.availability[user.id]||[]).includes(d); return `<div class="day ${mine?'on':''}" data-day="${d}"><span class="n">${'Sun Mon Tue Wed Thu Fri Sat'.split(' ')[dt.getDay()]}</span>${dt.getDate()}${overlap[d]?`<span class="n">${overlap[d]} ✓</span>`:''}</div>`;}).join('')}</div>`;
+    h += `<div class="row" style="margin:8px 0;gap:6px">${c.week.map(d=>{const dt=new Date(d+'T12:00:00'); const mine=(c.availability[user.id]||[]).includes(d); return `<div class="day ${mine?'on':''}" data-day="${d}"><span class="n">${'Sun Mon Tue Wed Thu Fri Sat'.split(' ')[dt.getDay()]}</span>${dt.getDate()}${overlap[d]?`<span class="n">${overlap[d]} ✓</span>`:''}</div>`;}).join('')}</div>`;
   }
   if(c.meeting.type==='online'){
     h += c.meeting.link ? `<div style="margin-top:8px"><a href="${esc(c.meeting.link)}" target="_blank">Join online</a></div>` : '<div class="muted" style="margin-top:8px">Online</div>';
@@ -1226,8 +1227,8 @@ function clubStripHTML(c){
   return `<div class="clubstrip" id="clubStrip" data-club="${c.id}">
   <span class="cs-side">${multi && idx > 0 ? `<button class="iconbtn" id="clubPrev" aria-label="Previous club">${icon('chevL',22)}</button>` : ''}</span>
   <div class="cs-main"><h2 class="cs-title">${esc(c.name)}${c.private?'<span class="badge">Private</span>':''}</h2>${sub}</div>
-  <span class="cs-side">${multi && idx < ids.length - 1 ? `<button class="iconbtn" id="clubNext" aria-label="Next club">${icon('chev',22)}</button>` : ''}</span>
-  <button class="iconbtn" id="clubList" aria-label="All clubs">${icon('list',22)}</button>${c.role==='admin'?`<button class="iconbtn" id="gear" aria-label="Settings">${icon('gear',22)}</button>`:''}<button class="iconbtn" id="clubMenuBtn" aria-label="Club options">${icon('dots',22)}</button>
+  <span class="cs-side" style="justify-content:flex-end">${multi && idx < ids.length - 1 ? `<button class="iconbtn" id="clubNext" aria-label="Next club">${icon('chev',22)}</button>` : ''}
+  <button class="iconbtn" id="clubList" aria-label="All clubs">${icon('list',22)}</button>${c.role==='admin'?`<button class="iconbtn" id="gear" aria-label="Settings">${icon('gear',22)}</button>`:''}<button class="iconbtn" id="clubMenuBtn" aria-label="Club options">${icon('dots',22)}</button></span>
   <div class="clubmenu hide" id="clubMenu">${c.role==='admin' && ((c.history||[]).length || c.library.length>1) ? `<button class="cmitem" id="cmRevert" style="color:var(--ink)">Revert to a previous book</button>` : ''}<button class="cmitem" id="cmLeave">Leave club</button></div>
   </div>`;
 }
@@ -1365,12 +1366,12 @@ function viewPoll(){
       <span style="position:absolute;top:0;bottom:0;left:0;width:${pct}%;background:rgba(139,92,246,.12)"></span>
       ${bookCoverHTML(o.book, 'cover')}
       <div class="grow" style="position:relative"><b>${esc(o.book.title)}</b><div class="muted">${esc(o.book.author)}</div>${mine?'<div style="color:#8b5cf6;font-weight:600;font-size:13px">Your vote</div>':''}${synHTML(o.book)}</div>
-      ${mine?`<span style="position:relative;flex:none;background:#8b5cf6;color:#fff;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center">${icon('check',14)}</span>`:''}
-      <b data-vcount="${o.book.key}" style="position:relative;flex:none;min-width:20px;text-align:right">${o.votes} <span class="muted" style="font-weight:400;font-size:13px">${pct}%</span></b></div>${(o.voters && o.voters.length) ? `<div class="voters hide" data-voters="${o.book.key}" style="margin:2px 8px 6px 52px"><span class="muted" style="font-size:13px">${o.voters.map(nm=>esc(nm)).join(', ')}</span></div>` : ''}`;
+      <span style="position:relative;flex:none;background:#8b5cf6;color:#fff;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;visibility:${mine?'visible':'hidden'}"${mine?'':' aria-hidden="true"'}>${icon('check',14)}</span>
+      <b data-vcount="${o.book.key}" style="position:relative;flex:none;min-width:20px;text-align:right">${o.votes} <span class="muted" style="font-weight:400;font-size:13px">${pct}%</span></b></div>${(o.voters && o.voters.length) ? `<div class="voters hide" data-voters="${o.book.key}" style="margin:2px 8px 6px 70px"><span class="muted" style="font-size:13px">${o.voters.map(nm=>esc(nm)).join(', ')}</span></div>` : ''}`;
     }).join('')}
-    ${isAdmin?`<div class="muted" style="margin:14px 0 0">Closing date</div>
+    ${isAdmin?`<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px"><div class="muted">Closing date</div>
     ${pickerFieldHTML('pollCloseDate', 'date', new Date(c.poll.closesAt).toISOString().slice(0,10))}
-    <button id="closePoll" class="ghost small" style="margin-top:10px">Close poll now</button>`:''}`;
+    <button id="closePoll" class="ghost small" style="margin-top:10px">Close poll now</button></div>`:''}`;
   } else if(c.lastResult && c.lastResult.tie){
     body = `<h3 style="margin-top:0">Tie</h3>${isAdmin?'<button id="runoff" class="small">One day runoff</button> '+c.lastResult.tie.map(k=>{const b=c.library.find(x=>x.key===k); return b?`<button class="small ghost" data-pick="${k}">Pick ${esc(b.title)}</button>`:'';}).join(' '):'<div class="muted">The admin picks the winner</div>'}`;
   } else if(isAdmin && pollCandidatesOf(c).length>=2){
@@ -1383,7 +1384,7 @@ function viewPoll(){
   }
   app.innerHTML = `
   <button class="ghost small" id="back">‹ ${esc(c.name)}</button>
-  <div class="card" style="margin-top:8px">${body}</div>`;
+  <div class="card">${body}</div>`;
   $('#back').onclick = ()=>backTo(()=>viewClub());
   app.querySelectorAll('[data-voters]').forEach(v=>{ const row = v.previousElementSibling; const cnt = document.querySelector('[data-vcount="' + v.dataset.voters + '"]'); if(cnt){ cnt.style.cursor = 'pointer'; cnt.title = 'See who voted'; cnt.onclick = (e)=>{ e.stopPropagation(); v.classList.toggle('hide'); }; } });
   app.querySelectorAll('[data-vote]').forEach(b=>{

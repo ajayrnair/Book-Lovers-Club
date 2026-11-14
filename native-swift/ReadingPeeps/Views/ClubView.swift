@@ -199,6 +199,7 @@ struct ClubView: View {
                                     Text(r.userId == myId ? "You" : r.name)
                                         .font(.body.weight(.semibold))
                                         .lineLimit(1)
+                                    Spacer()
                                     if let rating = r.rating {
                                         Text("★ \(trimNumber(rating))")
                                             .font(.subheadline.weight(.bold))
@@ -212,7 +213,6 @@ struct ClubView: View {
                                             .font(.subheadline)
                                             .foregroundStyle(.secondary)
                                     }
-                                    Spacer()
                                 }
                                 if r.rating != nil && r.userId != myId {
                                     ReactionChipsView(chips: r.reactions ?? [], overlayStyle: true) { emoji in
@@ -226,13 +226,6 @@ struct ClubView: View {
                         }
                     }
                 }
-                Toggle("I finished reading", isOn: Binding(
-                    get: { c.myFinished },
-                    set: { _ in Task { await toggleFinished() } }
-                ))
-                Text("\(c.finishedBy.count) of \(c.members.count) finished")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
                 if c.isAdmin && c.library.count > 1 {
                     Button { showChangePicker = true } label: {
                         Label("Change book", systemImage: "arrow.left.arrow.right")
@@ -260,6 +253,13 @@ struct ClubView: View {
             ForEach(orderedMembers(c), id: \.userId) { member in
                 memberProgressRow(c, member: member)
             }
+            Toggle("I finished reading", isOn: Binding(
+                get: { c.myFinished },
+                set: { _ in Task { await toggleFinished() } }
+            ))
+            Text("\(c.finishedBy.count) of \(c.members.count) finished")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
         } header: { rpSectionHeader("Reading progress") }
         .listRowBackground(Color.rpCream)
         .sheet(isPresented: $showingProgressEditor) {
@@ -293,46 +293,48 @@ struct ClubView: View {
                 Text(member.userId == myId ? "You" : member.name)
                     .font(.body.weight(.semibold))
                     .lineLimit(1)
-                Spacer(minLength: 8)
-                progressStat(entry: entry, finished: finished)
                 if member.userId == myId {
                     Button("Update") { showingProgressEditor = true }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                 }
+                Spacer(minLength: 8)
+                progressStat(entry: entry, finished: finished)
             }
             ProgressView(value: Double(percent), total: 100)
-                .tint(finished ? .green : .rpTeal)
+                .tint(.rpTeal)
                 .overlay(alignment: .bottomLeading) {
                     if finished && member.userId != myId, let current = c.current {
                         ReactionChipsView(chips: entry?.reactions ?? [], overlayStyle: true) { emoji in
                             Task { await react(type: "finish", bookKey: current.key, subject: member.userId, emoji: emoji) }
                         }
                         .padding(.leading, 44)
-                        .offset(y: 11)
+                        .offset(y: 4)
                     }
                 }
         }
-        .padding(.bottom, finished && member.userId != myId ? 12 : 0)
+        .padding(.bottom, finished && member.userId != myId ? 28 : 0)
     }
 
     @ViewBuilder
     private func progressStat(entry: ProgressEntry?, finished: Bool) -> some View {
         if finished {
             Text("Finished")
-                .font(.body.weight(.bold))
-                .foregroundStyle(.green)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(Color.rpGood)
         } else if let entry {
             HStack(spacing: 0) {
                 Text("\(entry.percent)%")
-                    .font(.body.weight(.bold))
+                    .font(.subheadline.weight(.bold))
                 if let page = entry.page {
                     Text(" · p. \(page)")
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
             }
         } else {
             Text("Not started")
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
     }

@@ -131,14 +131,14 @@ struct ClubsView: View {
     }
 
     private func subtitle(for club: Club) -> String {
-        var s = "\(club.memberCount) member\(club.memberCount == 1 ? "" : "s")"
         if let current = club.current {
-            s += " · Reading \(current.title)"
+            var s = "Reading \(current.title)"
+            if !club.meeting.date.isEmpty {
+                s += " · Meets \(Dates.meetingShort(club.meeting.date))"
+            }
+            return s
         }
-        if !club.meeting.date.isEmpty {
-            s += " · Meets \(Dates.meetingShort(club.meeting.date))"
-        }
-        return s
+        return "\(club.memberCount) member\(club.memberCount == 1 ? "" : "s")"
     }
 }
 
@@ -197,12 +197,11 @@ struct NotificationsView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
-            if !item.read {
-                Circle()
-                    .fill(Color.rpCoral)
-                    .frame(width: 8, height: 8)
-                    .padding(.top, 4)
-            }
+            Circle()
+                .fill(Color.rpCoral)
+                .frame(width: 8, height: 8)
+                .padding(.top, 4)
+                .opacity(item.read ? 0 : 1)
         }
         .padding(.vertical, 2)
         .contentShape(Rectangle())

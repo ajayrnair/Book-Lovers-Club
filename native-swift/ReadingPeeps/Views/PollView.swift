@@ -94,13 +94,15 @@ struct PollView: View {
                             }
                         }
                         Spacer()
-                        if poll.myVote == option.book.key {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundStyle(Color.rpViolet)
-                        }
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(Color.rpViolet)
+                            .opacity(poll.myVote == option.book.key ? 1 : 0)
                         Text("\(option.votes)")
                             .font(.body.weight(.semibold))
                             .foregroundStyle(.primary)
+                        Text("\(poll.totalVotes > 0 ? Int(round(100.0 * Double(option.votes) / Double(poll.totalVotes))) : 0)%")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .buttonStyle(.plain)
@@ -118,6 +120,7 @@ struct PollView: View {
                             .foregroundStyle(Color.rpViolet)
                     }
                     .buttonStyle(.plain)
+                    .padding(.leading, 56)
                 }
                 }
             }

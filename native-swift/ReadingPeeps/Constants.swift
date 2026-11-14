@@ -78,4 +78,8 @@ extension Color {
         Color(red: 33.0 / 255.0, green: 104.0 / 255.0, blue: 130.0 / 255.0),
         Color(red: 188.0 / 255.0, green: 69.0 / 255.0, blue: 86.0 / 255.0),
     ]
+    /// The palette good green: for the word Finished only, never a bar.
+    static let rpGood = Color(red: 46.0 / 255.0, green: 125.0 / 255.0, blue: 50.0 / 255.0)
+    /// Badge cream for the won the club vote badge.
+    static let rpBadge = Color(red: 253.0 / 255.0, green: 232.0 / 255.0, blue: 216.0 / 255.0)
 }

@@ -293,10 +293,10 @@ struct BookRowView: View {
                             Text(badge)
                                 .font(.caption.weight(.semibold))
                         }
-                        .foregroundStyle(Color.rpInk)
+                        .foregroundStyle(Color.rpCoral)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
-                        .background(Color.rpPill)
+                        .background(Color.rpBadge)
                         .clipShape(Capsule())
                         .fixedSize()
                     }
