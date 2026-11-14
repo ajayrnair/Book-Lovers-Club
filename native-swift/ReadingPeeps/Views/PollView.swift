@@ -131,10 +131,15 @@ struct PollView: View {
         if c.isAdmin {
             Section {
                 DatePicker("Closing date", selection: $closeDate, displayedComponents: .date)
-                    .onChange(of: closeDate) { _, _ in closeDateTouched = true }
-                Button("Change closing date") {
-                    Task { await setPollClose() }
-                }
+                    .onChange(of: closeDate) { _, newValue in
+                        closeDateTouched = true
+                        let f = DateFormatter()
+                        f.locale = Locale(identifier: "en_US_POSIX")
+                        f.dateFormat = "yyyy-MM-dd"
+                        if let cur = Dates.parseISO(poll.closesAt), f.string(from: cur) != f.string(from: newValue) {
+                            Task { await setPollClose() }
+                        }
+                    }
                 Button("Close poll now", role: .destructive) {
                     Task { await closePoll() }
                 }

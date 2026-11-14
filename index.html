@@ -1336,7 +1336,7 @@ function viewPoll(){
     }).join('')}
     ${isAdmin?`<div class="muted" style="margin:14px 0 0">Closing date</div>
     ${pickerFieldHTML('pollCloseDate', 'date', new Date(c.poll.closesAt).toISOString().slice(0,10))}
-    <div class="row" style="margin-top:10px;gap:8px"><button id="setPollClose" class="ghost small">Change closing date</button><button id="closePoll" class="ghost small">Close poll now</button></div>`:''}`;
+    <button id="closePoll" class="ghost small" style="margin-top:10px">Close poll now</button>`:''}`;
   } else if(c.lastResult && c.lastResult.tie){
     body = `<h3 style="margin-top:0">Tie</h3>${isAdmin?'<button id="runoff" class="small">One day runoff</button> '+c.lastResult.tie.map(k=>{const b=c.library.find(x=>x.key===k); return b?`<button class="small ghost" data-pick="${k}">Pick ${esc(b.title)}</button>`:'';}).join(' '):'<div class="muted">The admin picks the winner</div>'}`;
   } else if(isAdmin && pollCandidatesOf(c).length>=2){
@@ -1358,8 +1358,7 @@ function viewPoll(){
   });
   app.querySelectorAll('[data-pick]').forEach(b=>b.onclick=async()=>{ const j=await api('adminPick',{clubId:c.id, bookKey:b.dataset.pick}); currentClub=j.club; viewClub(); });
   if($('#closePoll')) $('#closePoll').onclick=async()=>{ const j=await api('closePoll',{clubId:c.id}); currentClub=j.club; await refreshClubs(); viewClub(); };
-  if($('#pollCloseDate')) wireDatePicker('pollCloseDate');
-  if($('#setPollClose')) $('#setPollClose').onclick=async()=>{ try{ const j=await api('setPollClose',{clubId:c.id, endDate:$('#pollCloseDate').value}); currentClub=j.club; await refreshClubs(); viewPoll(); toast('Closing date updated'); }catch(e){ toast(e.message); } };
+  if($('#pollCloseDate')) wireDatePicker('pollCloseDate', async (v)=>{ try{ const j=await api('setPollClose',{clubId:c.id, endDate:v}); currentClub=j.club; await refreshClubs(); viewPoll(); toast('Closing date updated'); }catch(e){ toast(e.message); viewPoll(); } });
   if($('#runoff')) $('#runoff').onclick=async()=>{ const j=await api('runoff',{clubId:c.id}); currentClub=j.club; viewPoll(); };
   if($('#pollEnd')) wireDatePicker('pollEnd');
   wireSyn();
