@@ -140,7 +140,7 @@ struct PollView: View {
                             Task { await setPollClose() }
                         }
                     }
-                Button("Close poll now", role: .destructive) {
+                Button("Close poll now") {
                     Task { await closePoll() }
                 }
             }

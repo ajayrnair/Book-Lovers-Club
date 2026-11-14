@@ -225,7 +225,7 @@ struct NotificationsView: View {
 
     private func iconColor(for type: String) -> Color {
         switch type {
-        case "meeting", "meeting_reminder": return Color.rpTeal
+        case "meeting", "meeting_reminder": return Color.rpViolet
         case "poll": return Color.rpViolet
         case "poll_result": return Color.rpCoral
         default: return Color.rpPlum

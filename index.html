@@ -57,7 +57,7 @@
   .syn p{margin:0;font-size:14px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
   .syn.open p{display:block}
   .synbtn{background:none;border:0;padding:3px 0 0;color:#c93a54;font-size:13px;font-weight:600;cursor:pointer}
-  .stars{color:var(--accent2);font-size:13px}
+  .stars{color:var(--accent);font-size:13px}
   nav{position:fixed;bottom:0;left:0;right:0;background:rgba(46,14,40,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid rgba(255,255,255,.09);display:flex;z-index:10;padding-bottom:env(safe-area-inset-bottom)}
   nav button{flex:1;background:none;color:#d9a8c2;border-radius:0;padding:8px 0 7px;min-height:52px;font-size:11px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:2px}
   nav button.on{color:#ff8a66}
@@ -558,7 +558,7 @@ async function refreshBell(){
 }
 function relTime(iso){ const t = new Date(iso).getTime(); if(isNaN(t)) return ''; const sec = Math.max(0, (Date.now() - t) / 1000); if(sec < 90) return 'now'; const m = Math.floor(sec / 60); if(m < 60) return m + 'm'; const h = Math.floor(m / 60); if(h < 24) return h + 'h'; const d = Math.floor(h / 24); if(d < 7) return d + 'd'; return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
 function notifTile(type){
-  if(type === 'meeting' || type === 'meeting_reminder') return `<span class="ntile" style="background:#17a398">${icon('calendar', 17)}</span>`;
+  if(type === 'meeting' || type === 'meeting_reminder') return `<span class="ntile" style="background:#8b5cf6">${icon('calendar', 17)}</span>`;
   if(type === 'poll') return `<span class="ntile" style="background:#8b5cf6">${icon('chart', 17)}</span>`;
   if(type === 'poll_result') return `<span class="ntile" style="background:#c93a54">${icon('book', 17)}</span>`;
   return `<span class="ntile" style="background:#8d6a7a">${icon('list', 17)}</span>`;
@@ -1008,7 +1008,7 @@ function currentSection(c){
   h += `<div class="row" id="rateSummary" style="margin-top:8px;cursor:pointer"><span class="grow muted">${rated.length?`Average \u2605 ${avg} (${rated.length} rating${rated.length>1?'s':''})`:'No ratings yet'}</span><span class="muted">Ratings \u203a</span></div>
       <div id="rateList" class="hide">${c.currentRatings.map(r=>`<div class="pwrap"><div class="person">${avatarHTML(r.name, r.userId)}<span class="pname">${esc(r.name)}</span>${r.rating===null||r.rating===undefined?'<span class="notrated">Not rated</span>':`<span class="pill"><span class="pstar">\u2605</span>${r.rating}</span>`}</div>${(r.rating!==null&&r.rating!==undefined&&r.userId!==user.id)?reactionHTML(r.reactions || [], `data-rtype="rating" data-rbook="${esc(c.current.key)}" data-rsubject="${r.userId}"`, 'abs'):''}</div>`).join('')}</div>`;
   if(c.role==='admin' && c.library.length > 1){
-    h += `<div style="margin-top:8px"><button class="small ghost" id="changeBookBtn">Change book</button></div><div id="changeBookPanel" class="hide" style="margin-top:4px">${c.library.filter(b=>b.key!==c.current.key).map(b=>`<button class="cmitem" data-change="${esc(b.key)}" style="color:var(--ink);display:block;width:100%;text-align:left;background:none;border:none;padding:8px 10px;cursor:pointer;font-size:15px">${esc(b.title)}</button>`).join('')}</div>`;
+    h += `<div style="margin-top:8px"><button id="changeBookBtn" style="background:none;border:none;padding:0;color:var(--accent);font-weight:600;font-size:15px;cursor:pointer">Change book</button></div><div id="changeBookPanel" class="hide" style="margin-top:4px">${c.library.filter(b=>b.key!==c.current.key).map(b=>`<button class="cmitem" data-change="${esc(b.key)}" style="color:var(--ink);display:block;width:100%;text-align:left;background:none;border:none;padding:8px 10px;cursor:pointer;font-size:15px">${esc(b.title)}</button>`).join('')}</div>`;
   }
   h += '</div>';
   let p = `<div class="card"><h3 style="margin-top:0">Reading progress</h3>`;
